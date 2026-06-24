@@ -4,7 +4,8 @@
      #2  le filtre de conformité REJETTE un `fait` contenant un mot interdit.
    Lance : node scripts/check-recette.mjs
    ========================================================================== */
-import { validerRecette, filtrerFait, estConnu } from '../src/recettes/schema.js'
+import { validerRecette, filtrerFait, estConnu, BLOCS } from '../src/recettes/schema.js'
+import { composerRecette } from '../src/recettes/composer.js'
 
 let fail = 0
 const ok = (cond, label) => {
@@ -50,5 +51,19 @@ const fait = v.blocs[2]
 ok(fait.params.texte === null && Array.isArray(fait._faitRejete) && fait._faitRejete.length > 0, 'fait interdit dans la recette → texte nettoyé + motif')
 console.log(`      → fait rejeté · ${JSON.stringify(fait._faitRejete)}`)
 
-console.log('\n' + (fail === 0 ? '✅ Les 2 garde-fous tiennent — 0 échec' : `❌ ${fail} échec(s)`))
+console.log('\n— Clé de voûte : l’entretien (composer) sort une recette VALIDE schema.js —')
+const rc = composerRecette('revenu_saisonnier', { vue: 'mensuel', mesure: 'montant', side: 'coussin' })
+ok(rc.situation === 'revenu_saisonnier' && Array.isArray(rc.blocs), 'composer → recette { situation, titre, blocs }')
+ok(rc.blocs.every((b) => estConnu(b.type)), 'tous les blocs produits sont connus du registre')
+ok(rc.blocs[0].type === 'flux_annuel' && rc.blocs[0].params.vue === 'mensuel', 'la réponse vue:mensuel passe dans le bloc')
+const vc = validerRecette(rc)
+ok(vc.blocs.length === rc.blocs.length && !vc.blocs.some((b) => b._ignore), 'le validateur accepte la recette (aucun bloc ignoré)')
+console.log(`      → side:coussin = ${rc.blocs.map((b) => b.type).join(', ')}`)
+const rcTout = composerRecette('revenu_saisonnier', { side: 'tout' })
+ok(rcTout.blocs.length === 4, 'side:tout → 4 blocs (flux + jauge + stat + fait)')
+const rcFait = composerRecette('revenu_saisonnier', { side: 'fait' })
+ok(rcFait.blocs.length === 2, 'side:fait → 2 blocs (flux + fait)')
+ok(typeof BLOCS === 'object', 'BLOCS exporté (sanity)')
+
+console.log('\n' + (fail === 0 ? '✅ Les garde-fous + le composer tiennent — 0 échec' : `❌ ${fail} échec(s)`))
 process.exit(fail === 0 ? 0 : 1)

@@ -1,26 +1,15 @@
 /* ============================================================================
-   App.jsx — la coquille single-pane (VISION §5) : LE moment héros (bande
-   dégradé + verdict FACTUEL tiré du snapshot) puis une recette de DÉMO rendue
-   bout-en-bout par le MoteurRendu. Minimal, mais « designé », pas un graphe nu.
+   App.jsx — la coquille single-pane (VISION §5) + l'ENTRETIEN GUIDÉ.
+   L'usager choisit une situation puis répond à 2-3 questions tappables ; chaque
+   réponse recompose la recette (composer.js) et le MoteurRendu re-rend la vue.
+   La recette produite est valide selon schema.js — la même que build-tool (l'IA)
+   émettra plus tard, qui se branchera donc sans rien changer au moteur.
    ========================================================================== */
 import { useMemo, useState } from 'react'
 import { getSnapshot } from './lib/canonical.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
-
-// Recette de démonstration (situation « travailleur saisonnier »).
-// NB : le 2e bloc a un type INEXISTANT — c'est volontaire : il prouve que le
-// moteur l'ignore PROPREMENT (aucun crash), preuve que l'architecture tient.
-const RECETTE_DEMO = {
-  situation: 'revenu_saisonnier',
-  titre: "Passer l'hiver",
-  blocs: [
-    { type: 'flux_annuel', params: { souligner: 'mois_deficitaires' } }, // colonne principale
-    { type: 'jauge', params: { mesure: 'mois', cible: 5 } }, // colonne de droite
-    { type: 'stat', params: {} },
-    { type: 'fait', params: {} },
-    { type: 'bloc_inexistant_xyz', params: {} }, // ← ignoré proprement par le moteur
-  ],
-}
+import Entretien from './components/Entretien.jsx'
+import { SITUATIONS, REPONSES_DEFAUT, composerRecette } from './recettes/composer.js'
 
 // Verdict FACTUEL (conformité §11) : part des 6 mois d'été (mai→octobre).
 function verdictEte(snapshot) {
@@ -33,9 +22,20 @@ function verdictEte(snapshot) {
 }
 
 function App() {
-  // Snapshot calculé une fois (lit le silo, sème la démo au 1er passage).
   const [snapshot] = useState(getSnapshot)
+  const [situation, setSituation] = useState(null) // null = pas encore composée
+  const [reponses, setReponses] = useState(REPONSES_DEFAUT)
+
   const pctEte = useMemo(() => verdictEte(snapshot), [snapshot])
+  const recette = useMemo(
+    () => (situation ? composerRecette(situation, reponses) : null),
+    [situation, reponses],
+  )
+
+  const demarrer = (key) => {
+    setReponses(REPONSES_DEFAUT)
+    setSituation(key)
+  }
 
   return (
     <div className="app">
@@ -51,24 +51,57 @@ function App() {
             {snapshot.identity.metier ? ` · ${snapshot.identity.metier}` : ''}
           </div>
         </div>
-        {pctEte != null && (
-          <p className="band-verdict">
-            Tes <b>6 mois d&rsquo;été</b> (mai&nbsp;→&nbsp;octobre) génèrent <b>{pctEte}&nbsp;%</b> de
-            ton revenu annuel.
-          </p>
+
+        {!situation ? (
+          <>
+            <p className="band-verdict">Compose ta vue — choisis une situation pour commencer.</p>
+            <div className="suggs">
+              {Object.entries(SITUATIONS).map(([key, s]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`sugg ${s.dispo ? 'primary' : ''}`}
+                  disabled={!s.dispo}
+                  onClick={() => s.dispo && demarrer(key)}
+                >
+                  {s.label}
+                  {!s.dispo ? ' · bientôt' : ''}
+                </button>
+              ))}
+            </div>
+            <p className="band-hint">Bientôt : décris ta situation en mots, l&rsquo;IA composera ta vue.</p>
+          </>
+        ) : (
+          <div className="band-active">
+            {pctEte != null && (
+              <p className="band-verdict">
+                Tes <b>6 mois d&rsquo;été</b> (mai&nbsp;→&nbsp;octobre) génèrent <b>{pctEte}&nbsp;%</b> de
+                ton revenu annuel.
+              </p>
+            )}
+            <button type="button" className="band-reset" onClick={() => setSituation(null)}>
+              ↺ Changer de situation
+            </button>
+          </div>
         )}
       </section>
 
       <main className="stage">
-        <div className="compose-head">
-          <div className="ch-l">
-            <span className="ch-tag">Ta vue · composée pour toi</span>
-            <span className="ch-title">{RECETTE_DEMO.titre}</span>
-          </div>
-          <span className="ch-note">composée à partir de tes données</span>
-        </div>
-
-        <MoteurRendu recette={RECETTE_DEMO} snapshot={snapshot} />
+        {situation && recette ? (
+          <>
+            <Entretien reponses={reponses} onChange={setReponses} />
+            <div className="compose-head">
+              <div className="ch-l">
+                <span className="ch-tag">Ta vue · composée pour toi</span>
+                <span className="ch-title">{recette.titre}</span>
+              </div>
+              <span className="ch-note">composée à partir de tes données</span>
+            </div>
+            <MoteurRendu recette={recette} snapshot={snapshot} />
+          </>
+        ) : (
+          <p className="stage-placeholder">Choisis une situation ci-dessus pour composer ta vue.</p>
+        )}
       </main>
 
       <footer className="site-footer">
