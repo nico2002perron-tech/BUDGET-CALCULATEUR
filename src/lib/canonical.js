@@ -15,6 +15,7 @@
    ========================================================================== */
 import { loadStoreOrSeedDemo } from './storage.js'
 import { totaux, repartition, engageLibre, parCategorie } from './budget.js'
+import { revenusMensuels as deriveRevenus } from './revenus.js'
 
 function num(v) {
   const n = Number(v)
@@ -46,17 +47,39 @@ function buildBudget(store) {
   }
 }
 
-function buildSaison(store) {
-  const s = store && store.saison
-  if (!s || !Array.isArray(s.revenusMensuels)) return null
-  // 12 mois garantis (complète/tronque à 12, valeurs numériques sûres).
-  const revenus = []
-  for (let i = 0; i < 12; i++) revenus.push(num(s.revenusMensuels[i]) || 0)
-  return {
-    revenusMensuels: revenus,
-    depensesMensuelles: num(s.depensesMensuelles) || 0,
-    coussin: num(s.coussin),
+// Dépenses mensuelles = somme des dépenses (hors épargne). 0 tant que rien saisi.
+function depensesMensuelles(store) {
+  const d = store && store.depenses
+  if (!Array.isArray(d)) return 0
+  let t = 0
+  for (const x of d) {
+    if (!x || x.classe === 'epargne') continue
+    const m = Number(x.montant)
+    if (isFinite(m)) t += m
   }
+  return Math.round(t)
+}
+
+function buildSaison(store) {
+  // 1) La SAISIE de l'usager prime TOUJOURS (corrige le bug : un seed démo
+  //    résiduel ne doit jamais masquer les vrais chiffres).
+  const revenus = deriveRevenus(store && store.revenus)
+  const dep = depensesMensuelles(store)
+  if (revenus.some((v) => v > 0) || dep > 0) {
+    return {
+      revenusMensuels: revenus,
+      depensesMensuelles: dep,
+      coussin: num(store && store.revenus && store.revenus.coussin),
+    }
+  }
+  // 2) Rien saisi → données EXPLICITES (seed démo / import) en repli.
+  const s = store && store.saison
+  if (s && Array.isArray(s.revenusMensuels)) {
+    const r = []
+    for (let i = 0; i < 12; i++) r.push(num(s.revenusMensuels[i]) || 0)
+    return { revenusMensuels: r, depensesMensuelles: num(s.depensesMensuelles) || 0, coussin: num(s.coussin) }
+  }
+  return null
 }
 
 /** Construit le snapshot canonique à partir d'un silo (fonction PURE, testable). */

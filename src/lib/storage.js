@@ -7,7 +7,39 @@
    du module) → import sûr côté Node pour les tests.
    ========================================================================== */
 
+import { moisActifsDefaut, repartirSaisonnier } from './revenus.js'
+
 export const STORAGE_KEY = 'budgetcalc_v1'
+
+/** Silo VIDE — l'app démarre ici (état accueillant, rien d'inventé). */
+export function emptyStore() {
+  return {
+    version: 1,
+    updatedAt: null,
+    identity: { prenom: null, metier: null, age: null, situation: null },
+    revenus: {
+      mode: 'stable',
+      mensuel: null,
+      annuel: null,
+      moisActifs: moisActifsDefaut(),
+      repartition: Array.from({ length: 12 }, () => 0),
+    },
+    depenses: [],
+  }
+}
+
+/** Exemple saisonnier (bouton « voir un exemple ») : 42 400 $ sur avr→oct. */
+export function exempleStore() {
+  const moisActifs = [false, false, false, true, true, true, true, true, true, true, false, false]
+  const annuel = 42400
+  return {
+    version: 1,
+    updatedAt: null,
+    identity: { prenom: 'Maxime', metier: 'paysagiste', age: null, situation: null },
+    revenus: { mode: 'saisonnier', mensuel: null, annuel, moisActifs, repartition: repartirSaisonnier(annuel, moisActifs) },
+    depenses: [],
+  }
+}
 
 // Profil de démonstration « travailleur saisonnier » — valeurs reprises EXACTEMENT
 // de la maquette validée (tour-saisonnier-v2.html : rev[12], DEP, coussin).

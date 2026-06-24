@@ -57,8 +57,9 @@ export const BLOCS = {
     bornes: {
       souligner: ['mois_deficitaires', 'aucun'],
       vue: ['annuel', 'mensuel'], // `mensuel` = le même bloc réduit (preuve : nouveau cas = un param)
+      anime: [true, false], // false → aperçu live (barres au repos, suivent la saisie)
     },
-    defauts: { souligner: 'mois_deficitaires', vue: 'annuel' },
+    defauts: { souligner: 'mois_deficitaires', vue: 'annuel', anime: true },
     // Les CHIFFRES viennent du snapshot, jamais de la recette.
     resolve: (snap) => ({
       revenus: (snap && snap.saison && snap.saison.revenusMensuels) || [],

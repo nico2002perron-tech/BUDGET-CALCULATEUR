@@ -35,9 +35,9 @@ function fmt(n) {
 }
 
 /* -------- Vue annuelle : le flux (barres + ligne de dépenses) -------------- */
-function Annuel({ revenus, depenses, souligner }) {
+function Annuel({ revenus, depenses, souligner, anime }) {
   const [hover, setHover] = useState(null)
-  const reduce = reduceMotion()
+  const animer = anime && !reduceMotion()
 
   const W = 640, H = 250, padL = 10, padR = 10, top = 16, baseY = 205, n = 12
   const slot = (W - padL - padR) / n
@@ -84,8 +84,8 @@ function Annuel({ revenus, depenses, souligner }) {
           const x = padL + i * slot + (slot - barW) / 2
           const y = baseY - bh
           return (
-            <rect key={`bar-${i}`} x={x} y={reduce ? y : baseY} width={barW} height={reduce ? bh : 0} rx="4" fill={CYAN}>
-              {!reduce && (
+            <rect key={`bar-${i}`} x={x} y={animer ? baseY : y} width={barW} height={animer ? 0 : bh} rx="4" fill={CYAN}>
+              {animer && (
                 <>
                   <animate attributeName="height" from="0" to={bh} dur="0.7s" begin={`${i * 40}ms`} fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1" />
                   <animate attributeName="y" from={baseY} to={y} dur="0.7s" begin={`${i * 40}ms`} fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1" />
@@ -96,11 +96,16 @@ function Annuel({ revenus, depenses, souligner }) {
         })}
 
         {/* ligne de dépenses pointillée + étiquette (à gauche, au-dessus, sur la
-            zone d'hiver vide → aucun chevauchement avec les barres) */}
-        <line x1={padL} y1={yDep} x2={W - padR} y2={yDep} stroke={ACCENT} strokeWidth="2" strokeDasharray="5 5" />
-        <text x={padL + 2} y={yDep - 8} textAnchor="start" fontSize="11" fontWeight="700" fill={ACCENT} fontFamily="Montserrat">
-          dépenses {fmt(depenses)} $/mois
-        </text>
+            zone d'hiver vide → aucun chevauchement). Masquée tant qu'aucune
+            dépense n'est saisie (aperçu revenus seuls). */}
+        {depenses > 0 && (
+          <>
+            <line x1={padL} y1={yDep} x2={W - padR} y2={yDep} stroke={ACCENT} strokeWidth="2" strokeDasharray="5 5" />
+            <text x={padL + 2} y={yDep - 8} textAnchor="start" fontSize="11" fontWeight="700" fill={ACCENT} fontFamily="Montserrat">
+              dépenses {fmt(depenses)} $/mois
+            </text>
+          </>
+        )}
 
         {/* libellés des mois */}
         {MOIS_COURTS.map((m, i) => (
@@ -112,8 +117,12 @@ function Annuel({ revenus, depenses, souligner }) {
 
       <div className="legend">
         <span className="it"><span className="sw" style={{ background: CYAN }} />Revenus</span>
-        <span className="it"><span className="ln" />Dépenses</span>
-        <span className="it"><span className="sw" style={{ background: '#f0d49a' }} />Couvert par ton coussin</span>
+        {depenses > 0 && (
+          <>
+            <span className="it"><span className="ln" />Dépenses</span>
+            <span className="it"><span className="sw" style={{ background: '#f0d49a' }} />Couvert par ton coussin</span>
+          </>
+        )}
       </div>
       <div className="readout">
         {hover != null && revenus[hover] < depenses
@@ -125,8 +134,8 @@ function Annuel({ revenus, depenses, souligner }) {
 }
 
 /* -------- Vue mensuelle : le MÊME bloc réduit (solde mois-par-mois) -------- */
-function Mensuel({ revenus, depenses }) {
-  const reduce = reduceMotion()
+function Mensuel({ revenus, depenses, anime }) {
+  const animer = anime && !reduceMotion()
   const W = 640, H = 240, padL = 10, padR = 10, mid = 118, n = 12
   const slot = (W - padL - padR) / n
   const barW = slot * 0.6
@@ -154,8 +163,8 @@ function Mensuel({ revenus, depenses }) {
           const col = pos ? CYAN : AMBER
           return (
             <g key={`mb-${i}`}>
-              <rect x={x} y={reduce ? y : mid} width={barW} height={reduce ? h : 0} rx="4" fill={col}>
-                {!reduce && (
+              <rect x={x} y={animer ? mid : y} width={barW} height={animer ? 0 : h} rx="4" fill={col}>
+                {animer && (
                   <>
                     <animate attributeName="height" from="0" to={h} dur="0.6s" begin={`${i * 35}ms`} fill="freeze" />
                     <animate attributeName="y" from={mid} to={y} dur="0.6s" begin={`${i * 35}ms`} fill="freeze" />
@@ -184,6 +193,10 @@ export default function FluxAnnuel({ params = {}, data = {} }) {
   // 12 mois garantis (complète à 0 si la série est plus courte).
   while (revenus.length < 12) revenus.push(0)
 
-  if (params.vue === 'mensuel') return <Mensuel revenus={revenus} depenses={depenses} />
-  return <Annuel revenus={revenus} depenses={depenses} souligner={params.souligner || 'mois_deficitaires'} />
+  // anime:false → barres au repos (aperçu live : les données changent à chaque
+  // frappe, donc pas d'animation SMIL qui figerait le 1er rendu).
+  const anime = params.anime !== false
+
+  if (params.vue === 'mensuel') return <Mensuel revenus={revenus} depenses={depenses} anime={anime} />
+  return <Annuel revenus={revenus} depenses={depenses} souligner={params.souligner || 'mois_deficitaires'} anime={anime} />
 }
