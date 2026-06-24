@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ta tour se construit · Travailleur saisonnier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#03045e;--cyan:#00b4d8;--accent:#0077b6;--bg:#f3f6fa;
+    --ink:#0a1840;--muted:#5a6b8c;--line:rgba(3,4,94,.08);--card:#fff;
+    --amber:#b8740a;--amber2:#e0a23c;--green:#0f8a5f;
+    --sh-sm:0 1px 2px rgba(3,4,94,.05);
+    --sh-md:0 8px 24px rgba(3,4,94,.07),0 1px 3px rgba(3,4,94,.05);
+    --sh-lg:0 24px 60px rgba(3,4,94,.18);--r:20px;
+  }
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:20px 16px 60px}
+  .wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .55s cubic-bezier(.2,.7,.2,1),transform .55s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* SIGNATURE BAND + CHAT */
+  .band{position:relative;overflow:hidden;border-radius:24px;padding:22px 26px 24px;background:linear-gradient(135deg,#03045e 0%,#0077b6 60%,#00b4d8 100%);box-shadow:var(--sh-lg);color:#fff}
+  .band::after{content:"";position:absolute;top:-120px;right:-60px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.15),transparent 70%);pointer-events:none}
+  .band-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:#7fe9ff;box-shadow:0 0 0 4px rgba(127,233,255,.25)}
+  .who{font-size:12px;font-weight:600;color:#bfe4f3}
+  .chat{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .chat .plus{width:30px;height:30px;border-radius:9px;background:var(--bg);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}.chat .plus svg{width:17px;height:17px}
+  .chat .txt{flex:1;font-size:15px;font-weight:600;color:var(--ink);min-height:20px}
+  .chat .txt.empty{color:#9aa7bd}
+  .cursor{display:inline-block;width:2px;height:17px;background:var(--cyan);margin-left:1px;vertical-align:-3px;animation:blink 1.1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  .chat .mic{width:34px;height:34px;border-radius:50%;background:var(--cyan);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.chat .mic svg{width:17px;height:17px}
+  .suggs{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+  .sugg{font-size:12.5px;font-weight:600;color:#eaf7fc;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 13px;cursor:pointer;transition:transform .15s,background .15s}
+  .sugg:hover{background:rgba(255,255,255,.24);transform:translateY(-1px)}
+  .sugg.primary{background:#fff;color:var(--accent);border-color:#fff}
+
+  /* AI thinking + voice */
+  .think{display:flex;align-items:center;gap:10px;padding:14px 18px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-sm);font-size:13.5px;font-weight:600;color:var(--muted)}
+  .dots{display:inline-flex;gap:4px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:bounce 1s ease-in-out infinite}
+  .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.5}40%{transform:scale(1);opacity:1}}
+  .ai{display:flex;gap:12px;align-items:flex-start;padding:15px 18px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:0 16px 16px 0;box-shadow:var(--sh-sm)}
+  .ai-av{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--cyan));color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.ai-av svg{width:16px;height:16px}
+  .ai p{margin:0;font-size:13.5px;font-weight:600;color:var(--ink)}.ai p b{color:var(--accent);font-weight:800}
+
+  /* INTERVIEW */
+  .quiz{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-md);padding:18px 22px}
+  .q{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+  .q:first-child{border-top:none}
+  .q-lbl{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:700;color:var(--ink);flex:1 1 210px;min-width:180px}
+  .q-num{width:22px;height:22px;border-radius:50%;background:rgba(0,180,216,.12);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  .opts{display:flex;gap:8px;flex-wrap:wrap}
+  .opt{font-size:12.5px;font-weight:700;color:var(--muted);background:#eef2f8;border:1.5px solid transparent;border-radius:10px;padding:8px 13px;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .opt:hover{background:#e3eaf3}
+  .opt.on{background:var(--cyan);color:#fff;box-shadow:0 4px 12px rgba(0,180,216,.3)}
+  .opt.auto.on{background:var(--accent)}
+
+  /* COMPOSED */
+  .compose-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:0 4px}
+  .ch-l{display:flex;align-items:center;gap:10px}
+  .ch-tag{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:rgba(0,119,182,.09);padding:4px 10px;border-radius:999px}
+  .ch-title{font-size:17px;font-weight:800;color:var(--navy)}
+  .ch-note{font-size:12px;color:var(--muted);font-weight:500}
+  .grid{display:grid;grid-template-columns:1.65fr 1fr;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-md);padding:20px 22px}
+  .swap{transition:opacity .3s ease}.swap.out{opacity:0}
+  .card-title{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:700;color:var(--navy);margin-bottom:4px}
+  .card-title svg{width:17px;height:17px;color:var(--cyan)}
+  .card-sub{font-size:12px;color:var(--muted);font-weight:500;margin:0 0 12px 26px}
+  .col{display:flex;flex-direction:column;gap:16px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;font-weight:600;color:var(--muted);margin-top:8px}
+  .legend .it{display:flex;align-items:center;gap:6px}.legend .sw{width:11px;height:11px;border-radius:3px}.legend .ln{width:14px;height:0;border-top:2px dashed var(--accent)}
+  .readout{min-height:18px;font-size:12px;font-weight:700;color:var(--accent);margin-top:6px}
+
+  .gauge-num{font-size:30px;font-weight:900;color:var(--navy);letter-spacing:-.02em;text-align:center;line-height:1}
+  .gauge-lbl{font-size:12px;font-weight:600;color:var(--muted);text-align:center;margin-top:4px}
+  .gauge-card.pulse svg{animation:gp .5s ease}
+  @keyframes gp{50%{transform:scale(1.04)}}
+  .stat{display:flex;align-items:center;gap:14px}
+  .stat-ic{width:42px;height:42px;border-radius:12px;background:rgba(0,180,216,.1);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}.stat-ic svg{width:21px;height:21px}
+  .stat-v{font-size:23px;font-weight:800;color:var(--navy);line-height:1}.stat-l{font-size:12px;font-weight:600;color:var(--muted);margin-top:3px}
+  .fait{display:flex;gap:11px;align-items:flex-start;background:#f7fafd;border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .fait svg{width:17px;height:17px;color:var(--accent);flex:none;margin-top:1px}.fait p{margin:0;font-size:13px;font-weight:500;color:var(--ink)}.fait b{color:var(--navy);font-weight:800}
+  .disclaimer{text-align:center;font-size:11.5px;color:var(--muted);font-weight:500;max-width:680px;margin:6px auto 0;line-height:1.5}
+  .restart{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--accent);background:#fff;border:1px solid rgba(0,119,182,.3);border-radius:10px;padding:9px 15px;cursor:pointer}
+  .restart svg{width:14px;height:14px}
+
+  @media (max-width:780px){.grid{grid-template-columns:1fr}.band{padding:18px}.q-lbl{flex-basis:100%}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="band">
+    <div class="band-top"><div class="brand"><span class="dot"></span>Ta tour de contrôle</div><div class="who">Maxime · paysagiste</div></div>
+    <div class="chat"><span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+      <span class="txt empty" id="chatTxt">Demande à ta tour…</span>
+      <span class="mic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span></div>
+    <div class="suggs" id="suggs">
+      <span class="sugg primary" data-intent="je suis paysagiste, je gagne rien l'hiver">Passer l'hiver saisonnier</span>
+      <span class="sugg" data-intent="je veux suivre un objectif d'épargne">Suivre un objectif d'épargne</span>
+      <span class="sugg" data-intent="je veux maximiser mon CELIAPP">Maximiser mon CELIAPP</span>
+    </div>
+  </section>
+
+  <div id="think" class="think reveal" style="display:none"><span class="dots"><i></i><i></i><i></i></span> Ta tour analyse ta situation…</div>
+
+  <div id="aiLine" class="ai reveal" style="display:none">
+    <span class="ai-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z"/></svg></span>
+    <p>J'ai remarqué que tes revenus se concentrent sur <b>6 mois</b>. Composons ta vue ensemble — réponds à ce qui te parle.</p>
+  </div>
+
+  <section class="quiz reveal" id="quiz" style="display:none">
+    <div class="q reveal" id="q1" style="display:none">
+      <span class="q-lbl"><span class="q-num">1</span>Qu'est-ce que tu veux surtout suivre?</span>
+      <div class="opts" data-key="focus"><span class="opt" data-v="hiver">Passer l'hiver</span><span class="opt" data-v="projet">Épargner pour un projet</span><span class="opt" data-v="deux">Les deux</span></div>
+    </div>
+    <div class="q reveal" id="q2" style="display:none">
+      <span class="q-lbl"><span class="q-num">2</span>Tu veux voir ça comment?</span>
+      <div class="opts" data-key="view"><span class="opt" data-v="annuel">Vue annuelle</span><span class="opt" data-v="rebours">Compte à rebours</span><span class="opt" data-v="mensuel">Mois par mois</span></div>
+    </div>
+    <div class="q reveal" id="q3" style="display:none">
+      <span class="q-lbl"><span class="q-num">3</span>Ton coussin d'hiver, tu le penses en…?</span>
+      <div class="opts" data-key="mesure"><span class="opt" data-v="mois">Mois couverts</span><span class="opt" data-v="montant">Montant</span><span class="opt auto" data-v="auto">Choisis pour moi</span></div>
+    </div>
+  </section>
+
+  <div class="compose-head reveal" id="composeHead" style="display:none">
+    <div class="ch-l"><span class="ch-tag">Ta vue · composée pour toi</span><span class="ch-title" id="viewTitle">Passer l'hiver</span></div>
+    <span class="ch-note">change tes réponses ↑ — la vue se recompose</span>
+  </div>
+
+  <div class="grid reveal" id="grid" style="display:none">
+    <section class="card swap" id="mainCard"></section>
+    <div class="col" id="sideCol"></div>
+  </div>
+
+  <div class="reveal" id="footer" style="display:none;text-align:center">
+    <button class="restart" id="restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Rejouer le parcours</button>
+    <p class="disclaimer">Outil informatif basé sur tes données et tes hypothèses. Ne constitue pas un conseil financier personnalisé.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var fmt=function(n){return Math.round(n).toLocaleString('fr-CA');};
+  var mois=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  var rev=[0,0,800,3200,5600,6800,7200,7000,6200,4200,1200,200];
+  var DEP=3400, coussin=8400, couvre=coussin/DEP;
+  var revAnnuel=rev.reduce(function(a,b){return a+b;},0);
+  var pctEte=Math.round(rev.slice(4,10).reduce(function(a,b){return a+b;},0)/revAnnuel*100);
+  var state={focus:null,view:null,mesure:null}, composed=false;
+
+  function show(el,d){el.style.display=el.id==='grid'?'grid':(el.classList.contains('compose-head')||el.id==='footer')?'block':(el.classList.contains('q'))?'flex':'block';
+    if(el.id==='q1'||el.id==='q2'||el.id==='q3')el.style.display='flex';
+    setTimeout(function(){el.classList.add('in');},d||20);}
+  function delay(ms){return new Promise(function(r){setTimeout(r,reduce?0:ms);});}
+
+  // ---------- BLOCS ----------
+  function fluxAnnuel(){
+    var W=640,H=250,padL=10,padR=10,top=16,baseY=205,n=12,maxV=7600,slot=(W-padL-padR)/n,barW=slot*0.6;
+    var yDep=baseY-DEP/maxV*(baseY-top);
+    var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+    for(var i=0;i<n;i++){ if(rev[i]<DEP) s+='<rect class="lean" data-m="'+i+'" x="'+(padL+i*slot+1)+'" y="'+top+'" width="'+(slot-2)+'" height="'+(baseY-top)+'" fill="#f6e7c9" opacity=".5" rx="5" style="cursor:pointer"/>'; }
+    for(i=0;i<n;i++){ var bh=rev[i]/maxV*(baseY-top),x=padL+i*slot+(slot-barW)/2,y=baseY-bh;
+      s+='<rect x="'+x+'" y="'+(reduce?y:baseY)+'" width="'+barW+'" height="'+(reduce?bh:0)+'" rx="4" fill="#00b4d8">';
+      if(!reduce)s+='<animate attributeName="height" from="0" to="'+bh+'" dur="0.7s" begin="'+(i*40)+'ms" fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1"/><animate attributeName="y" from="'+baseY+'" to="'+y+'" dur="0.7s" begin="'+(i*40)+'ms" fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1"/>';
+      s+='</rect>'; }
+    s+='<line x1="'+padL+'" y1="'+yDep+'" x2="'+(W-padR)+'" y2="'+yDep+'" stroke="#0077b6" stroke-width="2" stroke-dasharray="5 5"/>';
+    s+='<text x="'+(W-padR)+'" y="'+(yDep-7)+'" text-anchor="end" font-size="11" font-weight="700" fill="#0077b6" font-family="Montserrat">dépenses '+fmt(DEP)+' $/mois</text>';
+    for(i=0;i<n;i++) s+='<text x="'+(padL+i*slot+slot/2)+'" y="'+(baseY+18)+'" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5a6b8c" font-family="Montserrat">'+mois[i]+'</text>';
+    s+='</svg>';
+    return {title:'Ton année en un coup d\u2019\u0153il',sub:'Survole un mois d\u2019hiver pour voir ce qu\u2019il puise dans ton coussin.',body:s,
+      legend:'<div class="legend"><span class="it"><span class="sw" style="background:#00b4d8"></span>Revenus</span><span class="it"><span class="ln"></span>Dépenses</span><span class="it"><span class="sw" style="background:#f0d49a"></span>Couvert par ton coussin</span></div><div class="readout" id="fluxRead"></div>',
+      dialogue:true};
+  }
+  function rebours(){
+    var W=640,H=180,moisRestants=4,f=Math.min(1,coussin/(DEP*5)),trackX=20,trackW=W-40,y=100;
+    var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+    s+='<text x="'+(W/2)+'" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#5a6b8c" font-family="Montserrat">Prochaine saison morte</text>';
+    s+='<text x="'+(W/2)+'" y="74" text-anchor="middle" font-size="32" font-weight="900" fill="#03045e" font-family="Montserrat">dans '+moisRestants+' mois</text>';
+    s+='<rect x="'+trackX+'" y="'+y+'" width="'+trackW+'" height="15" rx="7.5" fill="#e7edf6"/>';
+    s+='<rect x="'+trackX+'" y="'+y+'" width="'+(reduce?trackW*f:0)+'" height="15" rx="7.5" fill="#00b4d8">';
+    if(!reduce)s+='<animate attributeName="width" from="0" to="'+(trackW*f)+'" dur="0.9s" fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1"/>';
+    s+='</rect>';
+    s+='<text x="'+trackX+'" y="'+(y+40)+'" font-size="12" font-weight="700" fill="#0077b6" font-family="Montserrat">Coussin '+fmt(coussin)+' $</text>';
+    s+='<text x="'+(trackX+trackW)+'" y="'+(y+40)+'" text-anchor="end" font-size="12" font-weight="600" fill="#5a6b8c" font-family="Montserrat">cible \u2248 '+fmt(DEP*5)+' $</text>';
+    s+='</svg>';
+    return {title:'Combien de temps avant l\u2019hiver',sub:'Le temps qu\u2019il te reste pour bâtir ton coussin, et où il en est.',body:s,legend:''};
+  }
+  function mensuel(){
+    var W=640,H=240,padL=10,padR=10,mid=118,n=12,slot=(W-padL-padR)/n,barW=slot*0.6,maxAbs=4200;
+    var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+    s+='<line x1="'+padL+'" y1="'+mid+'" x2="'+(W-padR)+'" y2="'+mid+'" stroke="#cdd6e5" stroke-width="1.5"/>';
+    for(var i=0;i<n;i++){ var net=rev[i]-DEP,h=Math.abs(net)/maxAbs*92,x=padL+i*slot+(slot-barW)/2,pos=net>=0,y=pos?mid-h:mid,col=pos?'#00b4d8':'#e0a23c';
+      s+='<rect x="'+x+'" y="'+(reduce?y:mid)+'" width="'+barW+'" height="'+(reduce?h:0)+'" rx="4" fill="'+col+'">';
+      if(!reduce)s+='<animate attributeName="height" from="0" to="'+h+'" dur="0.6s" begin="'+(i*35)+'ms" fill="freeze"/><animate attributeName="y" from="'+mid+'" to="'+y+'" dur="0.6s" begin="'+(i*35)+'ms" fill="freeze"/>';
+      s+='</rect>';
+      s+='<text x="'+(padL+i*slot+slot/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5a6b8c" font-family="Montserrat">'+mois[i]+'</text>'; }
+    s+='</svg>';
+    return {title:'Ton solde mois par mois',sub:'Ce qu\u2019il te reste (cyan) ou ce que tu puises dans ton coussin (ambre).',body:s,
+      legend:'<div class="legend"><span class="it"><span class="sw" style="background:#00b4d8"></span>Surplus</span><span class="it"><span class="sw" style="background:#e0a23c"></span>À puiser dans le coussin</span></div>'};
+  }
+  function gaugeBloc(){
+    var useMois=(state.mesure==='mois')||(state.mesure==='auto')||!state.mesure;
+    var cibleMois=5,f=useMois?Math.min(1,couvre/cibleMois):Math.min(1,coussin/(DEP*cibleMois));
+    var cx=110,cy=104,r=78,ang=Math.PI*(1-f),vx=cx+r*Math.cos(ang),vy=cy-r*Math.sin(ang);
+    var s='<svg viewBox="0 0 220 130" style="width:100%;max-width:240px;height:auto;display:block;margin:0 auto 6px">';
+    s+='<path d="M'+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+(cx+r)+' '+cy+'" fill="none" stroke="#e7edf6" stroke-width="15" stroke-linecap="round"/>';
+    s+='<path id="gArc" d="M'+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+vx.toFixed(1)+' '+vy.toFixed(1)+'" fill="none" stroke="#00b4d8" stroke-width="15" stroke-linecap="round"/>';
+    s+='</svg>';
+    return {title:'Ton coussin d\u2019hiver',svg:s,
+      num:useMois?couvre.toFixed(1).replace('.',',')+' mois':fmt(coussin)+' $',
+      lbl:useMois?'couverts par ton coussin (cible 5)':'mis de côté pour l\u2019hiver',
+      count:useMois?null:coussin};
+  }
+
+  function animateGaugeAndCount(){
+    var arc=document.getElementById('gArc');
+    if(arc&&!reduce){try{var L=arc.getTotalLength();arc.style.strokeDasharray=L;arc.style.strokeDashoffset=L;arc.getBoundingClientRect();arc.style.transition='stroke-dashoffset 1s cubic-bezier(.2,.7,.2,1)';arc.style.strokeDashoffset=0;}catch(e){}}
+    document.querySelectorAll('[data-count]').forEach(function(el){
+      var to=+el.getAttribute('data-count'); if(reduce){el.textContent=fmt(to)+' $';return;}
+      var t0=null,dur=900;
+      function step(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/dur);el.textContent=fmt(to*(1-Math.pow(1-p,3)))+' $';if(p<1)requestAnimationFrame(step);}
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ---------- RENDER ----------
+  function renderMain(){
+    var main=state.view==='annuel'?fluxAnnuel():state.view==='rebours'?rebours():mensuel();
+    var card=document.getElementById('mainCard');
+    function paint(){
+      card.innerHTML='<div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 13l3-4 3 3 4-6"/></svg>'+main.title+'</div><p class="card-sub">'+main.sub+'</p>'+main.body+main.legend;
+      card.classList.remove('out');
+      if(main.dialogue)wireDialogue();
+    }
+    if(composed&&!reduce){card.classList.add('out');setTimeout(paint,300);}else paint();
+  }
+  function renderSide(){
+    var g=gaugeBloc(),html='';
+    html+='<section class="card gauge-card"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l5-5"/></svg>'+g.title+'</div>'+g.svg+'<div class="gauge-num"'+(g.count?' data-count="'+g.count+'"':'')+'>'+(g.count?'0 $':g.num)+'</div><div class="gauge-lbl">'+g.lbl+'</div></section>';
+    if(state.focus==='hiver'||state.focus==='deux')
+      html+='<section class="card"><div class="stat"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span><div><div class="stat-v" data-count="'+coussin+'">0 $</div><div class="stat-l">dans ton coussin cette saison</div></div></div></section>';
+    if(state.focus==='projet'||state.focus==='deux'){var cible=12000,prog=Math.round(coussin/cible*100);
+      html+='<section class="card"><div class="card-title" style="margin-bottom:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 16l4-2-7-5V4l-2-1-2 1v5l-7 5 4 2"/></svg>Ton projet</div><div style="height:9px;border-radius:999px;background:#e7edf6;overflow:hidden"><div style="height:100%;width:'+(reduce?prog:0)+'%;background:linear-gradient(90deg,#0077b6,#00b4d8);border-radius:999px;transition:width 1s cubic-bezier(.2,.7,.2,1)" data-w="'+prog+'"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;font-weight:700"><span style="color:var(--accent)">'+prog+' %</span><span style="color:var(--muted)">'+fmt(coussin)+' $ / '+fmt(cible)+' $</span></div></section>';}
+    html+='<div class="fait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M11 12h1v4h1"/></svg><p>Tes 6 mois d\u2019été génèrent <b>'+pctEte+' %</b> de ton revenu annuel.</p></div>';
+    document.getElementById('sideCol').innerHTML=html;
+    animateGaugeAndCount();
+    var pb=document.querySelector('[data-w]');if(pb&&!reduce)setTimeout(function(){pb.style.width=pb.getAttribute('data-w')+'%';},60);
+  }
+  function wireDialogue(){
+    var read=document.getElementById('fluxRead');
+    document.querySelectorAll('#mainCard .lean').forEach(function(r){
+      r.addEventListener('mouseenter',function(){
+        var i=+r.getAttribute('data-m'),manque=DEP-rev[i];
+        r.setAttribute('opacity','.8');
+        if(read)read.textContent=mois[i]+' : ce mois puise \u2248 '+fmt(manque)+' $ dans ton coussin.';
+        var gc=document.querySelector('.gauge-card');if(gc){gc.classList.remove('pulse');void gc.offsetWidth;gc.classList.add('pulse');}
+      });
+      r.addEventListener('mouseleave',function(){r.setAttribute('opacity','.5');if(read)read.textContent='';});
+    });
+  }
+  function renderAll(){
+    document.getElementById('viewTitle').textContent={hiver:'Passer l\u2019hiver',projet:'Épargner pour un projet',deux:'Hiver + projet'}[state.focus]||'Ta vue';
+    renderMain();renderSide();
+  }
+
+  // ---------- PARCOURS ----------
+  function typeInto(el,txt){return new Promise(function(res){el.classList.remove('empty');el.textContent='';var i=0;
+    (function tick(){if(i<=txt.length){el.innerHTML=txt.slice(0,i)+'<span class="cursor"></span>';i++;setTimeout(tick,reduce?0:28);}else{el.innerHTML=txt;res();}})();});}
+
+  async function startJourney(intent){
+    document.getElementById('suggs').style.opacity='.4';
+    await typeInto(document.getElementById('chatTxt'),intent);
+    await delay(350);
+    var t=document.getElementById('think');t.style.display='flex';show(t);
+    await delay(1400);
+    t.classList.remove('in');await delay(300);t.style.display='none';
+    var ai=document.getElementById('aiLine');ai.style.display='flex';show(ai);
+    await delay(700);
+    var quiz=document.getElementById('quiz');quiz.style.display='block';show(quiz);
+    var q1=document.getElementById('q1');q1.style.display='flex';show(q1);
+  }
+
+  function ensureBuilt(){
+    if(document.getElementById('grid').style.display==='none'){
+      var ch=document.getElementById('composeHead');ch.style.display='block';show(ch);
+      var g=document.getElementById('grid');g.style.display='grid';show(g);
+      var f=document.getElementById('footer');f.style.display='block';show(f);
+    }
+  }
+
+  document.querySelectorAll('.opts').forEach(function(grp){
+    grp.addEventListener('click',function(e){
+      var o=e.target.closest('.opt');if(!o)return;
+      var key=grp.dataset.key;
+      [].forEach.call(grp.children,function(c){c.classList.toggle('on',c===o);});
+      state[key]=o.dataset.v;
+
+      if(!composed){
+        // construction progressive : révéler la question suivante + bâtir le morceau
+        if(key==='focus'){var q2=document.getElementById('q2');q2.style.display='flex';show(q2);ensureBuilt();renderSide();}
+        else if(key==='view'){var q3=document.getElementById('q3');q3.style.display='flex';show(q3);ensureBuilt();renderMain();}
+        else if(key==='mesure'){ensureBuilt();renderAll();composed=true;}
+      }else{
+        renderAll();
+      }
+    });
+  });
+
+  document.querySelectorAll('.sugg').forEach(function(s){
+    s.addEventListener('click',function(){if(s.classList.contains('primary'))startJourney(s.dataset.intent);});
+  });
+  document.getElementById('restart').addEventListener('click',function(){location.reload();});
+})();
+</script>
+</body>
+</html>

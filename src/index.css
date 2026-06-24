@@ -1,0 +1,277 @@
+/* ============================================================================
+   index.css — tokens de marque + reset + base + coquille single-pane.
+   Tokens repris tels quels de la maquette validée (tour-saisonnier-v2.html).
+   ========================================================================== */
+:root {
+  /* Marque (VISION §12) */
+  --navy: #03045e;
+  --cyan: #00b4d8;
+  --accent: #0077b6;
+  --bg: #f3f6fa;
+  --ink: #0a1840;
+  --muted: #5a6b8c;
+  --line: rgba(3, 4, 94, 0.08);
+  --card: #fff;
+
+  /* Sens : l'ambre = exception / « à puiser dans le coussin » uniquement */
+  --amber: #b8740a;
+  --amber-2: #e0a23c;
+  --amber-soft: #f6e7c9;
+  --green: #0f8a5f;
+
+  /* Ombres + rayon */
+  --sh-sm: 0 1px 2px rgba(3, 4, 94, 0.05);
+  --sh-md: 0 8px 24px rgba(3, 4, 94, 0.07), 0 1px 3px rgba(3, 4, 94, 0.05);
+  --sh-lg: 0 24px 60px rgba(3, 4, 94, 0.18);
+  --r: 20px;
+}
+
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { margin: 0; font-weight: 800; color: var(--navy); }
+p { margin: 0; }
+button { font-family: inherit; }
+svg { display: block; }
+
+/* ---- Coquille single-pane ---- */
+.app {
+  min-height: 100svh;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--navy);
+}
+.brand-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.18);
+  flex: none;
+}
+.topnav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav-pill {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.nav-pill:hover { background: #eef2f8; }
+.nav-pill.is-active {
+  background: var(--cyan);
+  color: #fff;
+  border-color: var(--cyan);
+  box-shadow: 0 4px 12px rgba(0, 180, 216, 0.28);
+}
+
+/* ---- Zone centrale (le moteur de rendu vivra ici) ---- */
+.stage { display: flex; flex-direction: column; gap: 16px; }
+.stage-placeholder {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-md);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ---- LE moment héros : la seule zone en dégradé navy→cyan (VISION §12) ---- */
+.band {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 22px 26px 24px;
+  background: linear-gradient(135deg, #03045e 0%, #0077b6 60%, #00b4d8 100%);
+  box-shadow: var(--sh-lg);
+  color: #fff;
+}
+.band::after {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -60px;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent 70%);
+  pointer-events: none;
+}
+.band-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.band .brand { color: #fff; }
+.band .brand-dot { background: #7fe9ff; box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.25); }
+.band .who { font-size: 12px; font-weight: 600; color: #bfe4f3; }
+.band-verdict {
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  max-width: 640px;
+  margin: 0;
+}
+.band-verdict b { color: #7fe9ff; font-weight: 800; }
+
+/* ---- En-tête de composition (« Ta vue · composée pour toi ») ---- */
+.compose-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+}
+.ch-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ch-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(0, 119, 182, 0.09);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.ch-title { font-size: 17px; font-weight: 800; color: var(--navy); }
+.ch-note { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+/* ---- Carte de bloc (le contenant standard d'un bloc du registre) ---- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-md);
+  padding: 20px 22px;
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.card-title svg { width: 17px; height: 17px; color: var(--cyan); }
+.card-sub { font-size: 12px; color: var(--muted); font-weight: 500; margin: 0 0 12px 26px; }
+
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.legend .it { display: flex; align-items: center; gap: 6px; }
+.legend .sw { width: 11px; height: 11px; border-radius: 3px; }
+.legend .ln { width: 14px; height: 0; border-top: 2px dashed var(--accent); }
+.readout { min-height: 18px; font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 6px; }
+
+/* ---- Grille : bloc principal + colonne de droite (agencé par la tour) ---- */
+.grid {
+  display: grid;
+  grid-template-columns: 1.65fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.grid-main { display: flex; flex-direction: column; gap: 16px; }
+.grid-side { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---- Bloc jauge (arc) ---- */
+.gauge-num { font-size: 30px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em; text-align: center; line-height: 1; }
+.gauge-lbl { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; margin-top: 4px; }
+
+/* ---- Bloc stat (gros chiffre) ---- */
+.stat { display: flex; align-items: center; gap: 14px; }
+.stat-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(0, 180, 216, 0.1);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.stat-ic svg { width: 21px; height: 21px; }
+.stat-v { font-size: 23px; font-weight: 800; color: var(--navy); line-height: 1; }
+.stat-l { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 3px; }
+
+/* ---- Bloc fait (constat factuel, encadré léger) ---- */
+.fait {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  background: #f7fafd;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 15px;
+}
+.fait svg { width: 17px; height: 17px; color: var(--accent); flex: none; margin-top: 1px; }
+.fait p { margin: 0; font-size: 13px; font-weight: 500; color: var(--ink); }
+.fait b { color: var(--navy); font-weight: 800; }
+
+@media (max-width: 780px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ---- Pied : avertissement permanent (conformité, VISION §11) ---- */
+.site-footer { margin-top: auto; }
+.disclaimer {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 500;
+  max-width: 680px;
+  margin: 6px auto 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 780px) {
+  .app { padding: 16px 12px 88px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
