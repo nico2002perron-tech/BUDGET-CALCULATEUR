@@ -1,4 +1,4 @@
-/* Capture d'écran de l'entretien guidé (Edge système). node scripts/shot.mjs */
+/* Capture du flux CHAT (fabrication par IA, mock). node scripts/shot.mjs */
 import { chromium } from 'playwright-core'
 
 const URL = 'http://localhost:5173/'
@@ -27,23 +27,19 @@ page.on('console', (m) => { if (m.type() === 'error') erreurs.push('console.erro
 
 await page.goto(URL, { waitUntil: 'networkidle' })
 
-// 1) Accueil : la bande + les suggestions, aucune vue encore composée.
-await page.waitForSelector('.sugg', { timeout: 5000 })
+// 1) Accueil : la bande avec la barre de chat + les suggestions.
+await page.waitForSelector('.chat-input', { timeout: 5000 })
 await page.waitForTimeout(300)
 await page.screenshot({ path: 'scripts/_shot-accueil.png', fullPage: true })
 
-// 2) On choisit la situation → la vue se compose.
-await page.click('.sugg.primary')
+// 2) On DÉCRIT une situation au chat → la tour compose la vue (mock).
+await page.fill('.chat-input', "je suis paysagiste, je gagne rien l'hiver")
+await page.click('.chat-go')
 await page.waitForSelector('svg', { timeout: 5000 })
 await page.waitForTimeout(1200)
 await page.screenshot({ path: 'scripts/_shot-desktop.png', fullPage: true })
 
-// 3) On bascule une réponse → la vue se recompose en direct.
-await page.click('button.opt:has-text("Mois par mois")')
-await page.waitForTimeout(900)
-await page.screenshot({ path: 'scripts/_shot-mensuel.png', fullPage: true })
-
-// 4) Mobile (vue composée).
+// 3) Mobile (vue composée par l'IA).
 await page.setViewportSize({ width: 390, height: 844 })
 await page.waitForTimeout(400)
 await page.screenshot({ path: 'scripts/_shot-mobile.png', fullPage: true })

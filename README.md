@@ -62,6 +62,17 @@ node scripts/check-render.mjs   # rendu headless (Vite SSR) des blocs
 node scripts/shot.mjs           # captures d'ecran via Edge (necessite playwright-core)
 ```
 
+## Fabriquer une vue
+
+Deux chemins, branchés sur le **même** moteur (chacun produit une recette valide selon `schema.js`) :
+- **Chat (IA)** — « Demande à ta tour… » → `api/build-tool.js` (mode recette) compose la recette.
+- **Entretien guidé** — choisir une situation + 2-3 questions tappables (`src/recettes/composer.js`).
+
+### Activer la vraie IA
+Le chat marche **sans clé** (maquette locale déterministe). Pour la vraie composition par Claude :
+- **Dev** : `cp .env.example .env.local` puis renseigne `ANTHROPIC_API_KEY` (le serveur de dev la lit).
+- **Prod (Vercel)** : configure `ANTHROPIC_API_KEY` dans les variables d'environnement du projet.
+
 ## Suite
 
 Décliner les blocs restants du `REGISTRE-BLOCS.md` (un à un, niveau étalon), puis brancher

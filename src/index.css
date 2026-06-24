@@ -151,6 +151,60 @@ svg { display: block; }
 }
 .band-verdict b { color: #7fe9ff; font-weight: 800; }
 .band-hint { font-size: 11.5px; font-weight: 500; color: rgba(255, 255, 255, 0.6); margin: 10px 0 0; }
+.band-erreur { font-size: 12.5px; font-weight: 600; color: #ffd9b0; margin: 10px 0 0; }
+.band-demande { font-style: italic; }
+
+/* Le chat (fabrication par IA) */
+.chat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+.chat-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.chat-plus svg { width: 17px; height: 17px; }
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+}
+.chat-input::placeholder { color: #9aa7bd; font-weight: 500; }
+.chat-go {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--cyan);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.chat-go:hover { transform: translateY(-1px); }
+.chat-go:disabled { opacity: 0.5; cursor: default; }
+.chat-go svg { width: 18px; height: 18px; }
 .band-active { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .band-reset {
   font-size: 12px;

@@ -1,9 +1,9 @@
 /* ============================================================================
-   App.jsx — la coquille single-pane (VISION §5) + l'ENTRETIEN GUIDÉ.
-   L'usager choisit une situation puis répond à 2-3 questions tappables ; chaque
-   réponse recompose la recette (composer.js) et le MoteurRendu re-rend la vue.
-   La recette produite est valide selon schema.js — la même que build-tool (l'IA)
-   émettra plus tard, qui se branchera donc sans rien changer au moteur.
+   App.jsx — la coquille single-pane (VISION §5).
+   Deux façons de FABRIQUER une vue, branchées sur le MÊME moteur :
+     · le CHAT (IA) : texte → /api/build-tool (mode recette) → recette ;
+     · l'ENTRETIEN guidé : situation + questions tappables → composer.js → recette.
+   Le MoteurRendu valide (schema.js) puis rend ; il ignore d'où vient la recette.
    ========================================================================== */
 import { useMemo, useState } from 'react'
 import { getSnapshot } from './lib/canonical.js'
@@ -23,18 +23,61 @@ function verdictEte(snapshot) {
 
 function App() {
   const [snapshot] = useState(getSnapshot)
-  const [situation, setSituation] = useState(null) // null = pas encore composée
+  const [source, setSource] = useState('aucun') // 'aucun' | 'guide' | 'ia'
+  const [situation, setSituation] = useState(null)
   const [reponses, setReponses] = useState(REPONSES_DEFAUT)
+  const [recetteIA, setRecetteIA] = useState(null)
+  const [chatText, setChatText] = useState('')
+  const [demandeIA, setDemandeIA] = useState('')
+  const [chargement, setChargement] = useState(false)
+  const [erreur, setErreur] = useState(null)
 
   const pctEte = useMemo(() => verdictEte(snapshot), [snapshot])
-  const recette = useMemo(
-    () => (situation ? composerRecette(situation, reponses) : null),
-    [situation, reponses],
-  )
+  const recette = useMemo(() => {
+    if (source === 'guide' && situation) return composerRecette(situation, reponses)
+    if (source === 'ia') return recetteIA
+    return null
+  }, [source, situation, reponses, recetteIA])
+
+  const reinitialiser = () => {
+    setSource('aucun')
+    setSituation(null)
+    setRecetteIA(null)
+    setReponses(REPONSES_DEFAUT)
+    setErreur(null)
+  }
 
   const demarrer = (key) => {
     setReponses(REPONSES_DEFAUT)
     setSituation(key)
+    setRecetteIA(null)
+    setErreur(null)
+    setSource('guide')
+  }
+
+  async function demanderIA(e) {
+    e.preventDefault()
+    const texte = chatText.trim()
+    if (!texte || chargement) return
+    setChargement(true)
+    setErreur(null)
+    try {
+      const r = await fetch('/api/build-tool', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'recette', texte }),
+      })
+      const data = await r.json()
+      if (!r.ok || !data || !Array.isArray(data.blocs)) throw new Error('réponse invalide')
+      setRecetteIA(data)
+      setDemandeIA(texte)
+      setSituation(null)
+      setSource('ia')
+    } catch {
+      setErreur("Ta tour n'a pas pu composer ta vue. Réessaie, ou choisis une situation ci-dessous.")
+    } finally {
+      setChargement(false)
+    }
   }
 
   return (
@@ -52,9 +95,33 @@ function App() {
           </div>
         </div>
 
-        {!situation ? (
+        {/* Le chat (IA) — fabrique une vue à partir d'une phrase */}
+        <form className="chat" onSubmit={demanderIA}>
+          <span className="chat-plus" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          <input
+            className="chat-input"
+            type="text"
+            placeholder="Demande à ta tour…  (ex. « je suis paysagiste, je gagne rien l'hiver »)"
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            aria-label="Décris ta situation"
+          />
+          <button className="chat-go" type="submit" disabled={chargement} aria-label="Composer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </form>
+
+        {chargement && <p className="band-hint">Ta tour compose ta vue…</p>}
+        {erreur && <p className="band-erreur">{erreur}</p>}
+
+        {source === 'aucun' ? (
           <>
-            <p className="band-verdict">Compose ta vue — choisis une situation pour commencer.</p>
             <div className="suggs">
               {Object.entries(SITUATIONS).map(([key, s]) => (
                 <button
@@ -69,38 +136,45 @@ function App() {
                 </button>
               ))}
             </div>
-            <p className="band-hint">Bientôt : décris ta situation en mots, l&rsquo;IA composera ta vue.</p>
           </>
         ) : (
           <div className="band-active">
-            {pctEte != null && (
-              <p className="band-verdict">
-                Tes <b>6 mois d&rsquo;été</b> (mai&nbsp;→&nbsp;octobre) génèrent <b>{pctEte}&nbsp;%</b> de
-                ton revenu annuel.
-              </p>
+            {source === 'ia' && demandeIA ? (
+              <p className="band-verdict band-demande">« {demandeIA} »</p>
+            ) : (
+              pctEte != null && (
+                <p className="band-verdict">
+                  Tes <b>6 mois d&rsquo;été</b> (mai&nbsp;→&nbsp;octobre) génèrent <b>{pctEte}&nbsp;%</b> de
+                  ton revenu annuel.
+                </p>
+              )
             )}
-            <button type="button" className="band-reset" onClick={() => setSituation(null)}>
-              ↺ Changer de situation
+            <button type="button" className="band-reset" onClick={reinitialiser}>
+              ↺ Recommencer
             </button>
           </div>
         )}
       </section>
 
       <main className="stage">
-        {situation && recette ? (
+        {source !== 'aucun' && recette ? (
           <>
-            <Entretien reponses={reponses} onChange={setReponses} />
+            {source === 'guide' && <Entretien reponses={reponses} onChange={setReponses} />}
             <div className="compose-head">
               <div className="ch-l">
                 <span className="ch-tag">Ta vue · composée pour toi</span>
                 <span className="ch-title">{recette.titre}</span>
               </div>
-              <span className="ch-note">composée à partir de tes données</span>
+              <span className="ch-note">
+                {source === 'ia' ? 'composée par ta tour' : 'composée à partir de tes données'}
+              </span>
             </div>
             <MoteurRendu recette={recette} snapshot={snapshot} />
           </>
         ) : (
-          <p className="stage-placeholder">Choisis une situation ci-dessus pour composer ta vue.</p>
+          <p className="stage-placeholder">
+            Décris ta situation à ta tour, ou choisis une situation ci-dessus, pour composer ta vue.
+          </p>
         )}
       </main>
 
