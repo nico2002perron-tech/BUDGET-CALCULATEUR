@@ -16,6 +16,7 @@
 import { loadStoreOrSeedDemo } from './storage.js'
 import { totaux, repartition, engageLibre, parCategorie } from './budget.js'
 import { revenusMensuels as deriveRevenus } from './revenus.js'
+import { depensesRecurrentes, prochainesEcheances, revenuParPaie } from './calendrier.js'
 
 function num(v) {
   const n = Number(v)
@@ -82,14 +83,51 @@ function buildSaison(store) {
   return null
 }
 
+// Données récurrentes pour le bloc calendrier : le modèle de paie + les dépenses
+// datées. Null si rien à montrer (aucune entrée possible ET aucune sortie datée).
+function buildCalendrier(store) {
+  const r = (store && store.revenus) || {}
+  const depRec = depensesRecurrentes(store && store.depenses)
+  const aDesEntrees =
+    r.mode === 'saisonnier'
+      ? Array.isArray(r.repartition) && r.repartition.some((v) => Number(v) > 0)
+      : revenuParPaie(r) > 0
+  if (!aDesEntrees && depRec.length === 0) return null
+  return {
+    revenus: {
+      mode: r.mode || 'regulier',
+      freq: r.freq || 'biweekly',
+      montantParPaie: r.montantParPaie != null ? r.montantParPaie : null,
+      mensuel: r.mensuel != null ? r.mensuel : null,
+      weekday: r.weekday,
+      anchor: r.anchor || null,
+      jours: Array.isArray(r.jours) ? r.jours : [1, 15],
+      repartition: Array.isArray(r.repartition) ? r.repartition : [],
+    },
+    depenses: depRec,
+  }
+}
+
+// aVenir[] : les échéances datées des ~45 prochains jours (paies + dépenses fixes).
+function buildAVenir(store) {
+  const r = (store && store.revenus) || {}
+  const depRec = depensesRecurrentes(store && store.depenses)
+  // 92 j : couvre le plus grand horizon offert par l'échéancier (90).
+  return prochainesEcheances(r, depRec, new Date(), 92)
+}
+
 /** Construit le snapshot canonique à partir d'un silo (fonction PURE, testable). */
 export function snapshotFromStore(store) {
   let identity = { prenom: null, age: null, situation: null, metier: null }
   let budget = null
   let saison = null
+  let calendrier = null
+  let aVenir = []
   try { identity = buildIdentity(store) } catch { /* garde les null */ }
   try { budget = buildBudget(store) } catch { budget = null }
   try { saison = buildSaison(store) } catch { saison = null }
+  try { calendrier = buildCalendrier(store) } catch { calendrier = null }
+  try { aVenir = buildAVenir(store) } catch { aVenir = [] }
 
   return {
     meta: {
@@ -103,8 +141,9 @@ export function snapshotFromStore(store) {
     patrimoine: null, // hors prototype (pas de twin chargé)
     projection: null, // hors prototype
     entites: [], // hors prototype (pas de build-tool branché)
-    aVenir: [], // hors prototype (pas d'échéancier)
+    aVenir: aVenir, // échéances datées des ~45 prochains jours (paies + dépenses fixes)
     saison: saison, // additif : alimente les blocs temporels (flux_annuel)
+    calendrier: calendrier, // additif : modèle récurrent (paies + dépenses) pour le bloc calendrier
   }
 }
 

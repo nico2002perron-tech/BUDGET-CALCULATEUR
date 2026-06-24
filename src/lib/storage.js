@@ -8,6 +8,7 @@
    ========================================================================== */
 
 import { moisActifsDefaut, repartirSaisonnier } from './revenus.js'
+import { depensesParDefaut } from './depenses.js'
 
 export const STORAGE_KEY = 'budgetcalc_v1'
 
@@ -18,17 +19,22 @@ export function emptyStore() {
     updatedAt: null,
     identity: { prenom: null, metier: null, age: null, situation: null },
     revenus: {
-      mode: 'stable',
-      mensuel: null,
+      mode: 'regulier', // régulier (par fréquence de paie) | saisonnier
+      freq: 'biweekly',
+      montantParPaie: null,
+      weekday: 4, // jeudi (getDay 0=dim … 4=jeu)
+      anchor: null, // 'AAAA-MM-JJ' (aux 2 semaines)
+      jours: [1, 15], // bimensuel/mensuel
+      // saisonnier :
       annuel: null,
       moisActifs: moisActifsDefaut(),
       repartition: Array.from({ length: 12 }, () => 0),
     },
-    depenses: [],
+    depenses: depensesParDefaut(),
   }
 }
 
-/** Exemple saisonnier (bouton « voir un exemple ») : 42 400 $ sur avr→oct. */
+/** Exemple saisonnier (bouton « voir un exemple ») : 42 400 $ sur avr→oct + dépenses. */
 export function exempleStore() {
   const moisActifs = [false, false, false, true, true, true, true, true, true, true, false, false]
   const annuel = 42400
@@ -36,8 +42,20 @@ export function exempleStore() {
     version: 1,
     updatedAt: null,
     identity: { prenom: 'Maxime', metier: 'paysagiste', age: null, situation: null },
-    revenus: { mode: 'saisonnier', mensuel: null, annuel, moisActifs, repartition: repartirSaisonnier(annuel, moisActifs) },
-    depenses: [],
+    revenus: { mode: 'saisonnier', mensuel: null, annuel, moisActifs, coussin: 8400, repartition: repartirSaisonnier(annuel, moisActifs) },
+    depenses: [
+      { id: 'cat_logement', label: 'Logement', classe: 'besoin', type: 'fixe', montant: 1100, jour: 1 },
+      { id: 'cat_transport', label: 'Transport', classe: 'besoin', type: 'variable', montant: 350, jour: null },
+      { id: 'cat_alimentation', label: 'Alimentation', classe: 'besoin', type: 'variable', montant: 600, jour: null },
+      { id: 'cat_protection', label: 'Assurances', classe: 'besoin', type: 'fixe', montant: 140, jour: 8 },
+      { id: 'cat_dettes_impots', label: 'Dettes & impôts', classe: 'besoin', type: 'fixe', montant: 0, jour: 21 },
+      { id: 'wcat_sorties', label: 'Sorties & restos', classe: 'envie', type: 'variable', montant: 220, jour: null },
+      { id: 'wcat_abonnements', label: 'Abonnements', classe: 'envie', type: 'fixe', montant: 55, jour: 15 },
+      { id: 'wcat_shopping', label: 'Shopping', classe: 'envie', type: 'variable', montant: 130, jour: null },
+      { id: 'wcat_voyages', label: 'Voyages & loisirs', classe: 'envie', type: 'variable', montant: 90, jour: null },
+      { id: 'wcat_autres', label: 'Autres', classe: 'envie', type: 'variable', montant: 70, jour: null },
+      { id: 'fix_epargne', label: 'Épargne (REER, CELI, REEE)', classe: 'epargne', type: 'fixe', montant: 200, jour: 1 },
+    ],
   }
 }
 

@@ -9,12 +9,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore } from './lib/storage.js'
+import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import Entretien from './components/Entretien.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
+import SaisieDepenses from './components/SaisieDepenses.jsx'
 import { SITUATIONS, REPONSES_DEFAUT, composerRecette } from './recettes/composer.js'
 
 const APERCU = { situation: 'apercu', titre: '', blocs: [{ type: 'flux_annuel', params: { souligner: 'aucun', anime: false } }] }
+const RECETTE_CALENDRIER = {
+  situation: 'calendrier',
+  titre: 'Ton mois',
+  blocs: [
+    { type: 'calendrier', params: {} },
+    { type: 'echeancier', params: { horizon: 30 } },
+  ],
+}
 
 const I_TOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,10 +58,12 @@ function verdictEte(snapshot) {
   return Math.round((ete / annuel) * 100)
 }
 function aDesRevenus(store) {
-  const r = store && store.revenus
-  if (!r) return false
-  if (r.mode === 'saisonnier') return (r.repartition || []).some((v) => Number(v) > 0)
-  return Number(r.mensuel) > 0
+  return revenuMensuel(store && store.revenus) > 0
+}
+function aDesDonnees(store) {
+  if (!store) return false
+  if (revenuMensuel(store.revenus) > 0) return true
+  return Array.isArray(store.depenses) && store.depenses.some((d) => Number(d && d.montant) > 0)
 }
 
 function App() {
@@ -90,8 +102,15 @@ function App() {
       void saison
       return { ...reste, revenus }
     })
+  const setDepenses = (depenses) =>
+    setStore((s) => {
+      const { saison, ...reste } = s
+      void saison
+      return { ...reste, depenses }
+    })
   const chargerExemple = () => setStore(exempleStore())
   const repartirAZero = () => {
+    if (aDesDonnees(store) && !window.confirm('Repartir à zéro effacera tes montants saisis. Continuer ?')) return
     setStore(emptyStore())
     setSource('aucun')
   }
@@ -111,7 +130,7 @@ function App() {
   }
   const onImportFile = (e) => {
     const file = e.target.files && e.target.files[0]
-    if (file) {
+    if (file && (!aDesDonnees(store) || window.confirm('Importer ce fichier remplacera tes données actuelles. Continuer ?'))) {
       const reader = new FileReader()
       reader.onload = () => {
         try {
@@ -125,6 +144,10 @@ function App() {
     setMenuOuvert(false)
   }
   const onReset = () => {
+    if (aDesDonnees(store) && !window.confirm('Réinitialiser effacera toutes tes données. Continuer ?')) {
+      setMenuOuvert(false)
+      return
+    }
     setStore(emptyStore())
     setSource('aucun')
     setSection('donnees')
@@ -305,6 +328,7 @@ function App() {
               <p className="section-sous">Tes montants restent sur ton appareil. Ta tour se construit pendant que tu écris.</p>
             </div>
             <SaisieRevenus revenus={store.revenus} onChange={setRevenus} />
+            <SaisieDepenses depenses={store.depenses} onChange={setDepenses} />
             <div className="apercu">
               <span className="apercu-tag">Aperçu en direct</span>
               <MoteurRendu recette={APERCU} snapshot={snapshot} />
@@ -322,9 +346,13 @@ function App() {
               <h1 className="section-titre">Calendrier</h1>
               <p className="section-sous">Ton journal de bord : l&rsquo;argent qui rentre et qui sort, jour par jour.</p>
             </div>
-            <div className="card placeholder-card">
-              <p>Le calendrier (paies + dépenses par jour) arrive à la prochaine étape.</p>
-            </div>
+            {snapshot.calendrier ? (
+              <MoteurRendu recette={RECETTE_CALENDRIER} snapshot={snapshot} />
+            ) : (
+              <div className="card placeholder-card">
+                <p>Ajoute un revenu, ou une dépense fixe avec son jour, dans « Mes données » — ton calendrier se remplit tout seul.</p>
+              </div>
+            )}
           </>
         )}
 

@@ -88,6 +88,24 @@ export const BLOCS = {
     }),
   },
 
+  calendrier: {
+    taille: 'large', // colonne principale (grille du mois)
+    bornes: {
+      vue: ['mois'],
+      souligner: ['echeances_proches', 'aucun'],
+    },
+    defauts: { vue: 'mois', souligner: 'echeances_proches' },
+    // Modèle récurrent (paies + dépenses datées) tiré du snapshot, jamais de la recette.
+    resolve: (snap) => (snap && snap.calendrier ? snap.calendrier : { revenus: {}, depenses: [] }),
+  },
+
+  echeancier: {
+    taille: 'compacte', // colonne de droite (liste des imminentes)
+    bornes: { horizon: [7, 14, 30, 60, 90] },
+    defauts: { horizon: 30 },
+    resolve: (snap) => ({ echeances: snap && Array.isArray(snap.aVenir) ? snap.aVenir : [] }),
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},

@@ -472,6 +472,8 @@ svg { display: block; }
 /* ---- Saisie : champs ---- */
 .champ { display: block; margin-top: 14px; }
 .champ-lbl { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
+.champ-opt { font-weight: 500; font-size: 11px; color: var(--muted); }
+.champ-coussin { margin-top: 18px; }
 .saisie-soustitre { margin-top: 18px; }
 .champ-box {
   display: flex;
@@ -539,6 +541,184 @@ svg { display: block; }
 .mois-champ-input:disabled { background: #f3f6fa; color: #c2cdde; cursor: not-allowed; }
 .reparti { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 12px 0 0; }
 .reparti b { color: var(--navy); font-weight: 800; }
+
+/* ---- Saisie : fréquence de paie ---- */
+.freq-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; }
+.freq-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: #f7fafd;
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.freq-card:hover { background: #eef5fb; }
+.freq-card.on { background: rgba(0, 180, 216, 0.1); border-color: var(--cyan); box-shadow: 0 4px 12px rgba(0, 180, 216, 0.16); }
+.freq-card-l { font-size: 13px; font-weight: 800; color: var(--navy); }
+.freq-card-s { font-size: 11px; font-weight: 600; color: var(--muted); }
+.freq-card.on .freq-card-s { color: var(--accent); }
+
+.jsem-toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+.jsem {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  background: #eef2f8;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.jsem:hover { background: #e3eaf3; }
+.jsem.on { background: var(--cyan); color: #fff; box-shadow: 0 4px 12px rgba(0, 180, 216, 0.28); }
+
+.jours-mois { margin-top: 4px; }
+.jours-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; font-weight: 600; color: var(--ink); margin-top: 6px; }
+.jour-input {
+  width: 64px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--navy);
+  text-align: center;
+  padding: 8px 6px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.jour-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.14); }
+.champ-date {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #f7fafd;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.champ-date:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.14); }
+
+.revenu-calc {
+  margin-top: 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: #f7fafd;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 14px;
+}
+.revenu-calc b { color: var(--navy); font-size: 16px; font-weight: 900; }
+
+@media (max-width: 560px) {
+  .freq-cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Saisie : dépenses par classe ---- */
+.dep-groupe { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.dep-groupe:first-of-type { border-top: none; padding-top: 4px; margin-top: 8px; }
+.dep-groupe-tete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.dep-groupe-l b { font-size: 14px; font-weight: 800; color: var(--navy); }
+.dep-groupe-sous { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-left: 5px; }
+.dep-groupe-tot { font-size: 14px; font-weight: 800; color: var(--accent); }
+.dep-groupe-mo { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+.dep-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; flex-wrap: wrap; }
+.dep-label { flex: 1 1 130px; min-width: 110px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.dep-label-input { flex: 1 1 130px; min-width: 110px; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); background: #f7fafd; border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 10px; outline: none; }
+.dep-label-input:focus { border-color: var(--cyan); }
+
+.dep-type { display: inline-flex; background: #eef2f8; border-radius: 9px; padding: 2px; gap: 2px; }
+.dep-type-b { font-family: inherit; font-size: 11.5px; font-weight: 700; color: var(--muted); background: transparent; border: none; border-radius: 7px; padding: 5px 9px; cursor: pointer; transition: background 0.12s, color 0.12s; }
+.dep-type-b.on { background: #fff; color: var(--accent); box-shadow: var(--sh-sm); }
+
+.dep-montant { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1.5px solid var(--line); border-radius: 9px; padding: 5px 9px; }
+.dep-montant:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.12); }
+.dep-prefix { font-size: 12px; font-weight: 700; color: var(--muted); }
+.dep-montant-input { width: 60px; border: none; outline: none; background: transparent; font-family: inherit; font-size: 14px; font-weight: 800; color: var(--navy); text-align: right; }
+
+.dep-jour { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.dep-jour-input { width: 42px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; font-family: inherit; font-size: 13px; font-weight: 800; color: var(--navy); text-align: center; padding: 5px 4px; outline: none; }
+.dep-jour-input:focus { border-color: var(--cyan); }
+.dep-jour-vide { width: 54px; text-align: center; color: var(--line); }
+
+.dep-suppr { width: 26px; height: 26px; border-radius: 7px; border: none; background: #f3f6fa; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; transition: background 0.12s, color 0.12s; }
+.dep-suppr:hover { background: #fde7e7; color: #c0392b; }
+.dep-suppr-vide { width: 26px; }
+
+.dep-abos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.dep-abo { font-family: inherit; font-size: 12px; font-weight: 700; color: var(--accent); background: #fff; border: 1px dashed var(--line); border-radius: 999px; padding: 6px 11px; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.dep-abo:hover:not([disabled]) { background: #f0fbff; border-style: solid; }
+.dep-abo.on, .dep-abo[disabled] { opacity: 0.5; cursor: default; border-style: solid; }
+.dep-abo-m { color: var(--muted); }
+
+.dep-ajouter { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--accent); background: transparent; border: none; cursor: pointer; padding: 5px 0; }
+.dep-ajouter svg { width: 14px; height: 14px; }
+.dep-ajouter:hover { text-decoration: underline; }
+.dep-total { margin-top: 18px; }
+
+/* ---- Bloc calendrier (journal de bord) ---- */
+.cal-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 4px 0 14px; }
+.cal-nav-b { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--accent); font-size: 18px; line-height: 1; cursor: pointer; box-shadow: var(--sh-sm); }
+.cal-nav-b:hover { background: #f0fbff; }
+.cal-nav-lbl { font-size: 14.5px; font-weight: 800; color: var(--navy); min-width: 150px; text-align: center; }
+
+.cal-sem { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+.cal-sem-c { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.cal-sem-c.we { color: var(--accent); }
+
+.cal-grille { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-cell { position: relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; padding: 6px 2px 4px; border-radius: 10px; border: 1.5px solid transparent; background: #f7fafd; font-family: inherit; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.cal-cell:hover { background: #eef5fb; }
+.cal-pad { background: transparent; border: none; cursor: default; }
+.cal-cell-d { font-size: 12px; font-weight: 700; color: var(--ink); }
+.cal-cell.plein { background: #fff; box-shadow: var(--sh-sm); }
+.cal-cell.today { border-color: var(--cyan); }
+.cal-cell.proche { border-color: var(--amber-2); }
+.cal-cell.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0, 119, 182, 0.16); }
+.cal-cell-pts { display: flex; gap: 3px; min-height: 7px; }
+.cal-pt { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.cal-in { background: var(--cyan); }
+.cal-out { background: var(--amber-2); }
+
+.cal-pied { margin-top: 12px; min-height: 50px; }
+.cal-resume { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-size: 13px; font-weight: 700; color: var(--ink); padding: 10px 0; }
+.cal-resume-in, .cal-resume-out { display: inline-flex; align-items: center; gap: 6px; }
+.cal-detail { background: #f7fafd; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.cal-detail-tete { font-size: 12.5px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.cal-detail-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cal-detail-liste li { display: flex; justify-content: space-between; font-size: 13px; }
+.cal-detail-l { font-weight: 600; color: var(--ink); }
+.cal-detail-m { font-weight: 800; }
+.cal-detail-liste li.in .cal-detail-m { color: var(--accent); }
+.cal-detail-liste li.out .cal-detail-m { color: var(--amber); }
+.cal-aide { text-align: center; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 8px; }
+
+/* ---- Bloc échéancier (À venir) ---- */
+.ech-liste { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ech-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.ech-item:last-child { border-bottom: none; }
+.ech-date { display: flex; flex-direction: column; line-height: 1.15; }
+.ech-date b { font-size: 12.5px; font-weight: 800; color: var(--navy); }
+.ech-dans { font-size: 10.5px; font-weight: 600; color: var(--muted); }
+.ech-l { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ech-m { font-size: 13px; font-weight: 800; color: var(--amber); }
+.ech-vide { font-size: 13px; font-weight: 600; color: var(--muted); padding: 10px 0; }
 
 /* ---- Saisie : bascule (interrupteur) ---- */
 .bascule { display: flex; align-items: center; gap: 11px; margin-top: 18px; cursor: pointer; user-select: none; }
