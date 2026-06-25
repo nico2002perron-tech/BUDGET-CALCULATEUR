@@ -294,7 +294,7 @@ function App() {
                   {source === 'ia' && demandeIA ? (
                     <p className="tour-verdict tour-demande">« {demandeIA} »</p>
                   ) : (
-                    pctEte != null && (
+                    situation === 'revenu_saisonnier' && pctEte != null && (
                       <p className="tour-verdict">
                         Tes <b>6 mois d&rsquo;été</b> (mai&nbsp;→&nbsp;octobre) génèrent <b>{pctEte}&nbsp;%</b> de ton revenu annuel.
                       </p>
@@ -307,7 +307,7 @@ function App() {
 
             {source !== 'aucun' && recette && (
               <div className="tour-vues">
-                {source === 'guide' && <Entretien reponses={reponses} onChange={setReponses} />}
+                {source === 'guide' && situation === 'revenu_saisonnier' && <Entretien reponses={reponses} onChange={setReponses} />}
                 <div className="compose-head">
                   <div className="ch-l">
                     <span className="ch-tag">Ta vue · composée pour toi</span>

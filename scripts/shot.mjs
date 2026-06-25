@@ -1,4 +1,4 @@
-/* Capture après correctifs : coussin, jauge/stat réelles, calendrier relibellé. */
+/* Capture « Mon portrait du mois » : coussin à zones + anatomie du dollar + impôt. */
 import { chromium } from 'playwright-core'
 
 const URL = 'http://localhost:5173/'
@@ -8,7 +8,7 @@ for (const channel of ['msedge', 'chrome']) {
 }
 if (!browser) { console.log('Aucun navigateur trouvé.'); process.exit(2) }
 
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 1180 }, deviceScaleFactor: 1 })
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 1280 }, deviceScaleFactor: 1 })
 const page = await ctx.newPage()
 const erreurs = []
 page.on('pageerror', (e) => erreurs.push(String(e)))
@@ -18,31 +18,27 @@ await page.goto(URL, { waitUntil: 'networkidle' })
 await page.waitForSelector('.freq-cards', { timeout: 5000 })
 
 const champ = page.locator('.champ-input')
-await champ.nth(0).fill('2000') // montant par paie
-await champ.nth(1).fill('5000') // coussin actuel (nouveau champ)
+await champ.nth(0).fill('2000')  // montant par paie
+await champ.nth(1).fill('9000')  // coussin
+await champ.nth(2).fill('75000') // revenu brut annuel
 const dep = page.locator('.dep-montant-input')
-await dep.nth(0).fill('1100')
-await dep.nth(2).fill('600')
-await dep.nth(3).fill('140')
-await dep.nth(6).fill('55')
-await dep.nth(10).fill('200')
-await page.waitForTimeout(500)
-await page.screenshot({ path: 'scripts/_shot-donnees.png', fullPage: false })
+await dep.nth(0).fill('1500') // Logement (besoin)
+await dep.nth(2).fill('700')  // Alimentation (besoin)
+await dep.nth(3).fill('200')  // Assurances (besoin)
+await dep.nth(6).fill('60')   // Abonnements (désir)
+await dep.nth(10).fill('300') // Épargne
+await page.waitForTimeout(400)
 
-// Ma tour : composer → jauge/stat doivent refléter le coussin (5000), plus 0.
 await page.locator('.rail-item', { hasText: 'Ma tour' }).click()
 await page.waitForSelector('.tour-hero', { timeout: 5000 })
-await page.locator('.sugg', { hasText: "Passer l'hiver" }).click()
+await page.locator('.sugg', { hasText: 'Mon portrait du mois' }).click()
 await page.waitForSelector('.tour-vues .card', { timeout: 5000 })
-await page.setViewportSize({ width: 1440, height: 1180 })
 await page.waitForTimeout(800)
-await page.screenshot({ path: 'scripts/_shot-compose.png', fullPage: false })
+await page.screenshot({ path: 'scripts/_shot-portrait.png', fullPage: false })
 
-// Calendrier : libellés relibellés (« de paies » / « de sorties fixes »).
-await page.locator('.rail-item', { hasText: 'Calendrier' }).click()
-await page.waitForSelector('.cal-grille', { timeout: 5000 })
+await page.setViewportSize({ width: 375, height: 1100 })
 await page.waitForTimeout(400)
-await page.screenshot({ path: 'scripts/_shot-calendrier.png', fullPage: false })
+await page.screenshot({ path: 'scripts/_shot-mobile.png', fullPage: false })
 
 console.log('--- erreurs page ---')
 console.log(erreurs.length ? erreurs.join('\n') : '(aucune)')

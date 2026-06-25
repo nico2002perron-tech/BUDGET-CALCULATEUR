@@ -15,6 +15,8 @@
 
 export const SITUATIONS = {
   revenu_saisonnier: { label: "Passer l'hiver saisonnier", titre: "Passer l'hiver", dispo: true },
+  mon_budget: { label: 'Où va mon argent', titre: 'Ton mois en un coup d’œil', dispo: true },
+  mon_portrait: { label: 'Mon portrait du mois', titre: 'Ton portrait du mois', dispo: true },
   // À venir (nécessitent d'autres blocs / situations) :
   objectif_epargne: { label: "Objectif d'épargne", titre: 'Objectif', dispo: false },
   celiapp: { label: 'Maximiser mon CELIAPP', titre: 'CELIAPP', dispo: false },
@@ -41,6 +43,33 @@ export function composerRecette(situation, reponses = {}) {
       blocs.push({ type: 'fait', params: {} })
     }
     return { situation, titre: def.titre, blocs }
+  }
+
+  if (situation === 'mon_budget') {
+    return {
+      situation,
+      titre: def.titre,
+      blocs: [
+        { type: 'repartition', params: { repere: '50/30/20' } }, // large
+        { type: 'beignet', params: {} }, // large
+        { type: 'solde', params: {} }, // compacte
+        { type: 'barre_empilee', params: {} }, // compacte
+      ],
+    }
+  }
+
+  if (situation === 'mon_portrait') {
+    return {
+      situation,
+      titre: def.titre,
+      blocs: [
+        { type: 'anatomie_dollar', params: {} }, // large
+        { type: 'coussin_urgence', params: {} }, // large
+        { type: 'impot_palier', params: {} }, // compacte
+        { type: 'solde', params: {} }, // compacte
+        { type: 'fait', params: {} }, // compacte
+      ],
+    }
   }
 
   // Situations pas encore outillées → recette vide (le moteur ne rend rien).

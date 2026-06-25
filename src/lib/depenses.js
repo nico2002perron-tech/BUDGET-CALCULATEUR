@@ -11,10 +11,16 @@
    ========================================================================== */
 
 export const CLASSES = [
-  { id: 'besoin', label: 'Besoins', sous: 'le nécessaire' },
-  { id: 'envie', label: 'Désirs', sous: 'le plaisir' },
-  { id: 'epargne', label: 'Épargne', sous: 'mis de côté' },
+  { id: 'besoin', label: 'Besoins', sous: 'le nécessaire', couleur: '#0077b6' },
+  { id: 'envie', label: 'Désirs', sous: 'le plaisir', couleur: '#00b4d8' },
+  { id: 'epargne', label: 'Épargne', sous: 'mis de côté', couleur: '#0f8a5f' },
 ]
+
+/** Couleur d'une classe ('besoin'|'envie'|'epargne'). */
+export function couleurClasse(classe) {
+  const c = CLASSES.find((x) => x.id === classe)
+  return c ? c.couleur : '#5a6b8c'
+}
 
 // Catégories pré-remplies (montant null = placeholder ; jour par défaut pour les fixes).
 export const CATEGORIES_DEPENSES = [

@@ -720,6 +720,73 @@ svg { display: block; }
 .ech-m { font-size: 13px; font-weight: 800; color: var(--amber); }
 .ech-vide { font-size: 13px; font-weight: 600; color: var(--muted); padding: 10px 0; }
 
+/* ---- Bloc solde ---- */
+.solde-num { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; margin: 8px 0 2px; }
+.solde-num.pos { color: #0f8a5f; }
+.solde-num.neg { color: var(--amber); }
+.solde-lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.solde-detail { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.solde-detail b { color: var(--navy); font-weight: 800; }
+
+/* ---- Bloc répartition (rôles + repère 50/30/20) ---- */
+.rep-liste { display: flex; flex-direction: column; gap: 14px; margin-top: 6px; }
+.rep-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.rep-nom { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--navy); }
+.rep-pastille { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.rep-val { font-size: 12.5px; color: var(--muted); }
+.rep-val b { color: var(--navy); font-weight: 800; }
+.rep-cible { color: var(--muted); }
+.rep-piste { position: relative; height: 12px; background: #eef2f8; border-radius: 7px; }
+.rep-jauge { position: absolute; left: 0; top: 0; height: 100%; border-radius: 7px; transition: width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.rep-repere { position: absolute; top: -3px; width: 2px; height: 18px; background: #94a3b8; border-radius: 1px; }
+
+/* ---- Bloc beignet ---- */
+.bgt-corps { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+.bgt-svg { width: 168px; height: 168px; flex: 0 0 auto; }
+.bgt-centre-n { font-size: 20px; font-weight: 900; fill: var(--navy); }
+.bgt-centre-l { font-size: 9.5px; font-weight: 700; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.bgt-legende { list-style: none; margin: 0; padding: 0; flex: 1 1 170px; display: flex; flex-direction: column; gap: 8px; min-width: 160px; }
+.bgt-legende li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.bgt-legende li b { margin-left: auto; font-weight: 800; color: var(--navy); }
+.bgt-pt { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.bgt-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Bloc engagé / libre ---- */
+.emp-barre { display: flex; height: 22px; border-radius: 8px; overflow: hidden; background: #eef2f8; margin: 8px 0 12px; }
+.emp-seg { height: 100%; transition: width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.emp-fixe { background: var(--accent); }
+.emp-libre { background: var(--cyan); }
+.emp-vide { background: #eef2f8; }
+.emp-legende { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.emp-legende b { color: var(--navy); font-weight: 800; }
+.emp-pt { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
+.emp-pt-fixe { background: var(--accent); }
+.emp-pt-libre { background: var(--cyan); }
+
+/* ---- Bloc fonds d'urgence (jauge à zones) ---- */
+.cou-num { font-size: 26px; font-weight: 800; color: var(--muted); margin: 6px 0 12px; }
+.cou-num b { font-size: 34px; font-weight: 900; color: var(--navy); }
+.cou-barre { position: relative; display: flex; gap: 3px; height: 30px; margin-bottom: 10px; }
+.cou-zone { position: relative; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.cou-zone-l { font-size: 10.5px; font-weight: 800; color: rgba(3, 4, 94, 0.45); }
+.cou-curseur { position: absolute; top: -4px; width: 3px; height: 38px; background: var(--navy); border-radius: 2px; transform: translateX(-1.5px); box-shadow: 0 0 0 2px #fff; }
+.cou-pieds { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.cou-pieds b { color: var(--navy); font-weight: 800; }
+.cou-repere { color: var(--muted); }
+
+/* ---- Anatomie du dollar (réutilise .bgt-* du beignet) ---- */
+.ana-pct { color: var(--muted); font-size: 11.5px; font-weight: 700; min-width: 34px; text-align: right; }
+.ana-net { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--ink); background: #f7fafd; border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; }
+.ana-net b { color: #0f8a5f; font-weight: 900; }
+
+/* ---- Dollar imposé (réutilise .emp-barre/.emp-seg) ---- */
+.imp-stats { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; font-size: 12.5px; color: var(--muted); }
+.imp-stats b { color: var(--navy); font-weight: 800; }
+.imp-legende { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.imp-legende li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.imp-legende li b { margin-left: auto; font-weight: 800; color: var(--navy); }
+.imp-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---- Saisie : bascule (interrupteur) ---- */
 .bascule { display: flex; align-items: center; gap: 11px; margin-top: 18px; cursor: pointer; user-select: none; }
 .bascule input { position: absolute; opacity: 0; width: 0; height: 0; }

@@ -11,6 +11,13 @@ import Stat from '../blocs/Stat.jsx'
 import Fait from '../blocs/Fait.jsx'
 import Calendrier from '../blocs/Calendrier.jsx'
 import Echeancier from '../blocs/Echeancier.jsx'
+import Solde from '../blocs/Solde.jsx'
+import Repartition from '../blocs/Repartition.jsx'
+import Beignet from '../blocs/Beignet.jsx'
+import BarreEmpilee from '../blocs/BarreEmpilee.jsx'
+import CoussinUrgence from '../blocs/CoussinUrgence.jsx'
+import AnatomieDollar from '../blocs/AnatomieDollar.jsx'
+import ImpotPalier from '../blocs/ImpotPalier.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -19,6 +26,13 @@ export const REGISTRE = {
   fait: Fait,
   calendrier: Calendrier,
   echeancier: Echeancier,
+  solde: Solde,
+  repartition: Repartition,
+  beignet: Beignet,
+  barre_empilee: BarreEmpilee,
+  coussin_urgence: CoussinUrgence,
+  anatomie_dollar: AnatomieDollar,
+  impot_palier: ImpotPalier,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

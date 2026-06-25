@@ -106,6 +106,75 @@ export const BLOCS = {
     resolve: (snap) => ({ echeances: snap && Array.isArray(snap.aVenir) ? snap.aVenir : [] }),
   },
 
+  solde: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      return d ? { revenu: d.revenu, total: d.total, reste: d.reste } : { revenu: 0, total: 0, reste: 0 }
+    },
+  },
+
+  repartition: {
+    taille: 'large',
+    bornes: { repere: ['50/30/20', 'aucun'] },
+    defauts: { repere: '50/30/20' },
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      return d ? { parClasse: d.parClasse, pct: d.pct, revenu: d.revenu } : { parClasse: { besoin: 0, envie: 0, epargne: 0 }, pct: null, revenu: 0 }
+    },
+  },
+
+  beignet: {
+    taille: 'large',
+    bornes: {},
+    defauts: { centre: 'par mois' },
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      return d ? { parCategorie: d.parCategorie, total: d.total } : { parCategorie: [], total: 0 }
+    },
+  },
+
+  barre_empilee: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      return d ? { engageLibre: d.engageLibre } : { engageLibre: { fixe: 0, variable: 0 } }
+    },
+  },
+
+  coussin_urgence: {
+    taille: 'large',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => (snap && snap.coussin ? snap.coussin : { montant: 0, essentielles: 0, moisCouverts: null, zone: 'vide', cible3: 0, cible6: 0 }),
+  },
+
+  anatomie_dollar: {
+    taille: 'large',
+    bornes: {},
+    defauts: { centre: 'brut / an' },
+    resolve: (snap) => {
+      const f = snap && snap.fiscalite
+      return f ? { brut: f.brut, net: f.net, segments: f.segments } : { brut: 0, net: 0, segments: [] }
+    },
+  },
+
+  impot_palier: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const f = snap && snap.fiscalite
+      return f
+        ? { brut: f.brut, federal: f.federal, quebec: f.quebec, cotisations: f.cotisations, net: f.net, tauxEffectif: f.tauxEffectif, jourLiberation: f.jourLiberation }
+        : { brut: 0, federal: 0, quebec: 0, cotisations: 0, net: 0, tauxEffectif: 0, jourLiberation: 0 }
+    },
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},

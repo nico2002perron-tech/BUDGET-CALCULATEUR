@@ -45,6 +45,7 @@ export default function SaisieRevenus({ revenus, onChange }) {
     onChange({ ...r, jours: j })
   }
   const setCoussin = (v) => onChange({ ...r, coussin: toNum(v) })
+  const setBrut = (v) => onChange({ ...r, brutAnnuel: toNum(v) })
   // — saisonnier —
   const basculer = (versSaison) => {
     if (versSaison) {
@@ -181,6 +182,15 @@ export default function SaisieRevenus({ revenus, onChange }) {
         <span className="champ-box">
           <span className="champ-prefix">$</span>
           <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.coussin ?? ''} onChange={(e) => setCoussin(e.target.value)} aria-label="Coussin actuel" />
+        </span>
+      </label>
+
+      <label className="champ champ-coussin">
+        <span className="champ-lbl">Ton revenu brut annuel <span className="champ-opt">avant impôt — optionnel, pour l’anatomie du dollar</span></span>
+        <span className="champ-box">
+          <span className="champ-prefix">$</span>
+          <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.brutAnnuel ?? ''} onChange={(e) => setBrut(e.target.value)} aria-label="Revenu brut annuel" />
+          <span className="champ-suffix">/ an</span>
         </span>
       </label>
 

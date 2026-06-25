@@ -15,8 +15,10 @@
    ========================================================================== */
 import { loadStoreOrSeedDemo } from './storage.js'
 import { totaux, repartition, engageLibre, parCategorie } from './budget.js'
-import { revenusMensuels as deriveRevenus } from './revenus.js'
+import { revenusMensuels as deriveRevenus, revenuMensuel } from './revenus.js'
 import { depensesRecurrentes, prochainesEcheances, revenuParPaie } from './calendrier.js'
+import { moisCouverts, zoneDe, cibles } from './coussin.js'
+import { calcTax } from './twin.js'
 
 function num(v) {
   const n = Number(v)
@@ -83,6 +85,92 @@ function buildSaison(store) {
   return null
 }
 
+// Détail des DÉPENSES pour les blocs « où va l'argent » (réparti, beignet, solde,
+// engagé/libre). Dérivé de store.depenses (la nouvelle saisie). Null si rien saisi.
+function buildDepenses(store) {
+  const liste = store && Array.isArray(store.depenses) ? store.depenses : []
+  const avecMontant = liste.filter((d) => d && Number(d.montant) > 0)
+  if (avecMontant.length === 0) return null
+  const somme = (arr) => Math.round(arr.reduce((s, d) => s + (Number(d.montant) || 0), 0))
+  const besoin = somme(avecMontant.filter((d) => d.classe === 'besoin'))
+  const envie = somme(avecMontant.filter((d) => d.classe === 'envie'))
+  const epargne = somme(avecMontant.filter((d) => d.classe === 'epargne'))
+  const coutVie = besoin + envie
+  const total = coutVie + epargne
+  const fixe = somme(avecMontant.filter((d) => d.classe !== 'epargne' && d.type === 'fixe'))
+  const variable = somme(avecMontant.filter((d) => d.classe !== 'epargne' && d.type === 'variable'))
+  const revenu = Math.round(revenuMensuel(store && store.revenus))
+  const parCategorie = avecMontant
+    .map((d) => ({ id: d.id, label: d.label || 'Dépense', classe: d.classe || 'besoin', montant: Math.round(Number(d.montant) || 0) }))
+    .sort((a, b) => b.montant - a.montant)
+  const pct =
+    revenu > 0
+      ? {
+          besoin: Math.round((besoin / revenu) * 100),
+          envie: Math.round((envie / revenu) * 100),
+          epargne: Math.round((epargne / revenu) * 100),
+        }
+      : null
+  return {
+    revenu,
+    coutVie,
+    epargne,
+    total,
+    reste: revenu - total, // surplus (>0) / déficit (<0) mensuel
+    parClasse: { besoin, envie, epargne },
+    engageLibre: { fixe, variable },
+    parCategorie,
+    pct,
+  }
+}
+
+// Fonds d'urgence : le coussin (montant ponctuel) situé en mois de besoins
+// essentiels couverts + repères 3/6 mois. Null si aucun coussin saisi.
+function buildCoussin(store) {
+  const montant = num(store && store.revenus && store.revenus.coussin)
+  if (montant == null) return null
+  const dep = store && Array.isArray(store.depenses) ? store.depenses : []
+  const essentielles = Math.round(dep.filter((d) => d && d.classe === 'besoin').reduce((s, d) => s + (Number(d.montant) || 0), 0))
+  const mois = moisCouverts(montant, essentielles)
+  const { cible3, cible6 } = cibles(essentielles)
+  return { montant: Math.round(montant), essentielles, moisCouverts: mois, zone: zoneDe(mois), cible3, cible6 }
+}
+
+// Anatomie du revenu BRUT : où va chaque dollar gagné (impôts + cotisations +
+// dépenses + épargne + libre), via twin.calcTax. Null sans revenu brut saisi.
+function buildFiscalite(store) {
+  const brut = num(store && store.revenus && store.revenus.brutAnnuel)
+  if (brut == null || brut <= 0) return null
+  const t = calcTax(brut, 0)
+  const cotisations = t.rrq + t.ei + t.rqap
+  const dep = store && Array.isArray(store.depenses) ? store.depenses : []
+  const coutVie = dep.filter((d) => d && d.classe !== 'epargne').reduce((s, d) => s + (Number(d.montant) || 0), 0) * 12
+  const epargne = dep.filter((d) => d && d.classe === 'epargne').reduce((s, d) => s + (Number(d.montant) || 0), 0) * 12
+  const depCouvert = Math.min(coutVie, Math.max(0, t.netIncome))
+  const epCouvert = Math.min(epargne, Math.max(0, t.netIncome - depCouvert))
+  const segments = [
+    { label: 'Impôt fédéral', montant: Math.round(t.federal), couleur: '#b8740a' },
+    { label: 'Impôt Québec', montant: Math.round(t.quebec), couleur: '#e0a23c' },
+    { label: 'Cotisations (RRQ, AE, RQAP)', montant: Math.round(cotisations), couleur: '#caa15a' },
+    { label: 'Dépenses', montant: Math.round(depCouvert), couleur: '#0077b6' },
+    { label: 'Épargne', montant: Math.round(epCouvert), couleur: '#0f8a5f' },
+  ]
+  const accounted = segments.reduce((s, x) => s + x.montant, 0)
+  const libre = Math.max(0, Math.round(brut) - accounted)
+  if (libre > 50) segments.push({ label: 'Solde libre', montant: libre, couleur: '#00b4d8' })
+  return {
+    brut: Math.round(brut),
+    federal: Math.round(t.federal),
+    quebec: Math.round(t.quebec),
+    cotisations: Math.round(cotisations),
+    impotTotal: Math.round(t.federal + t.quebec + cotisations),
+    net: Math.round(t.netIncome),
+    tauxEffectif: Math.round(t.effectiveRate * 100),
+    jourLiberation: Math.min(365, Math.max(1, Math.round((t.total / brut) * 365))),
+    segments,
+  }
+}
+
 // Données récurrentes pour le bloc calendrier : le modèle de paie + les dépenses
 // datées. Null si rien à montrer (aucune entrée possible ET aucune sortie datée).
 function buildCalendrier(store) {
@@ -123,11 +211,17 @@ export function snapshotFromStore(store) {
   let saison = null
   let calendrier = null
   let aVenir = []
+  let depenses = null
+  let coussin = null
+  let fiscalite = null
   try { identity = buildIdentity(store) } catch { /* garde les null */ }
   try { budget = buildBudget(store) } catch { budget = null }
   try { saison = buildSaison(store) } catch { saison = null }
   try { calendrier = buildCalendrier(store) } catch { calendrier = null }
   try { aVenir = buildAVenir(store) } catch { aVenir = [] }
+  try { depenses = buildDepenses(store) } catch { depenses = null }
+  try { coussin = buildCoussin(store) } catch { coussin = null }
+  try { fiscalite = buildFiscalite(store) } catch { fiscalite = null }
 
   return {
     meta: {
@@ -144,6 +238,9 @@ export function snapshotFromStore(store) {
     aVenir: aVenir, // échéances datées des ~45 prochains jours (paies + dépenses fixes)
     saison: saison, // additif : alimente les blocs temporels (flux_annuel)
     calendrier: calendrier, // additif : modèle récurrent (paies + dépenses) pour le bloc calendrier
+    depenses: depenses, // additif : détail des dépenses (réparti, beignet, solde, engagé/libre)
+    coussin: coussin, // additif : fonds d'urgence (mois couverts + zones + repères)
+    fiscalite: fiscalite, // additif : anatomie du revenu brut (impôts/cotisations/net)
   }
 }
 
