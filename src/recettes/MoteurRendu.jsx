@@ -17,8 +17,24 @@
    Le contrat recette→registre→snapshot est inchangé.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { validerRecette, BLOCS } from './schema.js'
+import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
+
+// Anti-redondance d'une vue : jamais DEUX blocs du même type, ni le même CHIFFRE deux
+// fois (le coussin via jauge/stat/coussin_urgence → un seul). On garde le 1er rencontré.
+const GROUPE_METRIQUE = { jauge: 'coussin', stat: 'coussin', coussin_urgence: 'coussin' }
+function dedupeBlocs(blocs) {
+  const types = new Set()
+  const groupes = new Set()
+  return blocs.filter((b) => {
+    if (!b || types.has(b.type)) return false
+    const g = GROUPE_METRIQUE[b.type]
+    if (g && groupes.has(g)) return false
+    types.add(b.type)
+    if (g) groupes.add(g)
+    return true
+  })
+}
 
 function prefersReduce() {
   return (
@@ -30,8 +46,19 @@ function prefersReduce() {
 
 export default function MoteurRendu({ recette, snapshot, anime = false }) {
   const r = validerRecette(recette)
-  // Seuls les blocs au type CONNU sont rendus (type inconnu → ignoré proprement).
-  const blocs = r.blocs.filter((b) => composantPour(b.type))
+  // Un emplacement à CANDIDATS → on rend le bloc `choisi` (repli sûr si invalide ; un
+  // `choisi` inconnu ne peut jamais atteindre le rendu). Puis : seuls les types CONNUS,
+  // et on enlève les redondances → chaque bloc apporte une info DIFFÉRENTE.
+  const effectifs = r.blocs
+    .map((b) => {
+      if (b && b.slot === 'graphique') {
+        const type = resoudreSlot(b, snapshot)
+        return type ? { type, params: {} } : null
+      }
+      return composantPour(b.type) ? b : null
+    })
+    .filter(Boolean)
+  const blocs = dedupeBlocs(effectifs)
   const total = blocs.length
 
   const sequence = anime && !prefersReduce()
@@ -57,7 +84,9 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
   blocs.forEach((bloc, i) => {
     if (i >= revele) return // pas encore son tour → pas monté (ses anims internes attendent)
     const cfg = BLOCS[bloc.type]
-    const data = cfg && typeof cfg.resolve === 'function' ? cfg.resolve(snapshot) : {}
+    // resolve(snapshot, params) : les MONTANTS viennent du snapshot ; certains blocs
+    // lisent aussi une INTENTION dans les params (ex. chaine → l'objectif choisi).
+    const data = cfg && typeof cfg.resolve === 'function' ? cfg.resolve(snapshot, bloc.params) : {}
     const Composant = composantPour(bloc.type)
     const el = (
       <div className={sequence ? 'bloc-reveal' : undefined} key={i}>

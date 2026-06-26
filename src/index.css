@@ -1403,9 +1403,99 @@ svg { display: block; }
 .fait p { margin: 0; font-size: 13px; font-weight: 500; color: var(--ink); }
 .fait b { color: var(--navy); font-weight: 800; }
 
+/* ---- Bloc chaîne (couche de compréhension : les maillons reliés) ---- */
+.chaine-flux {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.chaine-noeud {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 134px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: #f7fafd;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 15px;
+  animation: chaine-in 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+.chaine-noeud-l { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.chaine-noeud-v { font-size: 25px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em; line-height: 1.05; }
+.chaine-noeud-u { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+/* La flèche entre les maillons, posée dans le gap (desktop : → ) */
+.chaine-noeud:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--cyan);
+  z-index: 1;
+}
+/* Le maillon objectif : mis en valeur (cyan de marque = la destination) */
+.chaine-noeud.is-cible {
+  background: linear-gradient(150deg, rgba(0, 180, 216, 0.14), rgba(0, 119, 182, 0.06));
+  border-color: rgba(0, 180, 216, 0.35);
+}
+.chaine-noeud.is-cible .chaine-noeud-v { color: var(--accent); }
+/* Exception : flux négatif → ambre (le SEUL sens de l'ambre, VISION §12) */
+.chaine-noeud.is-exception {
+  background: var(--amber-soft);
+  border-color: rgba(184, 116, 10, 0.32);
+}
+.chaine-noeud.is-exception .chaine-noeud-v { color: var(--amber); }
+
+@keyframes chaine-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Mobile : la chaîne s'empile, la flèche pointe vers le bas */
+@media (max-width: 560px) {
+  .chaine-flux { flex-direction: column; gap: 18px; }
+  .chaine-noeud { min-width: 0; }
+  .chaine-noeud:not(:last-child)::after {
+    content: '↓';
+    right: 50%;
+    top: auto;
+    bottom: -15px;
+    transform: translateX(50%);
+  }
+}
+
 @media (max-width: 780px) {
   .grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Bloc barre_progression (progression linéaire vers une cible) ---- */
+.bp-rang { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 600; color: var(--muted); margin: 6px 0 8px; }
+.bp-rang b { color: var(--navy); font-weight: 800; }
+.bp-piste { height: 12px; border-radius: 999px; background: rgba(3, 4, 94, 0.07); overflow: hidden; }
+.bp-rempli { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--cyan)); transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.bp-pct { font-size: 22px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em; margin-top: 8px; }
+.bp-pct span { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+
+/* ---- Bloc chronologie (compte à rebours) ---- */
+.chrono-num { font-size: 38px; font-weight: 900; color: var(--cyan); letter-spacing: -0.03em; line-height: 1; margin-top: 6px; }
+.chrono-unite { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+/* ---- Bloc liste (éléments itemisés) ---- */
+.liste-ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; }
+.liste-li { display: flex; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.liste-li:last-child { border-bottom: 0; }
+.liste-lib { flex: 1 1 auto; min-width: 0; font-weight: 700; color: var(--navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liste-meta { flex: none; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); background: rgba(3, 4, 94, 0.05); border-radius: 6px; padding: 2px 6px; }
+.liste-montant { flex: none; font-weight: 800; color: var(--ink); }
 
 /* ---- Pied : avertissement permanent (conformité, VISION §11) ---- */
 .site-footer { margin-top: auto; }
@@ -1422,6 +1512,168 @@ svg { display: block; }
 @media (max-width: 780px) {
   .app { padding: 16px 12px 88px; }
 }
+
+/* ============================================================================
+   SURFACE « CRÉER » — 3 couches : suggestions (push) · atelier (pull) · barre libre.
+   Hiérarchie : l'atelier est le héros ; suggestions au-dessus (calme, cyan), barre
+   libre en dessous (secondaire). Cyan = toi/maintenant ; JAMAIS d'ambre ici (§12).
+   ========================================================================== */
+.creer { display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin: 4px auto 0; }
+
+/* ---- Couche 1 : « Ta tour te suggère » (push) — BANDEAU LÉGER, subordonné au héros ---- */
+.sugg { padding: 2px 2px 0; }
+.sugg-tete { display: flex; align-items: center; gap: 7px; margin: 0 2px 7px; }
+.sugg-ic { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: var(--cyan); }
+.sugg-ic svg { width: 17px; height: 17px; }
+.sugg-titre { font-size: 11.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.sugg-liste { display: flex; flex-direction: column; gap: 6px; }
+.sugg-carte {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0, 180, 216, 0.05); border: 1px solid rgba(0, 180, 216, 0.18); border-radius: 12px;
+  padding: 7px 9px 7px 11px;
+}
+.sugg-carte-ic {
+  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; color: var(--accent);
+  background: rgba(0, 119, 182, 0.10);
+}
+.sugg-carte-ic svg { width: 17px; height: 17px; }
+.sugg-carte-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.sugg-carte-titre { font-size: 12.5px; font-weight: 700; color: var(--navy); }
+.sugg-carte-raison { font-size: 11px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sugg-carte-actions { flex: none; display: flex; align-items: center; gap: 2px; }
+.sugg-ajouter {
+  min-height: 40px; padding: 0 12px; border: 0; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--accent); font-weight: 800; font-size: 12.5px; font-family: inherit;
+}
+.sugg-ajouter:hover { background: rgba(0, 119, 182, 0.10); }
+.sugg-ecarter {
+  min-height: 40px; padding: 0 9px; border: 0; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--muted); font-weight: 600; font-size: 11.5px; font-family: inherit;
+}
+.sugg-ecarter:hover { color: var(--navy); }
+
+/* ---- Couche 2 : l'ATELIER d'assemblage — LE HÉROS (le point d'entrée évident) ---- */
+.atelier {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+  border-top: 3px solid var(--cyan);
+  padding: 20px 20px 22px;
+  box-shadow: var(--sh-float), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.atelier-hero-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.atelier-hero-ic {
+  flex: none; width: 42px; height: 42px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center; color: var(--cyan);
+  background: linear-gradient(140deg, rgba(0, 180, 216, 0.2), rgba(0, 180, 216, 0.06));
+  box-shadow: 0 8px 18px rgba(0, 180, 216, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.atelier-hero-ic svg { width: 22px; height: 22px; }
+.atelier-hero-titre { font-size: 18px; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.01em; }
+.atelier-hero-sous { font-size: 12.5px; font-weight: 500; color: var(--muted); margin: 1px 0 0; }
+.atelier-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.atelier-fil { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: 12.5px; }
+.atelier-fil-pas {
+  border: 0; background: transparent; cursor: pointer; padding: 3px 6px; border-radius: 8px;
+  color: var(--accent); font-weight: 700; font-family: inherit; font-size: 12.5px;
+}
+.atelier-fil-pas:hover { background: rgba(0, 119, 182, 0.08); }
+.atelier-fil-racine { color: var(--navy); }
+.atelier-fil-racine:disabled { cursor: default; }
+.atelier-fil-sep { color: var(--muted); margin: 0 1px; }
+.atelier-compteur {
+  flex: none; font-size: 11px; font-weight: 800; color: var(--cyan);
+  background: rgba(0, 180, 216, 0.12); border-radius: 999px; padding: 4px 10px;
+}
+
+/* L'établi : pièces reliées par un fil */
+.atelier-etabli {
+  background: #f7fafd; border: 1px dashed rgba(3, 4, 94, 0.14); border-radius: 14px;
+  padding: 14px; margin-bottom: 14px; min-height: 76px;
+}
+.atelier-vide { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; padding: 14px 4px; margin: 0; }
+.atelier-destination {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink);
+  background: var(--card); border: 1px solid rgba(0, 180, 216, 0.3); border-radius: 10px;
+  padding: 8px 11px; margin-bottom: 10px;
+}
+.atelier-destination b { color: var(--navy); }
+.atelier-destination .atelier-piece-ic { color: var(--cyan); }
+.atelier-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.atelier-piece {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 18px;
+  animation-name: piece-pose; animation-fill-mode: both;
+}
+.atelier-piece:last-child { margin-bottom: 0; }
+/* le fil qui relie une pièce à la suivante */
+.atelier-piece:not(:last-child)::after {
+  content: ''; position: absolute; left: 22px; bottom: -18px; width: 2px; height: 18px;
+  background: linear-gradient(var(--cyan), rgba(0, 180, 216, 0.2));
+}
+.atelier-piece-ic {
+  flex: none; width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  color: var(--cyan); background: linear-gradient(140deg, rgba(0, 180, 216, 0.18), rgba(0, 180, 216, 0.05));
+}
+.atelier-piece-ic svg { width: 17px; height: 17px; }
+.atelier-piece-nom { font-size: 13px; font-weight: 700; color: var(--navy); }
+@keyframes piece-pose { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+.atelier-trace {
+  width: 100%; text-align: left; border: 1px dashed rgba(3, 4, 94, 0.16); background: #f7fafd;
+  border-radius: 12px; padding: 10px 13px; margin-bottom: 14px; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--muted);
+}
+.atelier-trace:hover { color: var(--navy); }
+
+/* La question courante */
+.atelier-q { font-size: 15px; font-weight: 800; color: var(--navy); margin: 0 0 12px; }
+.atelier-opts { display: flex; flex-direction: column; gap: 8px; }
+.atelier-opt {
+  min-height: 48px; text-align: left; padding: 0 16px; cursor: pointer;
+  border: 1.5px solid var(--line); border-radius: 14px; background: var(--card);
+  font-family: inherit; font-size: 14px; font-weight: 700; color: var(--ink);
+  transition: transform 0.16s, border-color 0.16s, box-shadow 0.16s;
+}
+.atelier-opt:hover {
+  transform: translateY(-2px); border-color: rgba(0, 180, 216, 0.55);
+  box-shadow: 0 10px 22px -10px rgba(0, 180, 216, 0.4);
+}
+
+/* Verrouillage final */
+.atelier-verrou { display: flex; flex-direction: column; gap: 12px; }
+.atelier-badge {
+  align-self: flex-start; display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 800; color: #032a3a;
+  background: var(--cyan); border-radius: 999px; padding: 6px 13px;
+}
+.atelier-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #032a3a; }
+.atelier-phrase { font-size: 13.5px; font-weight: 600; color: var(--ink); margin: 0; }
+.atelier-apercu-tag { display: block; font-size: 11px; font-weight: 700; color: var(--cyan); margin-bottom: 6px; }
+.atelier-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.atelier-recommencer {
+  min-height: 44px; padding: 0 14px; border: 1.5px solid var(--line); border-radius: 12px;
+  background: var(--card); color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.atelier-recommencer:hover { color: var(--navy); border-color: rgba(3, 4, 94, 0.2); }
+.atelier-ajouter {
+  min-height: 44px; padding: 0 20px; border: 0; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--cyan)); color: #fff; font-weight: 800; font-size: 14px;
+  box-shadow: 0 10px 24px -8px rgba(0, 119, 182, 0.5);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.atelier-ajouter:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -10px rgba(0, 119, 182, 0.6); }
+
+/* ---- Couche 3 : la barre libre (secondaire) ---- */
+.creer-libre { display: flex; flex-direction: column; gap: 7px; }
+.creer-libre-l { font-size: 12px; font-weight: 600; color: var(--muted); padding-left: 4px; }
+.creer-libre-chat { box-shadow: var(--sh-sm); }
+
+@media (max-width: 780px) {
+  .sugg-carte { flex-wrap: wrap; }
+  .sugg-carte-actions { width: 100%; justify-content: flex-end; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

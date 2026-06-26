@@ -30,3 +30,4 @@ dist-ssr
 
 # Captures d'écran de dev (régénérables via scripts/shot.mjs)
 scripts/_shot-*.png
+captures/

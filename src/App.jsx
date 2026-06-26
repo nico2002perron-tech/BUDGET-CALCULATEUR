@@ -11,7 +11,7 @@ import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore } from './lib/storage.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
-import Entretien from './components/Entretien.jsx'
+import AtelierIndicateur from './components/AtelierIndicateur.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
 import SaisiePatrimoine from './components/SaisiePatrimoine.jsx'
@@ -19,7 +19,8 @@ import PanneauVivant from './components/PanneauVivant.jsx'
 import SousSectionBientot from './components/SousSectionBientot.jsx'
 import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
-import { SITUATIONS, REPONSES_DEFAUT, composerRecette } from './recettes/composer.js'
+import { composerRecette } from './recettes/composer.js'
+import { suggererIndicateurs } from './recettes/suggestions.js'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -86,6 +87,19 @@ const I_CAL = (
     <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
   </svg>
 )
+// Ampoule « ta tour te suggère » (push conscient des données — calme, jamais une alerte).
+const I_AMPOULE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8.9.9 1.6h5.2c.1-.7.4-1.2.9-1.6A6 6 0 0 0 12 3z" />
+  </svg>
+)
+// Icônes des suggestions (clé `icon` de suggestions.js → SVG).
+const ICONE_SUGG = {
+  saison: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 14c2-3 4-3 6 0s4 3 6 0 4-3 6 0" /><path d="M3 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0" /></svg>),
+  patrimoine: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 7-7" /><path d="M17 8h4v4" /></svg>),
+  portrait: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h9l3 3v15l-2-1-2 1-2-1-2 1-2-1-2 1V3z" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>),
+  budget: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18" /><circle cx="16.5" cy="14.5" r="1.2" /></svg>),
+}
 
 function aDesRevenus(store) {
   return revenuMensuel(store && store.revenus) > 0
@@ -119,18 +133,22 @@ function App() {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const fileRef = useRef(null)
 
-  // Fabrication (section « Ma tour ») — chat libre + entretien guidé via emplacements « + créer ».
-  const [creation, setCreation] = useState(null) // null = fermé ; { situation, reponses } = création en cours
+  // Fabrication (section « Ma tour ») — 3 portes : suggestions (push) · atelier (pull) · chat libre (IA).
   const [nouveauWidget, setNouveauWidget] = useState(null) // id du widget à animer (à sa CRÉATION seulement)
   const [chatText, setChatText] = useState('')
   const [chargement, setChargement] = useState(false)
   const [erreur, setErreur] = useState(null)
+  const [suggestionsEcartees, setSuggestionsEcartees] = useState(() => new Set()) // écartées pour la session
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
-  // L'aperçu de l'indicateur en cours de création (entretien guidé → recette, blocs du registre).
-  const apercu = creation && creation.situation ? composerRecette(creation.situation, creation.reponses) : null
+  // « La tour pense » : suggestions conscientes des données, moins celles écartées cette session
+  // et celles déjà dans la tour (pas de doublon).
+  const suggestionsBrutes = useMemo(() => suggererIndicateurs(snapshot), [snapshot])
+  const suggestions = suggestionsBrutes.filter(
+    (s) => !suggestionsEcartees.has(s.situation) && !widgets.some((w) => w.recette && w.recette.situation === s.situation),
+  )
 
   useEffect(() => {
     const id = setTimeout(() => saveStore(store), 250)
@@ -163,7 +181,6 @@ function App() {
   const repartirAZero = () => {
     if (aDesDonnees(store) && !window.confirm('Repartir à zéro effacera tes montants saisis. Continuer ?')) return
     setStore(emptyStore())
-    setCreation(null)
   }
 
   // Menu Données (JSON) — montants jamais envoyés, juste exportés sur l'appareil.
@@ -200,20 +217,23 @@ function App() {
       return
     }
     setStore(emptyStore())
-    setCreation(null)
     setSection('donnees')
     setMenuOuvert(false)
   }
 
-  // Ouvre un emplacement de création (entretien guidé) ; ajoute/retire un indicateur
-  // persistant (store.tourWidgets). Les recettes restent composées par composer.js / l'IA.
-  const ouvrirCreation = () => { setErreur(null); setCreation({ situation: null, reponses: REPONSES_DEFAUT }) }
+  // Ajoute/retire un indicateur persistant (store.tourWidgets). Les recettes restent
+  // composées par composer.js (atelier/suggestions) ou par l'IA (chat libre).
   const ajouterWidget = (recette) => {
     if (!recette || !Array.isArray(recette.blocs) || recette.blocs.length === 0) return
+    // Anti-doublon : ne pas empiler deux fois la même vue (même situation).
+    const dejaLa = (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).some(
+      (w) => w.recette && recette.situation && w.recette.situation === recette.situation,
+    )
+    if (dejaLa) { setErreur('Tu as déjà cette vue dans ta tour.'); return }
+    setErreur(null)
     const id = 'w_' + Date.now()
     setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette }] }))
     setNouveauWidget(id) // → ce widget se CONSTRUIT pièce par pièce
-    setCreation(null)
   }
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
@@ -358,18 +378,51 @@ function App() {
               <h1 className="tour-bonjour">
                 {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
               </h1>
-              <p className="tour-accroche">Décris ce que tu veux suivre, ou crée un indicateur ci-dessous — ta tour le compose à partir de tes données.</p>
+              <p className="tour-accroche">Pas sûr de quoi suivre&nbsp;? Regarde ce que ta tour te suggère, laisse-toi guider, ou décris-le toi-même.</p>
+            </div>
 
-              <div className="tour-chatwrap">
-                <span className="tour-halo" aria-hidden="true" />
-                <form className="chat tour-chat" onSubmit={demanderIA}>
+            {/* SURFACE « CRÉER » — 3 couches dans l'ordre : la tour suggère (push, conscient des
+                données) → l'atelier guidé (pull) → la barre libre (l'IA). Un seul point d'entrée
+                évident : l'atelier ; les deux autres l'encadrent. */}
+            <div className="creer">
+              {suggestions.length > 0 && (
+                <section className="sugg" aria-label="Suggestions de ta tour">
+                  <div className="sugg-tete">
+                    <span className="sugg-ic" aria-hidden="true">{I_AMPOULE}</span>
+                    <h2 className="sugg-titre">Ta tour te suggère</h2>
+                  </div>
+                  <div className="sugg-liste">
+                    {suggestions.map((s) => (
+                      <article className="sugg-carte" key={s.situation}>
+                        <span className="sugg-carte-ic" aria-hidden="true">{ICONE_SUGG[s.icon] || I_AMPOULE}</span>
+                        <div className="sugg-carte-txt">
+                          <span className="sugg-carte-titre">{s.titre}</span>
+                          <span className="sugg-carte-raison">{s.raison}</span>
+                        </div>
+                        <div className="sugg-carte-actions">
+                          <button type="button" className="sugg-ajouter" onClick={() => ajouterWidget(composerRecette(s.situation, {}, snapshot))}>Ajouter</button>
+                          <button type="button" className="sugg-ecarter" onClick={() => setSuggestionsEcartees((set) => new Set(set).add(s.situation))}>Écarter</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* L'atelier d'assemblage (porte principale, pull guidé). */}
+              <AtelierIndicateur snapshot={snapshot} onAjouter={ajouterWidget} />
+
+              {/* Porte secondaire : décrire librement → l'IA compose. */}
+              <div className="creer-libre">
+                <span className="creer-libre-l">Ou décris ce que tu veux suivre&nbsp;:</span>
+                <form className="chat creer-libre-chat" onSubmit={demanderIA}>
                   <span className="chat-plus" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg>
                   </span>
                   <input
                     className="chat-input"
                     type="text"
-                    placeholder="Demande à ta tour…  (ex. « je suis paysagiste, je gagne rien l'hiver »)"
+                    placeholder="ex. « je suis paysagiste, je gagne rien l'hiver »"
                     value={chatText}
                     onChange={(e) => setChatText(e.target.value)}
                     aria-label="Décris ta situation"
@@ -379,80 +432,28 @@ function App() {
                   </button>
                 </form>
               </div>
-
               {chargement && <p className="tour-hint">Ta tour compose ton indicateur…</p>}
               {erreur && <p className="tour-erreur">{erreur}</p>}
             </div>
 
-            {/* LE TABLEAU : les indicateurs créés (persistants) + des emplacements « + créer ». */}
-            <div className="tour-board">
-              {widgets.map((w) => {
-                const anime = w.id === nouveauWidget
-                return (
-                  <section className={`tour-widget tour-vues${anime ? ' is-anime' : ''}`} key={w.id}>
-                    <div className="tour-widget-tete">
-                      <span className="tour-widget-tag">Ton indicateur</span>
-                      <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
-                      <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
-                    </div>
-                    <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
-                  </section>
-                )
-              })}
-
-              {creation ? (
-                <div className="tour-creation card">
-                  <div className="tour-creation-tete">
-                    <span className="tour-creation-t">Crée un indicateur</span>
-                    <button type="button" className="tour-creation-x" onClick={() => setCreation(null)} aria-label="Annuler">×</button>
-                  </div>
-
-                  {!creation.situation ? (
-                    <div className="tour-creation-step">
-                      <p className="tour-creation-q">Que veux-tu suivre&nbsp;? Choisis — ta tour compose le reste à partir de tes données.</p>
-                      <div className="tour-creation-chips">
-                        {Object.entries(SITUATIONS).map(([key, s]) => (
-                          <button key={key} type="button" className={`tour-chip ${s.dispo ? '' : 'is-bientot'}`} disabled={!s.dispo} onClick={() => s.dispo && setCreation((c) => ({ ...c, situation: key }))}>
-                            {s.label}{!s.dispo ? ' · bientôt' : ''}
-                          </button>
-                        ))}
+            {/* LE TABLEAU : les indicateurs déjà créés (persistants). */}
+            {widgets.length > 0 && (
+              <div className="tour-board">
+                {widgets.map((w) => {
+                  const anime = w.id === nouveauWidget
+                  return (
+                    <section className={`tour-widget tour-vues${anime ? ' is-anime' : ''}`} key={w.id}>
+                      <div className="tour-widget-tete">
+                        <span className="tour-widget-tag">Ton indicateur</span>
+                        <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
+                        <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="tour-creation-step">
-                      {creation.situation === 'revenu_saisonnier' && (
-                        <Entretien reponses={creation.reponses} onChange={(r) => setCreation((c) => ({ ...c, reponses: r }))} />
-                      )}
-                      {apercu && (
-                        <div className="tour-creation-apercu tour-vues is-anime" key={creation.situation}>
-                          <span className="tour-creation-apercu-tag">Aperçu — ta tour a composé ceci</span>
-                          <MoteurRendu key={creation.situation} recette={apercu} snapshot={snapshot} anime />
-                        </div>
-                      )}
-                      <div className="tour-creation-actions">
-                        <button type="button" className="tour-creation-back" onClick={() => setCreation((c) => ({ ...c, situation: null }))}>← Changer</button>
-                        <button type="button" className="tour-creation-add" onClick={() => ajouterWidget(apercu)}>Ajouter à ma tour</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="tour-slots">
-                  <button type="button" className="tour-slot" onClick={ouvrirCreation}>
-                    <span className="tour-slot-plus" aria-hidden="true">+</span>
-                    <span className="tour-slot-l">Crée un indicateur</span>
-                    <span className="tour-slot-s">Réponds à 2-3 questions, ta tour le compose</span>
-                  </button>
-                  {widgets.length === 0 && (
-                    <button type="button" className="tour-slot" onClick={ouvrirCreation}>
-                      <span className="tour-slot-plus" aria-hidden="true">+</span>
-                      <span className="tour-slot-l">Ajoute une vue</span>
-                      <span className="tour-slot-s">à partir de tes vraies données</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                      <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
+                    </section>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

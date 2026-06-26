@@ -21,6 +21,10 @@ import ImpotPalier from '../blocs/ImpotPalier.jsx'
 import PatrimoineVie from '../blocs/PatrimoineVie.jsx'
 import Horizon from '../blocs/Horizon.jsx'
 import Composition from '../blocs/Composition.jsx'
+import Chaine from '../blocs/Chaine.jsx'
+import BarreProgression from '../blocs/BarreProgression.jsx'
+import Chronologie from '../blocs/Chronologie.jsx'
+import Liste from '../blocs/Liste.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -39,6 +43,10 @@ export const REGISTRE = {
   patrimoine_vie: PatrimoineVie,
   horizon: Horizon,
   composition: Composition,
+  chaine: Chaine,
+  barre_progression: BarreProgression,
+  chronologie: Chronologie,
+  liste: Liste,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

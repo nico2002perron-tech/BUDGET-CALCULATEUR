@@ -14,6 +14,7 @@
       rejeté). On décrit des faits, jamais de jugement/conseil (VISION §11).
    ========================================================================== */
 import { formatCAD } from '../lib/format.js'
+import { evaluerGraphe } from '../lib/graphe.js'
 
 // ── Filtre de conformité (VISION §11 : faits, jamais jugement/conseil/impératif)
 // Liste normalisée (minuscule, sans accents). Heuristique volontairement stricte.
@@ -205,6 +206,44 @@ export const BLOCS = {
     },
   },
 
+  chaine: {
+    taille: 'large', // colonne principale (la chaîne reliée, horizontale)
+    bornes: {},
+    defauts: {},
+    // La couche de compréhension. L'objectif (nom, cible) vient de la recette (params,
+    // posé par l'entonnoir) ; les MONTANTS (revenu net, coût de vie, coussin) du snapshot.
+    resolve: (snap, params) => evaluerGraphe(snap, params && params.objectif ? { objectif: params.objectif } : {}),
+  },
+
+  // Étage 1 — blocs manquants (REGISTRE-BLOCS.md familles 1 & 4 & 6).
+  barre_progression: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: { etiquetteGauche: 'Déjà', etiquetteDroite: 'Cible' },
+    // VALEUR (déjà épargné) du snapshot ; CIBLE = intention (params de la recette).
+    resolve: (snap) => ({ valeur: snap && snap.coussin ? snap.coussin.montant || 0 : 0 }),
+  },
+
+  chronologie: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: { label: 'Échéance' },
+    // La date cible vient de la recette (params.dateCible) ; jamais inventée. Rien du snapshot.
+    resolve: () => ({}),
+  },
+
+  liste: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: { titre: 'Le détail' },
+    // Angle alternatif de « où va l'argent » : les catégories de dépenses du snapshot.
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      if (!d || !Array.isArray(d.parCategorie)) return { items: [] }
+      return { items: d.parCategorie.map((c) => ({ libelle: c.label || 'Dépense', montant: Math.round(Number(c.montant) || 0), meta: c.classe || null })) }
+    },
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},
@@ -255,6 +294,19 @@ export function validerRecette(recette) {
 
   const blocs = blocsIn.map((b) => {
     const bloc = b || {}
+
+    // Emplacement à CANDIDATS : plusieurs graphiques pour la MÊME donnée. On garde le
+    // slot (MoteurRendu rendra le `choisi`). Candidats = types connus seulement ; choisi
+    // défaut = recommande ; `pourquoi` filtré (jamais de texte brut non conforme).
+    if (bloc.slot === 'graphique') {
+      const recommande = estConnu(bloc.recommande) ? bloc.recommande : null
+      const alternatives = Array.isArray(bloc.alternatives) ? bloc.alternatives.filter((t) => estConnu(t) && t !== recommande) : []
+      const candidats = [recommande, ...alternatives].filter(Boolean)
+      const choisi = candidats.includes(bloc.choisi) ? bloc.choisi : recommande
+      const f = filtrerFait(bloc.pourquoi)
+      return { slot: 'graphique', recommande, alternatives, choisi, pourquoi: f.ok && f.texte ? f.texte : '', _ignore: candidats.length === 0 }
+    }
+
     const type = bloc.type
     const params = bloc.params || {}
 
@@ -269,10 +321,13 @@ export function validerRecette(recette) {
 
     if (estConnu(type)) {
       const cfg = BLOCS[type]
-      const clamped = { ...cfg.defauts }
+      // On garde les params LIBRES de la recette (libellés, cible, dateCible, objectif…),
+      // MAIS on RE-BORNE les params à valeurs contrôlées (hors borne → défaut sûr). Les
+      // MONTANTS financiers viennent toujours du snapshot (resolve) ; `cible`/`objectif`
+      // sont des INTENTIONS de l'usager (posées par l'entonnoir), pas des chiffres fabriqués.
+      const clamped = { ...cfg.defauts, ...params }
       for (const k of Object.keys(cfg.bornes)) {
-        if (params[k] != null && cfg.bornes[k].includes(params[k])) clamped[k] = params[k]
-        // sinon : on garde le défaut sûr
+        if (!(params[k] != null && cfg.bornes[k].includes(params[k]))) clamped[k] = cfg.defauts[k]
       }
       return { type, params: clamped }
     }
@@ -286,4 +341,54 @@ export function validerRecette(recette) {
     titre: typeof r.titre === 'string' ? r.titre : '',
     blocs,
   }
+}
+
+/* ============================================================================
+   SÉLECTEUR D'ANGLE — plusieurs graphiques pour la MÊME donnée, sous un autre angle
+   (jamais une interprétation différente). PUR + data-aware. Recommandation et
+   « pourquoi » sont posés par composer (déterministe, zéro IA).
+   ========================================================================== */
+
+// « Quel bloc montre quelle donnée » — la donnée est-elle SUFFISANTE pour cet angle ?
+// (ex. pas de beignet sans catégories, pas de courbe 12 mois avec une seule donnée).
+function donneeSuffisante(type, snapshot) {
+  const s = snapshot || {}
+  const d = s.depenses
+  switch (type) {
+    case 'beignet':
+    case 'liste':
+      return !!(d && Array.isArray(d.parCategorie) && d.parCategorie.length >= 1)
+    case 'barre_empilee':
+      return !!(d && d.engageLibre && ((Number(d.engageLibre.fixe) || 0) > 0 || (Number(d.engageLibre.variable) || 0) > 0))
+    case 'repartition':
+      return !!(d && d.parClasse && (Number(d.parClasse.besoin) || 0) + (Number(d.parClasse.envie) || 0) + (Number(d.parClasse.epargne) || 0) > 0)
+    case 'flux_annuel': {
+      const r = s.saison && s.saison.revenusMensuels
+      return Array.isArray(r) && r.filter((x) => Number(x) > 0).length >= 2
+    }
+    default:
+      return false // un candidat non déclaré n'est jamais offert
+  }
+}
+
+/** Les candidats d'un slot dont la donnée existe RÉELLEMENT (recommande d'abord).
+ *  Sans snapshot fourni (appels de structure) → on ne filtre pas. PUR, lecture seule. */
+export function candidatsValides(slot, snapshot) {
+  const liste = []
+  const ajout = (t) => { if (t && estConnu(t) && !liste.includes(t)) liste.push(t) }
+  ajout(slot && slot.recommande)
+  if (slot && Array.isArray(slot.alternatives)) slot.alternatives.forEach(ajout)
+  if (!snapshot) return liste
+  return liste.filter((t) => donneeSuffisante(t, snapshot))
+}
+
+/** Le type de bloc à RENDRE pour un slot : `choisi` s'il est valide, sinon `recommande`,
+ *  sinon le 1er candidat valide, sinon null (slot ignoré proprement). Coercition sûre :
+ *  un `choisi` inconnu/invalide ne peut jamais atteindre le rendu. PUR. */
+export function resoudreSlot(slot, snapshot) {
+  const valides = candidatsValides(slot, snapshot)
+  if (!valides.length) return null
+  if (slot && valides.includes(slot.choisi)) return slot.choisi
+  if (slot && valides.includes(slot.recommande)) return slot.recommande
+  return valides[0]
 }

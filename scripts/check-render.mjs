@@ -3,7 +3,8 @@
    Rend réellement MoteurRendu (JSX exécuté) avec la recette de démo et prouve :
      - le bloc flux_annuel produit du SVG (barres, ligne de dépenses) ;
      - le bloc de type inconnu est ignoré (aucun crash) ;
-     - les chiffres viennent du snapshot (dépenses 3 400 $).
+     - les chiffres viennent du snapshot (dépenses 3 400 $) ;
+     - le bloc chaine (couche de compréhension) relie ses nœuds.
    Lance : node scripts/check-render.mjs
    ========================================================================== */
 import { createServer } from 'vite'
@@ -22,10 +23,14 @@ const ok = (cond, label) => {
   if (!cond) fail++
 }
 
+// SSR insère des marqueurs d'hydratation <!-- --> ; toLocaleString('fr-CA') utilise des
+// espaces insécables (U+00A0 / U+202F). On les normalise en espace simple pour tester.
+const normaliser = (raw) => raw.replace(/<!--.*?-->/g, '').replace(/[  ]/g, ' ')
+
 try {
   const { default: MoteurRendu } = await vite.ssrLoadModule('/src/recettes/MoteurRendu.jsx')
   const { snapshotFromStore } = await vite.ssrLoadModule('/src/lib/canonical.js')
-  const { DEMO_SAISONNIER } = await vite.ssrLoadModule('/src/lib/storage.js')
+  const { DEMO_SAISONNIER, exempleStore } = await vite.ssrLoadModule('/src/lib/storage.js')
 
   const snapshot = snapshotFromStore(DEMO_SAISONNIER)
   const recette = {
@@ -40,10 +45,7 @@ try {
     ],
   }
 
-  const raw = renderToString(React.createElement(MoteurRendu, { recette, snapshot }))
-  // SSR insère des marqueurs d'hydratation <!-- --> entre texte+expression ;
-  // toLocaleString('fr-CA') utilise des espaces insécables. On normalise pour tester.
-  const html = raw.replace(/<!--.*?-->/g, '').replace(/[  ]/g, ' ')
+  const html = normaliser(renderToString(React.createElement(MoteurRendu, { recette, snapshot })))
 
   ok(html.includes('<svg'), 'le flux_annuel rend un SVG')
   ok(html.includes('Ton année en un coup'), 'titre du bloc présent')
@@ -52,14 +54,44 @@ try {
   ok(html.includes('fill="url(#faBarCyanA)"'), 'barres en cyan (dégradé faBarCyanA — refonte Figma)')
   ok(html.includes('#f6e7c9'), 'mois déficitaires en ambre (#f6e7c9)')
   ok(html.includes('Ton coussin') && html.includes('2,5 mois'), 'bloc jauge rendu (2,5 mois couverts)')
-  ok(html.includes('dans ton coussin cette saison'), 'bloc stat rendu')
+  // Anti-redondance : jauge ET stat montrent le MÊME chiffre (coussin) → un seul rendu.
+  ok(!html.includes('dans ton coussin cette saison'), 'anti-redondance : coussin pas répété (stat dédoublonné, jauge gardée)')
   ok(html.includes('puisent') && html.includes('15 000 $'), 'bloc fait CALCULÉ du snapshot (≈ 15 000 $)')
   ok(!html.includes('bloc_inexistant'), 'le bloc de type inconnu n’apparaît pas (ignoré proprement)')
+
+  // Le bloc stat fonctionne EN ISOLATION (sans jauge → rien à dédoublonner).
+  const htmlStat = renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'stat', params: {} }] }, snapshot }))
+  ok(htmlStat.includes('dans ton coussin cette saison'), 'bloc stat rendu (en isolation)')
 
   // Vue mensuelle : le MÊME bloc réduit via un paramètre.
   const recetteMensuel = { blocs: [{ type: 'flux_annuel', params: { vue: 'mensuel' } }] }
   const htmlM = renderToString(React.createElement(MoteurRendu, { recette: recetteMensuel, snapshot }))
   ok(htmlM.includes('Ton solde mois par mois'), 'param vue:mensuel → le bloc se réduit en vue mensuelle')
+
+  // Bloc chaîne (couche de compréhension) : profil avec dépenses saisies → chaîne ACTIVE.
+  // exempleStore : revenu net ≈ 3 533 $/mois, coût de vie ≈ 2 755 $, coussin 8 400 $.
+  const snapEx = snapshotFromStore(exempleStore())
+  const htmlC = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'chaine', params: { objectif: { nom: 'Mise de fonds', cible: 20000 } } }] }, snapshot: snapEx })))
+  ok(htmlC.includes('Revenu net') && htmlC.includes('Flux disponible'), 'chaine : les maillons revenuNet + fluxDisponible rendus')
+  ok(htmlC.includes('Mise de fonds'), 'chaine : l’objectif (nom) vient des params de la recette → rendu sur le maillon objectif')
+  ok(htmlC.includes('3 533 $'), 'chaine : revenu net tiré du snapshot (≈ 3 533 $/mois)')
+
+  // Sans dépenses ni revenu net (profil saison-only) → chaîne INACTIVE (état honnête, aucun zéro inventé).
+  const htmlCVide = renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'chaine', params: {} }] }, snapshot }))
+  ok(htmlCVide.includes('Ajoute ton revenu net'), 'chaine : sans revenu net → état vide honnête (pas de chiffres inventés)')
+
+  // ── ÉTAGE 1 : blocs manquants (barre_progression, chronologie, liste).
+  const htmlBP = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'barre_progression', params: { cible: 20000, etiquetteGauche: 'Déjà', etiquetteDroite: 'Maison' } }] }, snapshot: snapEx })))
+  ok(htmlBP.includes('Ta progression') && htmlBP.includes('42'), 'barre_progression : coussin 8 400 $ / cible 20 000 $ → 42 % (valeur du snapshot, cible de la recette)')
+  ok(htmlBP.includes('Maison'), 'barre_progression : param LIBRE conservé (étiquette de cible passée par la recette)')
+
+  const htmlChrVide = renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'chronologie', params: { label: 'Saison morte' } }] }, snapshot: snapEx }))
+  ok(htmlChrVide.includes('Pas de date fixée'), 'chronologie sans date → état honnête (jamais de date inventée)')
+  const htmlChr = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'chronologie', params: { label: 'Objectif', dateCible: '2099-01-01' } }] }, snapshot: snapEx })))
+  ok(htmlChr.includes('restants') && /\d/.test(htmlChr), 'chronologie avec date → compte à rebours rendu')
+
+  const htmlListe = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'liste', params: { titre: 'Où va l’argent' } }] }, snapshot: snapEx })))
+  ok(htmlListe.includes('Logement'), 'liste : catégories de dépenses tirées du snapshot (jamais inventées)')
 } catch (e) {
   fail++
   console.log('  ✗ exception au rendu :', e && e.message)
