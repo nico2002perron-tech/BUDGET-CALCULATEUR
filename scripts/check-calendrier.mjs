@@ -8,6 +8,7 @@ import { depensesRecurrentes, evenementsDuMois, prochainesEcheances, revenuParPa
 import { totalDepensesVie, totalClasse, depensesParDefaut } from '../src/lib/depenses.js'
 import { snapshotFromStore } from '../src/lib/canonical.js'
 import { moisCouverts, zoneDe } from '../src/lib/coussin.js'
+import { etSi, socleCourbe } from '../src/lib/horizon.js'
 
 let fail = 0
 const ok = (cond, label) => {
@@ -94,5 +95,29 @@ ok(Math.abs(snapF.fiscalite.segments.reduce((s, x) => s + x.montant, 0) - 75000)
 ok(snapF.coussin && snapF.coussin.moisCouverts === 3, 'snap.coussin : 9000 / 3000 = 3 mois')
 console.log(`      → net=${snapF.fiscalite.net}  taux=${snapF.fiscalite.tauxEffectif}%  libération=jour ${snapF.fiscalite.jourLiberation}`)
 
-console.log('\n' + (fail === 0 ? '✅ Calendrier + dépenses + portrait conformes' : `❌ ${fail} échec(s)`))
+console.log('\n— Patrimoine & projection (twin projectLife) —')
+const snapP = snapshotFromStore({
+  identity: { age: 34 },
+  revenus: { brutAnnuel: 75000 },
+  depenses: [
+    { id: 'l', classe: 'besoin', type: 'fixe', montant: 2000, jour: 1 },
+    { id: 'e', classe: 'epargne', type: 'fixe', montant: 500, jour: 1 },
+  ],
+  patrimoine: { age: 34, retraite: 65, rendement: 5, reer: 20000, celi: 10000, nonEnregistre: 0, maisonValeur: 300000, hypotheque: 220000, autresDettes: 0 },
+})
+ok(snapP.patrimoine && snapP.patrimoine.net === 110000, 'valeur nette = (20000+10000+300000) − 220000 = 110000')
+ok(snapP.projection && Array.isArray(snapP.projection.annees) && snapP.projection.annees.length === 57, 'projection : 57 années (âge 34 → 90)')
+ok(snapP.projection.annees[0].age === 34 && snapP.projection.annees[56].age === 90, 'âges de 34 à 90')
+ok(snapP.projection.retraiteAge === 65, 'âge de retraite = 65')
+ok(snapP.projection.annees.every((y, i) => i === 0 || snapP.projection.annees[i - 1].age < y.age), 'âges strictement croissants')
+
+console.log('\n— L’Horizon (le « et si ») —')
+const socle = socleCourbe(snapP.projection.annees)
+ok(socle && socle.years === 56, 'socle : 90 − 34 = 56 ans')
+ok(etSi(100000, 0, 0.05, 10) === 100000, '+0 $/mois → socle inchangé')
+ok(etSi(100000, 200, 0.05, 10) > 100000, '+200 $/mois → socle + valeur future de l’annuité')
+ok(Math.abs(etSi(0, 100, 0, 10) - 12000) < 1, 'taux 0 → extra × nMois (100 × 120 = 12 000)')
+console.log(`      → net=${snapP.patrimoine.net}  à 90 ans=${snapP.projection.annees[56].patrimoineNet}  rendement implicite=${(socle.rate * 100).toFixed(1)}%`)
+
+console.log('\n' + (fail === 0 ? '✅ Calendrier + dépenses + portrait + patrimoine conformes' : `❌ ${fail} échec(s)`))
 process.exit(fail === 0 ? 0 : 1)

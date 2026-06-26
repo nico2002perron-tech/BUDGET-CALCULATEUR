@@ -49,7 +49,7 @@ try {
   ok(html.includes('Ton année en un coup'), 'titre du bloc présent')
   ok(html.includes('dépenses 3 400 $/mois'), 'ligne de dépenses tirée du snapshot (3 400 $/mois)')
   ok((html.match(/<rect/g) || []).length >= 12, 'au moins 12 barres de revenus rendues')
-  ok(html.includes('fill="#00b4d8"'), 'barres en cyan (#00b4d8)')
+  ok(html.includes('fill="url(#faBarCyanA)"'), 'barres en cyan (dégradé faBarCyanA — refonte Figma)')
   ok(html.includes('#f6e7c9'), 'mois déficitaires en ambre (#f6e7c9)')
   ok(html.includes('Ton coussin') && html.includes('2,5 mois'), 'bloc jauge rendu (2,5 mois couverts)')
   ok(html.includes('dans ton coussin cette saison'), 'bloc stat rendu')

@@ -58,6 +58,13 @@ function Annuel({ revenus, depenses, souligner, anime }) {
       <p className="card-sub">Survole un mois d&rsquo;hiver pour voir ce qu&rsquo;il puise dans ton coussin.</p>
 
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        <defs>
+          {/* barres de revenus : dégradé vertical (brillant en haut → translucide en bas) */}
+          <linearGradient id="faBarCyanA" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#27c8ea" />
+            <stop offset="1" stopColor="#00a2c7" stopOpacity="0.82" />
+          </linearGradient>
+        </defs>
         {/* mois déficitaires : rectangle ambre cliquable/survolable */}
         {drawLean &&
           revenus.map((r, i) =>
@@ -84,7 +91,7 @@ function Annuel({ revenus, depenses, souligner, anime }) {
           const x = padL + i * slot + (slot - barW) / 2
           const y = baseY - bh
           return (
-            <rect key={`bar-${i}`} x={x} y={animer ? baseY : y} width={barW} height={animer ? 0 : bh} rx="4" fill={CYAN}>
+            <rect key={`bar-${i}`} x={x} y={animer ? baseY : y} width={barW} height={animer ? 0 : bh} rx="4" fill="url(#faBarCyanA)">
               {animer && (
                 <>
                   <animate attributeName="height" from="0" to={bh} dur="0.7s" begin={`${i * 40}ms`} fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1" />
@@ -153,6 +160,16 @@ function Mensuel({ revenus, depenses, anime }) {
       <p className="card-sub">Ce qu&rsquo;il te reste (cyan) ou ce que tu puises dans ton coussin (ambre).</p>
 
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        <defs>
+          <linearGradient id="faBarCyanM" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#27c8ea" />
+            <stop offset="1" stopColor="#00a2c7" stopOpacity="0.82" />
+          </linearGradient>
+          <linearGradient id="faBarAmberM" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#e8ad4e" />
+            <stop offset="1" stopColor="#cf8e22" stopOpacity="0.82" />
+          </linearGradient>
+        </defs>
         <line x1={padL} y1={mid} x2={W - padR} y2={mid} stroke="#cdd6e5" strokeWidth="1.5" />
         {revenus.map((r, i) => {
           const net = r - depenses
@@ -160,7 +177,7 @@ function Mensuel({ revenus, depenses, anime }) {
           const x = padL + i * slot + (slot - barW) / 2
           const pos = net >= 0
           const y = pos ? mid - h : mid
-          const col = pos ? CYAN : AMBER
+          const col = pos ? 'url(#faBarCyanM)' : 'url(#faBarAmberM)'
           return (
             <g key={`mb-${i}`}>
               <rect x={x} y={animer ? mid : y} width={barW} height={animer ? 0 : h} rx="4" fill={col}>

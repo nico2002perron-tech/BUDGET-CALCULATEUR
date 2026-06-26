@@ -32,7 +32,9 @@ export default function SaisieRevenus({ revenus, onChange }) {
   const moisActifs = Array.isArray(r.moisActifs) ? r.moisActifs : moisActifsDefaut()
   const repartition = Array.isArray(r.repartition) ? r.repartition : Array.from({ length: 12 }, () => 0)
   const sommeReparti = repartition.reduce((a, b) => a + (Number(b) || 0), 0)
-  const mensuel = revenuMensuel(r)
+  // On calcule avec la fréquence EFFECTIVE (celle affichée), pas le `r.freq` brut :
+  // ainsi le « net/mois » est juste même si le store n'a pas encore de `freq`.
+  const mensuel = revenuMensuel({ ...r, freq })
 
   // — régulier —
   const setFreq = (id) => onChange({ ...r, mode: 'regulier', freq: id })
@@ -84,6 +86,29 @@ export default function SaisieRevenus({ revenus, onChange }) {
 
       {!saisonnier ? (
         <>
+          <label className="champ champ-hero">
+            <span className="champ-lbl">Montant par paie (net)</span>
+            <span className="champ-box champ-box-hero">
+              <span className="champ-prefix">$</span>
+              <input className="champ-input" inputMode="decimal" type="text" placeholder="2 000" value={r.montantParPaie ?? ''} onChange={(e) => setMontant(e.target.value)} aria-label="Montant par paie" />
+              <span className="champ-suffix">/ paie</span>
+            </span>
+          </label>
+
+          {/* L'info CLÉ, en évidence : le net mensuel (et l'équivalent annuel) en direct. */}
+          <div className="rev-resume" aria-live="polite">
+            <span className="rev-resume-main">≈ <b>{formatCAD(mensuel)}</b> net <span className="rev-resume-u">/ mois</span></span>
+            <span className="rev-resume-an">soit {formatCAD(mensuel * 12)} / an</span>
+          </div>
+
+          <div className="saisie-q">
+            <span className="saisie-q-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9.5v0M18 14.5v0" />
+              </svg>
+            </span>
+            <span className="saisie-q-txt"><b>Comment es-tu payé ?</b><em>choisis ta fréquence de paie</em></span>
+          </div>
           <div className="freq-cards">
             {FREQS.map((f) => (
               <button key={f.id} type="button" className={`freq-card ${freq === f.id ? 'on' : ''}`} aria-pressed={freq === f.id} onClick={() => setFreq(f.id)}>
@@ -92,15 +117,6 @@ export default function SaisieRevenus({ revenus, onChange }) {
               </button>
             ))}
           </div>
-
-          <label className="champ">
-            <span className="champ-lbl">Montant par paie (net)</span>
-            <span className="champ-box">
-              <span className="champ-prefix">$</span>
-              <input className="champ-input" inputMode="decimal" type="text" placeholder="2 000" value={r.montantParPaie ?? ''} onChange={(e) => setMontant(e.target.value)} aria-label="Montant par paie" />
-              <span className="champ-suffix">/ paie</span>
-            </span>
-          </label>
 
           {(freq === 'weekly' || freq === 'biweekly') && (
             <>
@@ -137,10 +153,6 @@ export default function SaisieRevenus({ revenus, onChange }) {
               </div>
             </div>
           )}
-
-          <p className="revenu-calc">
-            ≈ <b>{formatCAD(mensuel)}</b> par mois&nbsp;·&nbsp;{formatCAD(mensuel * 12)} par an
-          </p>
         </>
       ) : (
         <>
@@ -177,22 +189,28 @@ export default function SaisieRevenus({ revenus, onChange }) {
         </>
       )}
 
-      <label className="champ champ-coussin">
-        <span className="champ-lbl">Ton coussin actuel <span className="champ-opt">épargne de sécurité — optionnel</span></span>
-        <span className="champ-box">
-          <span className="champ-prefix">$</span>
-          <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.coussin ?? ''} onChange={(e) => setCoussin(e.target.value)} aria-label="Coussin actuel" />
-        </span>
-      </label>
+      <details className="rev-plus">
+        <summary className="rev-plus-sum">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          Ajouter des détails <span className="rev-plus-opt">(optionnel)</span>
+        </summary>
+        <label className="champ champ-coussin">
+          <span className="champ-lbl">Ton coussin actuel <span className="champ-opt">épargne de sécurité</span></span>
+          <span className="champ-box">
+            <span className="champ-prefix">$</span>
+            <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.coussin ?? ''} onChange={(e) => setCoussin(e.target.value)} aria-label="Coussin actuel" />
+          </span>
+        </label>
 
-      <label className="champ champ-coussin">
-        <span className="champ-lbl">Ton revenu brut annuel <span className="champ-opt">avant impôt — optionnel, pour l’anatomie du dollar</span></span>
-        <span className="champ-box">
-          <span className="champ-prefix">$</span>
-          <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.brutAnnuel ?? ''} onChange={(e) => setBrut(e.target.value)} aria-label="Revenu brut annuel" />
-          <span className="champ-suffix">/ an</span>
-        </span>
-      </label>
+        <label className="champ champ-coussin">
+          <span className="champ-lbl">Ton revenu brut annuel <span className="champ-opt">avant impôt — pour l’anatomie du dollar</span></span>
+          <span className="champ-box">
+            <span className="champ-prefix">$</span>
+            <input className="champ-input" inputMode="decimal" type="text" placeholder="0" value={r.brutAnnuel ?? ''} onChange={(e) => setBrut(e.target.value)} aria-label="Revenu brut annuel" />
+            <span className="champ-suffix">/ an</span>
+          </span>
+        </label>
+      </details>
 
       <label className="bascule">
         <input type="checkbox" checked={saisonnier} onChange={(e) => basculer(e.target.checked)} />

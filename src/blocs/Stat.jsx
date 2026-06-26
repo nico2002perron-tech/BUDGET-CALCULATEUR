@@ -3,11 +3,20 @@
    Ici : le montant du coussin. Compte de 0 → valeur au montage (comme la maquette).
 
    props :
-     params : {}
+     params : { ton?: 'cyan'|'bleu'|'ambre'|'vert'|'cyan_clair' }  ← teinte de la puce
      data   : { valeur:number, label:string }  ← du snapshot
    ========================================================================== */
 import { useEffect, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
+
+// Teinte de puce → classe CSS (présentation seulement ; défaut cyan).
+const TON_CLASSE = {
+  cyan: '',
+  bleu: ' stat-ic--bleu',
+  ambre: ' stat-ic--ambre',
+  vert: ' stat-ic--vert',
+  cyan_clair: ' stat-ic--cyanclair',
+}
 
 function reduceMotion() {
   return (
@@ -17,8 +26,9 @@ function reduceMotion() {
   )
 }
 
-export default function Stat({ data = {} }) {
+export default function Stat({ params = {}, data = {} }) {
   const cible = Number(data.valeur) || 0
+  const tonClasse = TON_CLASSE[params.ton] || ''
   const reduce = reduceMotion()
   const [n, setN] = useState(reduce ? cible : 0)
 
@@ -43,7 +53,7 @@ export default function Stat({ data = {} }) {
   return (
     <section className="card">
       <div className="stat">
-        <span className="stat-ic">
+        <span className={`stat-ic${tonClasse}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
           </svg>

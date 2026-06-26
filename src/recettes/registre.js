@@ -18,6 +18,9 @@ import BarreEmpilee from '../blocs/BarreEmpilee.jsx'
 import CoussinUrgence from '../blocs/CoussinUrgence.jsx'
 import AnatomieDollar from '../blocs/AnatomieDollar.jsx'
 import ImpotPalier from '../blocs/ImpotPalier.jsx'
+import PatrimoineVie from '../blocs/PatrimoineVie.jsx'
+import Horizon from '../blocs/Horizon.jsx'
+import Composition from '../blocs/Composition.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -33,6 +36,9 @@ export const REGISTRE = {
   coussin_urgence: CoussinUrgence,
   anatomie_dollar: AnatomieDollar,
   impot_palier: ImpotPalier,
+  patrimoine_vie: PatrimoineVie,
+  horizon: Horizon,
+  composition: Composition,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

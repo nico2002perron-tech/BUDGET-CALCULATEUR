@@ -69,7 +69,9 @@ export function revenuMensuel(revenus) {
     return Math.round(annuel / 12)
   }
   if (r.montantParPaie != null && r.montantParPaie !== '') {
-    return Math.round((Math.max(0, Number(r.montantParPaie) || 0) * payParYear(r.freq)) / 12)
+    // freq absente (store partiel/ancien) → biweekly par défaut (= défaut de l'UI),
+    // pour que le « net/mois » corresponde TOUJOURS à la fréquence affichée.
+    return Math.round((Math.max(0, Number(r.montantParPaie) || 0) * payParYear(r.freq || 'biweekly')) / 12)
   }
   if (r.mensuel != null) return Math.max(0, Math.round(Number(r.mensuel) || 0)) // compat ancien modèle
   return 0

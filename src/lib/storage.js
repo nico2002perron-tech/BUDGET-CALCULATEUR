@@ -31,6 +31,17 @@ export function emptyStore() {
       repartition: Array.from({ length: 12 }, () => 0),
     },
     depenses: depensesParDefaut(),
+    patrimoine: {
+      age: null,
+      retraite: 65,
+      rendement: 5, // %/an
+      reer: null,
+      celi: null,
+      nonEnregistre: null,
+      maisonValeur: null,
+      hypotheque: null,
+      autresDettes: null,
+    },
   }
 }
 
@@ -56,6 +67,17 @@ export function exempleStore() {
       { id: 'wcat_autres', label: 'Autres', classe: 'envie', type: 'variable', montant: 70, jour: null },
       { id: 'fix_epargne', label: 'Épargne (REER, CELI, REEE)', classe: 'epargne', type: 'fixe', montant: 200, jour: 1 },
     ],
+    patrimoine: {
+      age: 34,
+      retraite: 65,
+      rendement: 5,
+      reer: 22000,
+      celi: 14000,
+      nonEnregistre: 6000,
+      maisonValeur: 320000,
+      hypotheque: 240000,
+      autresDettes: 8000,
+    },
   }
 }
 

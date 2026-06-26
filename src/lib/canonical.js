@@ -18,7 +18,7 @@ import { totaux, repartition, engageLibre, parCategorie } from './budget.js'
 import { revenusMensuels as deriveRevenus, revenuMensuel } from './revenus.js'
 import { depensesRecurrentes, prochainesEcheances, revenuParPaie } from './calendrier.js'
 import { moisCouverts, zoneDe, cibles } from './coussin.js'
-import { calcTax } from './twin.js'
+import { calcTax, createTwin, projectLife } from './twin.js'
 
 function num(v) {
   const n = Number(v)
@@ -171,6 +171,104 @@ function buildFiscalite(store) {
   }
 }
 
+// Construit l'objet twin (moteur de vie) à partir du silo : actifs/passifs du
+// volet patrimoine + revenu brut (revenus) + coût de vie/épargne (dépenses).
+function twinFromStore(store) {
+  const p = (store && store.patrimoine) || {}
+  const id = (store && store.identity) || {}
+  const brut = num(store && store.revenus && store.revenus.brutAnnuel) || 0
+  const dep = store && Array.isArray(store.depenses) ? store.depenses : []
+  const coutVie = dep.filter((d) => d && d.classe !== 'epargne').reduce((s, d) => s + (Number(d.montant) || 0), 0)
+  const epargne = dep.filter((d) => d && d.classe === 'epargne').reduce((s, d) => s + (Number(d.montant) || 0), 0)
+  const rdt = (num(p.rendement) != null ? num(p.rendement) : 5) / 100
+  return createTwin({
+    age: num(p.age) || num(id.age) || 35,
+    retirementAge: num(p.retraite) || 65,
+    revenus: [{ source: 'Salaire', montant: brut, croissance: 0.025 }],
+    depensesMensuelles: coutVie,
+    epargneMensuelle: epargne,
+    reer: num(p.reer) || 0,
+    celi: num(p.celi) || 0,
+    nonEnregistre: num(p.nonEnregistre) || 0,
+    maisonValeur: num(p.maisonValeur) || 0,
+    hypotheque: num(p.hypotheque) || 0,
+    autresDettes: num(p.autresDettes) || 0,
+    rendementActions: rdt,
+    rendementOblig: rdt,
+    allocActions: 0.7,
+  })
+}
+
+// Patrimoine net courant + composition (actifs/passifs). Null si rien saisi.
+function buildPatrimoine(store) {
+  const p = (store && store.patrimoine) || {}
+  const reer = num(p.reer) || 0
+  const celi = num(p.celi) || 0
+  const nonEnr = num(p.nonEnregistre) || 0
+  const maison = num(p.maisonValeur) || 0
+  const hypo = num(p.hypotheque) || 0
+  const dettes = num(p.autresDettes) || 0
+  const actifs = reer + celi + nonEnr + maison
+  const passifs = hypo + dettes
+  if (actifs <= 0 && passifs <= 0) return null
+  return {
+    net: Math.round(actifs - passifs),
+    actifs: Math.round(actifs),
+    passifs: Math.round(passifs),
+    composition: { reer, celi, nonEnregistre: nonEnr, maison, hypotheque: hypo, autresDettes: dettes },
+  }
+}
+
+// Trajectoire de la valeur nette année par année (projectLife du twin). Null
+// si pas de patrimoine. âgeRupture = 1er âge en retraite où le net repasse < 0.
+function buildProjection(store) {
+  const pat = buildPatrimoine(store)
+  if (!pat) return null
+  const twin = twinFromStore(store)
+  let proj
+  try { proj = projectLife(twin) } catch { return null }
+  if (!Array.isArray(proj) || proj.length < 2) return null
+  const annees = proj.map((y) => {
+    const actifs = (y.reer || 0) + (y.celi || 0) + (y.nonEnregistre || 0) + (y.maisonValeur || 0)
+    const passifs = (y.hypotheque || 0) + (y.dettes || 0)
+    return {
+      age: y.age,
+      patrimoineNet: Math.round(actifs - passifs),
+      actifsTotaux: Math.round(actifs),
+      passifsTotaux: Math.round(passifs),
+      reer: Math.round(y.reer || 0),
+      celi: Math.round(y.celi || 0),
+      nonEnregistre: Math.round(y.nonEnregistre || 0),
+      maisonValeur: Math.round(y.maisonValeur || 0),
+      hypotheque: Math.round(y.hypotheque || 0),
+      dettes: Math.round(y.dettes || 0),
+      isRetired: !!y.isRetired,
+    }
+  })
+  // Le 1er point = la valeur nette d'AUJOURD'HUI (projectLife pousse la fin de la
+  // 1re année) → la courbe démarre sur le chiffre de la composition, pas un an plus tard.
+  if (annees.length) {
+    const c = pat.composition
+    annees[0] = {
+      ...annees[0],
+      patrimoineNet: pat.net,
+      actifsTotaux: pat.actifs,
+      passifsTotaux: pat.passifs,
+      reer: Math.round(c.reer || 0),
+      celi: Math.round(c.celi || 0),
+      nonEnregistre: Math.round(c.nonEnregistre || 0),
+      maisonValeur: Math.round(c.maison || 0),
+      hypotheque: Math.round(c.hypotheque || 0),
+      dettes: Math.round(c.autresDettes || 0),
+    }
+  }
+  let ageRupture = null
+  for (const y of annees) {
+    if (y.isRetired && y.patrimoineNet < 0) { ageRupture = y.age; break }
+  }
+  return { annees, retraiteAge: twin.retirementAge, ageRupture }
+}
+
 // Données récurrentes pour le bloc calendrier : le modèle de paie + les dépenses
 // datées. Null si rien à montrer (aucune entrée possible ET aucune sortie datée).
 function buildCalendrier(store) {
@@ -214,6 +312,8 @@ export function snapshotFromStore(store) {
   let depenses = null
   let coussin = null
   let fiscalite = null
+  let patrimoine = null
+  let projection = null
   try { identity = buildIdentity(store) } catch { /* garde les null */ }
   try { budget = buildBudget(store) } catch { budget = null }
   try { saison = buildSaison(store) } catch { saison = null }
@@ -222,6 +322,8 @@ export function snapshotFromStore(store) {
   try { depenses = buildDepenses(store) } catch { depenses = null }
   try { coussin = buildCoussin(store) } catch { coussin = null }
   try { fiscalite = buildFiscalite(store) } catch { fiscalite = null }
+  try { patrimoine = buildPatrimoine(store) } catch { patrimoine = null }
+  try { projection = buildProjection(store) } catch { projection = null }
 
   return {
     meta: {
@@ -232,8 +334,8 @@ export function snapshotFromStore(store) {
     identity: identity,
     budget: budget, // null si pas rempli
     hypotheque: null, // hors prototype (pas de silo hypothèque ici)
-    patrimoine: null, // hors prototype (pas de twin chargé)
-    projection: null, // hors prototype
+    patrimoine: patrimoine, // valeur nette + composition (volet patrimoine)
+    projection: projection, // trajectoire année par année (projectLife du twin)
     entites: [], // hors prototype (pas de build-tool branché)
     aVenir: aVenir, // échéances datées des ~45 prochains jours (paies + dépenses fixes)
     saison: saison, // additif : alimente les blocs temporels (flux_annuel)

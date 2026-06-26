@@ -80,8 +80,8 @@ export const BLOCS = {
 
   stat: {
     taille: 'compacte',
-    bornes: {},
-    defauts: {},
+    bornes: { ton: ['cyan', 'bleu', 'ambre', 'vert', 'cyan_clair'] },
+    defauts: { ton: 'cyan' },
     resolve: (snap) => ({
       valeur: snap && snap.saison ? snap.saison.coussin || 0 : 0,
       label: 'dans ton coussin cette saison',
@@ -175,21 +175,65 @@ export const BLOCS = {
     },
   },
 
+  patrimoine_vie: {
+    taille: 'large',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const p = snap && snap.projection
+      return p ? { annees: p.annees, retraiteAge: p.retraiteAge, ageRupture: p.ageRupture } : { annees: [], retraiteAge: null }
+    },
+  },
+
+  horizon: {
+    taille: 'large',
+    bornes: { ajoutMax: [500, 1000, 2000], pas: [50, 100] },
+    defauts: { ajoutMax: 1000, pas: 50 },
+    resolve: (snap) => {
+      const p = snap && snap.projection
+      return p ? { annees: p.annees } : { annees: [] }
+    },
+  },
+
+  composition: {
+    taille: 'compacte',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const p = snap && snap.patrimoine
+      return p ? { net: p.net, actifs: p.actifs, passifs: p.passifs, composition: p.composition } : { net: 0, actifs: 0, passifs: 0, composition: {} }
+    },
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},
     defauts: {},
-    // Fait CALCULÉ depuis le snapshot (chiffres vrais, pas inventés). Le texte
-    // d'un fait fourni par la recette passe, lui, par filtrerFait() (validerRecette).
+    // Fait CALCULÉ depuis le snapshot (chiffres vrais, pas inventés). On choisit le
+    // constat le plus PARLANT selon la situation — faits seulement, aucun jugement.
+    // Le texte d'un fait fourni par la recette passe, lui, par filtrerFait().
     resolve: (snap) => {
       const s = snap && snap.saison
-      if (!s || !Array.isArray(s.revenusMensuels)) return { texte: '' }
-      const dep = s.depensesMensuelles || 0
-      const moisDef = s.revenusMensuels.filter((r) => r < dep).length
-      const puise = s.revenusMensuels.reduce((acc, r) => acc + Math.max(0, dep - r), 0)
-      return {
-        texte: `Tes ${moisDef} mois sous le seuil de dépenses puisent ≈ ${formatCAD(puise)} dans ton coussin sur l'année.`,
+      const d = snap && snap.depenses
+      // 1) Saisonnier : s'il y a des mois sous le seuil de dépenses, le fait le plus
+      //    parlant est le coussin puisé sur l'année.
+      if (s && Array.isArray(s.revenusMensuels)) {
+        const dep = s.depensesMensuelles || 0
+        const moisDef = s.revenusMensuels.filter((r) => r < dep).length
+        if (moisDef > 0) {
+          const puise = s.revenusMensuels.reduce((acc, r) => acc + Math.max(0, dep - r), 0)
+          return { texte: `Tes ${moisDef} mois sous le seuil de dépenses puisent ≈ ${formatCAD(puise)} dans ton coussin sur l'année.` }
+        }
       }
+      // 2) Revenu stable : la part déjà ENGAGÉE (dépenses fixes) de ton revenu mensuel.
+      if (d && d.revenu > 0 && d.engageLibre) {
+        const fixe = Number(d.engageLibre.fixe) || 0
+        if (fixe > 0) {
+          const pct = Math.round((fixe / d.revenu) * 100)
+          return { texte: `≈ ${pct} % de ton revenu mensuel est déjà engagé dans des dépenses fixes.` }
+        }
+      }
+      return { texte: '' }
     },
   },
 }
