@@ -27,8 +27,8 @@ const GLYPHE = {
   barre_progression: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="10" width="18" height="5" rx="2.5" /><rect x="3" y="10" width="11" height="5" rx="2.5" fill="currentColor" stroke="none" /></svg>,
 }
 
-export default function ChoixAngle({ kpiId, snapshot, recommande, formeActuelle, onChoisir, formes }) {
-  const liste = Array.isArray(formes) ? formes : formesPourKPI(kpiId, snapshot)
+export default function ChoixAngle({ kpiId, snapshot, recommande, formeActuelle, onChoisir, formes, ctx }) {
+  const liste = Array.isArray(formes) ? formes : formesPourKPI(kpiId, snapshot, ctx)
   if (!liste || liste.length <= 1) return null // rien à choisir → on n'encombre pas
 
   return (

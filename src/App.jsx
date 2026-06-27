@@ -485,7 +485,7 @@ function App() {
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
-                  const peutVoirAutrement = !!kb && formesPourKPI(kb.KPI, snapshot).length > 1
+                  const peutVoirAutrement = !!kb && formesPourKPI(kb.KPI, snapshot, kb.params).length > 1
                   const angleOuvert = angleWidget === w.id
                   return (
                     <section className={`tour-widget tour-vues${anime ? ' is-anime' : ''}`} key={w.id}>
@@ -504,6 +504,7 @@ function App() {
                         <ChoixAngle
                           kpiId={kb.KPI}
                           snapshot={snapshot}
+                          ctx={kb.params}
                           recommande={kb.recommande || kb.forme}
                           formeActuelle={kb.forme}
                           onChoisir={(f) => changerAngle(w.id, kb.KPI, f)}

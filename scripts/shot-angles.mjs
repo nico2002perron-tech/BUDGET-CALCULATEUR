@@ -41,6 +41,16 @@ await pa.locator('.angle-carte', { hasText: 'Compte à rebours' }).click()
 await pa.waitForTimeout(700)
 await pa.screenshot({ path: 'captures/angle-apres-2-chronologie.png' })
 console.log('A2 capturé : même KPI re-rendu en chronologie (présentation pure)')
+// L'ANGLE COMPARAISON : deux chemins (scénarios) côte à côte — desktop + mobile.
+await pa.locator('.angle-carte', { hasText: 'Comparaison' }).click()
+await pa.waitForSelector('.cmp', { timeout: 3000 })
+await pa.waitForTimeout(700)
+await pa.screenshot({ path: 'captures/angle-apres-3-comparaison.png' })
+console.log('A3 capturé : comparaison — deux chemins côte à côte (le tuyau scénarios)')
+await pa.setViewportSize({ width: 390, height: 1600 })
+await pa.waitForTimeout(500)
+await pa.screenshot({ path: 'captures/angle-apres-3-comparaison-mobile.png' })
+console.log('A3 mobile capturé')
 
 /* ── B) Porte « pendant » : l'atelier à l'assemblage ──────────────────────── */
 const pb = await page(seed({ tourWidgets: [] }))

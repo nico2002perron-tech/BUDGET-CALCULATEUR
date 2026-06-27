@@ -19,6 +19,7 @@
 import { evaluerGraphe } from '../lib/graphe.js'
 import { filtrerFait, estConnu } from './schema.js'
 import { formatCAD, formatPct } from '../lib/format.js'
+import { genererScenarios } from '../lib/scenarios.js'
 
 function num(v) {
   const n = Number(v)
@@ -51,8 +52,15 @@ export const REGISTRE_KPIS = [
     id: 'horizon_objectif', domaine: 'objectif', question: 'Dans combien de temps ?',
     requiert: ['capacite'], blocsCompatibles: ['chaine', 'chronologie', 'stat', 'comparaison'],
     resolve: (s, ctx) => {
-      const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null
-      return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Ta cible est déjà atteinte.' : h == null ? 'À ton rythme actuel, ta cible n’avance pas.' : `À ton rythme, ta cible est à ${h} mois.` }
+      const g = objG(s, ctx)
+      const o = g.objectif
+      if (!o) return { valeur: null, unite: 'mois', texteFactuel: '' }
+      // ctx.contributionMensuelle (un SCÉNARIO) → horizon à CE rythme = restant / contribution.
+      // Sans contribution → la pleine capacité (comportement d'origine, inchangé).
+      const contrib = num(ctx && ctx.contributionMensuelle)
+      const h = contrib > 0 ? (o.restant <= 0 ? 0 : Math.ceil(o.restant / contrib)) : o.horizonMois
+      const intro = contrib > 0 ? 'À ce rythme' : 'À ton rythme'
+      return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Ta cible est déjà atteinte.' : h == null ? 'À ton rythme actuel, ta cible n’avance pas.' : `${intro}, ta cible est à ${h} mois.` }
     },
   },
   {
@@ -294,24 +302,51 @@ export function nomForme(forme) {
   return NOM_FORME[forme] || forme
 }
 
+/** LE TUYAU scenarios.js → comparaison : deux scénarios d'un objectif deviennent les
+ *  deux côtés d'un bloc comparaison. Chaque côté = un CTX (contribution différente) que
+ *  resolveKPI résoudra — la valeur ne sort JAMAIS d'un calcul du bloc. Il faut ≥2
+ *  scénarios RÉELS et distincts (sinon null → comparaison n'a rien à comparer). PUR.
+ *  @returns {null | { ctxA, etiquetteA, ctxB, etiquetteB, ecart }} */
+export function comparaisonScenarios(snapshot, ctx) {
+  const objectif = ctx && ctx.objectif
+  const cible = objectif ? num(objectif.cible) : 0
+  if (!(cible > 0)) return null
+  const scs = genererScenarios(snapshot, { cout: cible, echeance: ctx && ctx.echeance })
+  // Seuls les scénarios à horizon réel + contribution > 0 (les cas-limites « déjà atteint »
+  // / « capacité nulle » rendent 1 carte sans contribution → écartés ici).
+  const reels = scs.filter((x) => typeof x.horizonMois === 'number' && isFinite(x.horizonMois) && num(x.contributionMensuelle) > 0)
+  if (reels.length < 2) return null
+  const bas = reels[0] // plus faible contribution → horizon le plus long
+  const haut = reels[reels.length - 1] // pleine capacité → horizon le plus court
+  if (bas.horizonMois === haut.horizonMois) return null // pas d'écart → rien à comparer
+  const fA = filtrerFait(`En orientant ${formatCAD(bas.contributionMensuelle)}/mois`)
+  const fB = filtrerFait(`Toute ta capacité (${formatCAD(haut.contributionMensuelle)}/mois)`)
+  return {
+    ctxA: { objectif, contributionMensuelle: bas.contributionMensuelle },
+    etiquetteA: fA.ok && fA.texte ? fA.texte : `${formatCAD(bas.contributionMensuelle)}/mois`,
+    ctxB: { objectif, contributionMensuelle: haut.contributionMensuelle },
+    etiquetteB: fB.ok && fB.texte ? fB.texte : `${formatCAD(haut.contributionMensuelle)}/mois`,
+    ecart: Math.abs(bas.horizonMois - haut.horizonMois),
+  }
+}
+
 /** Les formes OFFERTES pour un KPI : ses blocsCompatibles existants, filtrés par les
- *  données. Si un snapshot est fourni et que le KPI n'est pas résoluble → aucune (pas
- *  d'angle pour une métrique absente). PUR. */
-export function formesPourKPI(kpiId, snapshot) {
+ *  données. KPI non résoluble → aucune. `comparaison` n'est offert que si le tuyau
+ *  scénarios rend ≥2 chemins distincts (data-aware — note #1 résolue par la DONNÉE, pas
+ *  à la main : il s'allume parce qu'il a deux vraies valeurs). PUR. */
+export function formesPourKPI(kpiId, snapshot, ctx) {
   const def = kpiPourId(kpiId)
   if (!def || !Array.isArray(def.blocsCompatibles)) return []
-  if (snapshot !== undefined && snapshot !== null && !resolveKPI(kpiId, snapshot, {}).disponible) return []
-  // comparaison a besoin de DEUX valeurs ; sans elles, il n'a rien à comparer → on ne
-  // l'offre pas (note #1). Le branchement scénarios→comparaison le rendra conditionnel
-  // (offert dès qu'il y a ≥2 scénarios) plutôt que masqué d'office.
-  return def.blocsCompatibles.filter((t) => estConnu(t) && t !== 'comparaison')
+  if (snapshot !== undefined && snapshot !== null && !resolveKPI(kpiId, snapshot, ctx || {}).disponible) return []
+  const comparaisonOk = !!(snapshot && comparaisonScenarios(snapshot, ctx || {}))
+  return def.blocsCompatibles.filter((t) => estConnu(t) && (t !== 'comparaison' || comparaisonOk))
 }
 
 /** La forme à RENDRE pour un KPI : la choisie si offerte, sinon la 1re offerte, sinon
  *  null. Coercition sûre — une forme invalide ne peut jamais atteindre le rendu (miroir
  *  de resoudreSlot, côté KPI). PUR. */
-export function resoudreForme(kpiId, formeChoisie, snapshot) {
-  const formes = formesPourKPI(kpiId, snapshot)
+export function resoudreForme(kpiId, formeChoisie, snapshot, ctx) {
+  const formes = formesPourKPI(kpiId, snapshot, ctx)
   if (!formes.length) return null
   return formes.includes(formeChoisie) ? formeChoisie : formes[0]
 }

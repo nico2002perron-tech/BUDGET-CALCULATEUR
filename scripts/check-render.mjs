@@ -114,6 +114,14 @@ try {
   // Data-aware : snapshot vide → KPI non résoluble des deux côtés → pas de faux écart.
   const htmlCmpVide = normaliser(renderToString(React.createElement(MoteurRendu, { recette: cmpRec, snapshot: {} })))
   ok(htmlCmpVide.includes('Rien à comparer'), 'comparaison : snapshot vide → état honnête (pas de faux écart, pas de « +null »)')
+
+  // AUTO-DÉRIVE (tuyau scénarios) : la recette ne nomme QUE {objectif} ; MoteurRendu dérive
+  // les deux chemins des scénarios. snapEx (coussin 8 400, capacité 778) → 389 $/mois = 30 mois
+  // vs pleine capacité 778 $/mois = 15 mois ; écart 15.
+  const cmpAuto = { blocs: [{ KPI: 'horizon_objectif', forme: 'comparaison', params: { objectif: { cible: 20000 } } }] }
+  const htmlAuto = normaliser(renderToString(React.createElement(MoteurRendu, { recette: cmpAuto, snapshot: snapEx })))
+  ok(htmlAuto.includes('30 mois') && htmlAuto.includes('Toute ta capacité'), 'comparaison auto-dérivée : deux chemins de scénarios (389 $/mois → 30 mois vs pleine capacité)')
+  ok(htmlAuto.includes('Écart') && htmlAuto.includes('15 mois'), 'comparaison auto-dérivée : écart factuel (30 − 15 = 15 mois)')
 } catch (e) {
   fail++
   console.log('  ✗ exception au rendu :', e && e.message)

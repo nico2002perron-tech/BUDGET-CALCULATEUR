@@ -211,7 +211,7 @@ export default function AtelierIndicateur({ snapshot, onAjouter }) {
           {recetteAffichee && (
             <div className="atelier-apercu tour-vues is-anime">
               <span className="atelier-apercu-tag">Aperçu — ta tour a assemblé ceci</span>
-              {kpiBloc && formesPourKPI(kpiBloc.KPI, snapshot).length > 1 && (
+              {kpiBloc && formesPourKPI(kpiBloc.KPI, snapshot, kpiBloc.params).length > 1 && (
                 <div className="atelier-angles">
                   <button type="button" className="atelier-autres-angles" onClick={() => setAngleOuvert((o) => !o)} aria-expanded={angleOuvert}>
                     {angleOuvert ? 'Masquer les angles' : 'Voir autrement'}
@@ -220,6 +220,7 @@ export default function AtelierIndicateur({ snapshot, onAjouter }) {
                     <ChoixAngle
                       kpiId={kpiBloc.KPI}
                       snapshot={snapshot}
+                      ctx={kpiBloc.params}
                       recommande={kpiBloc.recommande || kpiBloc.forme}
                       formeActuelle={formeChoisie || kpiBloc.forme}
                       onChoisir={(f) => setFormeChoisie(f)}
