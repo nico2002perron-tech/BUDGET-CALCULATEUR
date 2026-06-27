@@ -244,6 +244,19 @@ export const BLOCS = {
     },
   },
 
+  // Studio (#21) — la TUILE « fabriquée pour toi ». L'entité vit dans le silo et est
+  // surfacée par snapshot.entites ; la recette ne porte que son `id`.
+  carte_entite: {
+    taille: 'large',
+    bornes: {},
+    defauts: {},
+    resolve: (snap, params) => {
+      const id = params && params.id
+      const e = snap && Array.isArray(snap.entites) ? snap.entites.find((x) => x && x.id === id) : null
+      return e || null
+    },
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},

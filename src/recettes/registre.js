@@ -25,6 +25,7 @@ import Chaine from '../blocs/Chaine.jsx'
 import BarreProgression from '../blocs/BarreProgression.jsx'
 import Chronologie from '../blocs/Chronologie.jsx'
 import Liste from '../blocs/Liste.jsx'
+import CarteEntite from '../blocs/CarteEntite.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -47,6 +48,7 @@ export const REGISTRE = {
   barre_progression: BarreProgression,
   chronologie: Chronologie,
   liste: Liste,
+  carte_entite: CarteEntite,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

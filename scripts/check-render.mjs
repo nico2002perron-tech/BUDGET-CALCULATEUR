@@ -92,6 +92,15 @@ try {
 
   const htmlListe = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'liste', params: { titre: 'Où va l’argent' } }] }, snapshot: snapEx })))
   ok(htmlListe.includes('Logement'), 'liste : catégories de dépenses tirées du snapshot (jamais inventées)')
+
+  // ── ÉTAGE D : la TUILE carte_entite (rend depuis snapshot.entites par id).
+  const entite = { id: 'e1', kind: 'goal', nom: 'Voyage au Japon', icon: 'plane', photo: null, couleurAccent: 'lavande', cible: 6000, dejaEpargne: 2000, contributionMensuelle: 750, horizonMois: 6, echeanceVisee: 'moyen', scenarioLabel: 'En orientant 750 $/mois, tu y arrives en 6 mois.' }
+  const snapEnt = snapshotFromStore({ entites: [entite] })
+  const htmlCE = normaliser(renderToString(React.createElement(MoteurRendu, { recette: { blocs: [{ type: 'carte_entite', params: { id: 'e1' } }] }, snapshot: snapEnt })))
+  ok(htmlCE.includes('Voyage au Japon'), 'carte_entite : nom de l’entité rendu')
+  ok(htmlCE.includes('33') && htmlCE.includes('%'), 'carte_entite : progression 2 000 / 6 000 = 33 %')
+  ok(htmlCE.includes('tu y arrives en 6 mois'), 'carte_entite : scénario choisi rendu (voix verrouillée)')
+  ok(!htmlCE.includes('undefined') && !htmlCE.includes('NaN'), 'carte_entite : photo absente → état propre (aucun undefined/NaN)')
 } catch (e) {
   fail++
   console.log('  ✗ exception au rendu :', e && e.message)

@@ -336,7 +336,8 @@ export function snapshotFromStore(store) {
     hypotheque: null, // hors prototype (pas de silo hypothèque ici)
     patrimoine: patrimoine, // valeur nette + composition (volet patrimoine)
     projection: projection, // trajectoire année par année (projectLife du twin)
-    entites: [], // hors prototype (pas de build-tool branché)
+    entites: store && Array.isArray(store.entites) ? store.entites : [], // outils « fabriqués pour toi » (studio) — silo local
+
     aVenir: aVenir, // échéances datées des ~45 prochains jours (paies + dépenses fixes)
     saison: saison, // additif : alimente les blocs temporels (flux_annuel)
     calendrier: calendrier, // additif : modèle récurrent (paies + dépenses) pour le bloc calendrier

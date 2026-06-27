@@ -21,6 +21,9 @@ import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
 import { composerRecette } from './recettes/composer.js'
 import { suggererIndicateurs } from './recettes/suggestions.js'
+import { routerMessage } from './recettes/routeur.js'
+import { construireEntite } from './lib/entites.js'
+import StudioConversation from './components/StudioConversation.jsx'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -139,6 +142,7 @@ function App() {
   const [chargement, setChargement] = useState(false)
   const [erreur, setErreur] = useState(null)
   const [suggestionsEcartees, setSuggestionsEcartees] = useState(() => new Set()) // écartées pour la session
+  const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
@@ -238,11 +242,29 @@ function App() {
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
 
-  // Chat libre : l'IA compose une recette à partir des 16 blocs → un indicateur de plus.
+  // Le « BAM » : la conversation studio → une ENTITÉ (silo) + sa tuile carte_entite qui
+  // SE POSE dans le dashboard (animée, via nouveauWidget → stagger de MoteurRendu).
+  const materialiserEntite = (config) => {
+    const eid = 'e_' + Date.now()
+    const entite = construireEntite(config, snapshot, eid)
+    const wid = 'w_' + Date.now()
+    const recette = { situation: 'entite_' + eid, titre: entite.nom, blocs: [{ type: 'carte_entite', params: { id: eid } }] }
+    setStore((s) => ({
+      ...s,
+      entites: [...(Array.isArray(s.entites) ? s.entites : []), entite],
+      tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id: wid, recette }],
+    }))
+    setNouveauWidget(wid) // la tuile se pose pièce par pièce
+    setStudio(null)
+  }
+
+  // Chat libre : le 1er message est ROUTÉ. « puis-je me le permettre » → studio (canal
+  // projet_abordable, zéro IA) ; sinon → l'IA compose une recette parmi les blocs.
   async function demanderIA(e) {
     e.preventDefault()
     const texte = chatText.trim()
     if (!texte || chargement) return
+    if (routerMessage(texte).canal === 'projet_abordable') { setStudio({ texteInitial: texte }); setChatText(''); setErreur(null); return }
     setChargement(true)
     setErreur(null)
     try {
@@ -381,9 +403,12 @@ function App() {
               <p className="tour-accroche">Pas sûr de quoi suivre&nbsp;? Regarde ce que ta tour te suggère, laisse-toi guider, ou décris-le toi-même.</p>
             </div>
 
-            {/* SURFACE « CRÉER » — 3 couches dans l'ordre : la tour suggère (push, conscient des
-                données) → l'atelier guidé (pull) → la barre libre (l'IA). Un seul point d'entrée
-                évident : l'atelier ; les deux autres l'encadrent. */}
+            {/* SURFACE « CRÉER ». Si une conversation studio est ouverte (« puis-je me le
+                permettre »), elle PREND LE RELAIS — le fil piloté → la tuile se matérialise
+                dans le tableau ci-dessous. Sinon : 3 couches (suggère → atelier → barre libre). */}
+            {studio ? (
+              <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
+            ) : (
             <div className="creer">
               {suggestions.length > 0 && (
                 <section className="sugg" aria-label="Suggestions de ta tour">
@@ -435,6 +460,7 @@ function App() {
               {chargement && <p className="tour-hint">Ta tour compose ton indicateur…</p>}
               {erreur && <p className="tour-erreur">{erreur}</p>}
             </div>
+            )}
 
             {/* LE TABLEAU : les indicateurs déjà créés (persistants). */}
             {widgets.length > 0 && (

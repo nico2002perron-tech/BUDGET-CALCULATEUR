@@ -147,3 +147,68 @@ export function cheminsComplets() {
   dfs(RACINE, [])
   return out
 }
+
+/* ============================================================================
+   CANAUX (tranche studio) — conversations SCRIPTÉES et déterministes (zéro IA).
+   Un canal = une séquence d'étapes (une question à la fois). Le routeur (routeur.js)
+   choisit le canal ; ICI tout est scripté. Les scénarios viennent de lib/scenarios.js
+   (étape 'scenarios'). Tutoiement chaleureux, une question à la fois.
+   ========================================================================== */
+export const CANAUX = {
+  projet_abordable: {
+    id: 'projet_abordable',
+    etapes: [
+      { id: 'cout', type: 'montant', question: 'Combien coûte ton projet ?', exemple: 'ex. 4 000 $' },
+      {
+        id: 'echeance', type: 'choix', question: 'Tu veux y arriver quand ?',
+        options: [
+          { id: 'cette_annee', label: 'Cette année' },
+          { id: 'moyen', label: 'Dans 2-3 ans' },
+          { id: 'long', label: 'Plus tard' },
+        ],
+      },
+      { id: 'scenarioChoisi', type: 'scenarios', question: 'Voici des chemins possibles — tape celui que tu veux suivre.' },
+      { id: 'photo', type: 'photo', question: 'Une photo pour ta tuile ?', optionnel: true },
+      { id: 'couleur', type: 'couleur', question: 'Un accent de couleur pour ta tuile ?' },
+    ],
+  },
+}
+
+/** Coercition d'un montant : nombre fini > 0, sinon null (jamais de texte dans un calcul). */
+export function coerceMontant(v) {
+  if (typeof v === 'number') return isFinite(v) && v > 0 ? v : null
+  const n = Number(String(v == null ? '' : v).replace(/[^0-9.,]/g, '').replace(',', '.'))
+  return isFinite(n) && n > 0 ? n : null
+}
+
+// Une étape est-elle satisfaite ? (montant coercé valide ; étape optionnelle → toujours ok).
+function etapeSatisfaite(etape, reponses) {
+  const v = reponses ? reponses[etape.id] : undefined
+  if (etape.optionnel) return true
+  if (etape.type === 'montant') return coerceMontant(v) != null
+  return v != null && v !== ''
+}
+
+/** La prochaine étape à poser dans un canal, ou null si le canal est complet. PUR. */
+export function etapeCanalCourante(canalId, reponses = {}) {
+  const canal = CANAUX[canalId]
+  if (!canal) return null
+  for (const e of canal.etapes) if (!etapeSatisfaite(e, reponses)) return e
+  return null
+}
+
+/** Le canal est-il complet (toutes les étapes requises satisfaites) ? */
+export function canalComplet(canalId, reponses = {}) {
+  return !!CANAUX[canalId] && etapeCanalCourante(canalId, reponses) === null
+}
+
+/** Config finale d'un canal : { canal, complet, reponses (cout coercé), scenarioChoisi }. PUR. */
+export function resoudreCanal(canalId, reponses = {}) {
+  if (!CANAUX[canalId]) return null
+  return {
+    canal: canalId,
+    complet: canalComplet(canalId, reponses),
+    reponses: { ...reponses, cout: coerceMontant(reponses.cout) },
+    scenarioChoisi: reponses.scenarioChoisi || null,
+  }
+}

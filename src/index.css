@@ -1497,6 +1497,97 @@ svg { display: block; }
 .liste-meta { flex: none; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); background: rgba(3, 4, 94, 0.05); border-radius: 6px; padding: 2px 6px; }
 .liste-montant { flex: none; font-weight: 800; color: var(--ink); }
 
+/* ---- Bloc carte_entite (la TUILE « c'est à moi ») : accent sur la tuile SEULE ---- */
+.carte-entite { padding: 0; overflow: hidden; border-top: 4px solid var(--ce-accent, var(--cyan)); }
+.ce-photo {
+  height: 132px; background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+  background-color: color-mix(in srgb, var(--ce-accent, var(--cyan)) 16%, #fff);
+}
+.ce-photo-vide svg { width: 46px; height: 46px; color: var(--ce-accent, var(--cyan)); opacity: 0.7; }
+.ce-corps { padding: 16px 18px 18px; }
+.ce-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ce-ic {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  color: var(--ce-accent, var(--cyan));
+  background: color-mix(in srgb, var(--ce-accent, var(--cyan)) 14%, #fff);
+}
+.ce-ic svg { width: 19px; height: 19px; }
+.ce-nom { font-size: 17px; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.01em; }
+.ce-piste { height: 12px; border-radius: 999px; background: rgba(3, 4, 94, 0.07); overflow: hidden; }
+.ce-rempli { display: block; height: 100%; border-radius: 999px; background: var(--ce-accent, var(--cyan)); transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ce-rang { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.ce-rang b { color: var(--navy); font-weight: 800; }
+.ce-pct { font-weight: 900; color: var(--ce-accent, var(--cyan)); font-size: 14px; }
+.ce-horizon { margin-top: 12px; font-size: 14px; font-weight: 800; color: var(--navy); }
+.ce-scenario { margin: 4px 0 0; font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+
+/* ============================================================================
+   LE STUDIO — conversation pilotée (« puis-je me le permettre ») → le « bam ».
+   ========================================================================== */
+.studio {
+  max-width: 560px; margin: 4px auto 0; background: var(--card); border: 1px solid var(--line);
+  border-top: 3px solid var(--cyan); border-radius: var(--r);
+  box-shadow: var(--sh-float), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.studio-tete { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.studio-titre { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--navy); }
+.studio-x { border: 0; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.studio-x:hover { color: var(--navy); }
+
+.studio-fil { display: flex; flex-direction: column; gap: 8px; padding: 16px; max-height: 340px; overflow-y: auto; }
+.studio-bulle {
+  max-width: 84%; padding: 10px 13px; border-radius: 15px; font-size: 13.5px; font-weight: 500; line-height: 1.4;
+  animation: studio-bulle-in 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.studio-bulle.is-tour { align-self: flex-start; background: #f1f6fb; color: var(--ink); border-bottom-left-radius: 5px; }
+.studio-bulle.is-toi { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--cyan)); color: #fff; font-weight: 700; border-bottom-right-radius: 5px; }
+@keyframes studio-bulle-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+/* Le moment « laisse-moi aller voir » : trois points qui respirent */
+.studio-calc { padding: 13px 15px; }
+.studio-dots { display: inline-flex; gap: 5px; }
+.studio-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); display: inline-block; animation: studio-dot 1s ease-in-out infinite; }
+.studio-dots i:nth-child(2) { animation-delay: 0.16s; }
+.studio-dots i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes studio-dot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+.studio-saisie { padding: 0 16px 16px; }
+.studio-montant { display: flex; gap: 8px; }
+.studio-montant .chat-input { flex: 1; }
+.studio-go { min-height: 48px; padding: 0 18px; border: 0; border-radius: 14px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--cyan)); color: #fff; font-weight: 800; font-size: 14px; font-family: inherit; }
+.studio-go:disabled { opacity: 0.5; cursor: default; }
+
+.studio-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.studio-chip { min-height: 48px; padding: 0 16px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); font-family: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; transition: transform 0.16s, border-color 0.16s; }
+.studio-chip:hover { transform: translateY(-2px); border-color: rgba(0, 180, 216, 0.55); }
+
+.studio-scenarios { display: flex; flex-direction: column; gap: 9px; }
+.studio-scn { display: flex; align-items: center; gap: 12px; text-align: left; background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--cyan); border-radius: 14px; padding: 14px 16px; cursor: pointer; font-family: inherit; box-shadow: 0 10px 22px -14px rgba(3, 4, 94, 0.22); transition: transform 0.16s, box-shadow 0.16s; }
+.studio-scn:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -16px rgba(0, 180, 216, 0.4); }
+.studio-scn-l { flex: 1; font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.studio-scn-tap { flex: none; font-size: 12px; font-weight: 800; color: var(--cyan); }
+
+.studio-perso { display: flex; flex-direction: column; gap: 12px; }
+.studio-perso-ligne { display: flex; align-items: center; gap: 12px; }
+.studio-photo-btn { min-height: 44px; padding: 0 16px; border: 1.5px dashed rgba(0, 180, 216, 0.5); border-radius: 12px; background: rgba(0, 180, 216, 0.05); color: var(--accent); font-weight: 700; font-size: 13px; font-family: inherit; cursor: pointer; }
+.studio-photo-apercu { width: 48px; height: 48px; border-radius: 10px; background-size: cover; background-position: center; border: 1px solid var(--line); flex: none; }
+.studio-palette { display: flex; gap: 10px; }
+.studio-accent { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 0 1px var(--line); transition: transform 0.16s; }
+.studio-accent:hover { transform: scale(1.1); }
+.studio-accent.is-actif { box-shadow: 0 0 0 3px var(--ce-accent, var(--cyan)); transform: scale(1.08); }
+.studio-ajouter { min-height: 50px; border: 0; border-radius: 14px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--cyan)); color: #fff; font-weight: 800; font-size: 15px; font-family: inherit; box-shadow: 0 12px 26px -8px rgba(0, 119, 182, 0.5); transition: transform 0.18s; }
+.studio-ajouter:hover { transform: translateY(-2px); }
+
+/* LE « BAM » : la tuile (widget) ne POP pas — elle SE POSE dans la tour. */
+@keyframes widget-pose { from { opacity: 0; transform: translateY(-16px) scale(0.96); } to { opacity: 1; transform: none; } }
+.tour-widget.is-anime { animation: widget-pose 0.52s cubic-bezier(0.2, 0.72, 0.2, 1) both; }
+
+@media (max-width: 560px) {
+  .studio-bulle { max-width: 90%; }
+}
+
 /* ---- Pied : avertissement permanent (conformité, VISION §11) ---- */
 .site-footer { margin-top: auto; }
 .disclaimer {
