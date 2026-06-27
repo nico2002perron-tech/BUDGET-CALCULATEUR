@@ -11,6 +11,8 @@ import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore } from './lib/storage.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
+import ChoixAngle from './recettes/ChoixAngle.jsx'
+import { formesPourKPI } from './recettes/bibliotheque-kpis.js'
 import AtelierIndicateur from './components/AtelierIndicateur.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
@@ -143,6 +145,7 @@ function App() {
   const [erreur, setErreur] = useState(null)
   const [suggestionsEcartees, setSuggestionsEcartees] = useState(() => new Set()) // écartées pour la session
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
+  const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
@@ -241,6 +244,20 @@ function App() {
   }
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
+
+  // Le héros KPI d'une recette (s'il y en a un) → ce qui peut « se voir autrement ».
+  const heroKPI = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
+  // Porte « après » : échanger la FORME d'un KPI sur un widget persistant. Présentation
+  // pure — le KPI est résolu une fois par MoteurRendu ; aucun montant n'est recalculé.
+  const changerAngle = (widgetId, kpiId, forme) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) =>
+        w.id === widgetId && w.recette
+          ? { ...w, recette: { ...w.recette, blocs: w.recette.blocs.map((b) => (b && b.KPI === kpiId ? { ...b, forme } : b)) } }
+          : w,
+      ),
+    }))
 
   // Le « BAM » : la conversation studio → une ENTITÉ (silo) + sa tuile carte_entite qui
   // SE POSE dans le dashboard (animée, via nouveauWidget → stagger de MoteurRendu).
@@ -467,13 +484,31 @@ function App() {
               <div className="tour-board">
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
+                  const kb = heroKPI(w.recette)
+                  const peutVoirAutrement = !!kb && formesPourKPI(kb.KPI, snapshot).length > 1
+                  const angleOuvert = angleWidget === w.id
                   return (
                     <section className={`tour-widget tour-vues${anime ? ' is-anime' : ''}`} key={w.id}>
                       <div className="tour-widget-tete">
                         <span className="tour-widget-tag">Ton indicateur</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
+                        {peutVoirAutrement && (
+                          <button type="button" className="tour-widget-angle" onClick={() => setAngleWidget(angleOuvert ? null : w.id)} aria-expanded={angleOuvert} title="Voir autrement">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                            Voir autrement
+                          </button>
+                        )}
                         <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
                       </div>
+                      {peutVoirAutrement && angleOuvert && (
+                        <ChoixAngle
+                          kpiId={kb.KPI}
+                          snapshot={snapshot}
+                          recommande={kb.recommande || kb.forme}
+                          formeActuelle={kb.forme}
+                          onChoisir={(f) => changerAngle(w.id, kb.KPI, f)}
+                        />
+                      )}
                       <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
                     </section>
                   )

@@ -8,9 +8,29 @@ const I = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 1.5M9 2h6" /></svg>
 )
 
-export default function Chronologie({ params = {}, data = {} }) {
+export default function Chronologie({ params = {}, data = {}, kpi = null }) {
   void data
   const label = params.label || 'Échéance'
+
+  // Mode KPI : on affiche la valeur résolue (un nombre de mois/jours) + son fait.
+  if (kpi) {
+    const dispo = typeof kpi.valeur === 'number' && isFinite(kpi.valeur)
+    return (
+      <section className="card chrono">
+        <div className="card-title">{I}{label}</div>
+        {dispo ? (
+          <>
+            <div className="chrono-num">{kpi.valeur}</div>
+            <div className="chrono-unite">{kpi.unite || ''}</div>
+            {kpi.texteFactuel && <p className="card-sub" style={{ margin: '6px 0 0' }}>{kpi.texteFactuel}</p>}
+          </>
+        ) : (
+          <p className="bloc-vide">{kpi.texteFactuel || 'Pas encore de donnée pour ça.'}</p>
+        )}
+      </section>
+    )
+  }
+
   const cible = params.dateCible ? new Date(params.dateCible) : null
   const valide = cible && !isNaN(cible.getTime())
 

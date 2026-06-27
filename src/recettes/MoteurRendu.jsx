@@ -19,18 +19,25 @@
 import { useEffect, useState } from 'react'
 import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
+import { resolveKPI, kpiPourId } from './bibliotheque-kpis.js'
 
-// Anti-redondance d'une vue : jamais DEUX blocs du même type, ni le même CHIFFRE deux
-// fois (le coussin via jauge/stat/coussin_urgence → un seul). On garde le 1er rencontré.
+// Anti-redondance d'une vue : jamais DEUX fois la même métrique. On déduplique sur la
+// CLÉ (l'id du KPI s'il y en a un, sinon le type) + le groupe métrique (le coussin via
+// jauge/stat/coussin_urgence → un seul). On garde le 1er rencontré.
 const GROUPE_METRIQUE = { jauge: 'coussin', stat: 'coussin', coussin_urgence: 'coussin' }
 function dedupeBlocs(blocs) {
-  const types = new Set()
+  const cles = new Set()
   const groupes = new Set()
   return blocs.filter((b) => {
-    if (!b || types.has(b.type)) return false
-    const g = GROUPE_METRIQUE[b.type]
+    if (!b) return false
+    const cle = b.kpi || b.type
+    if (cles.has(cle)) return false
+    // Un bloc KPI est une métrique NOMMÉE (déjà dédoublonnée par sa clé) → on ne le range
+    // pas dans un groupe métrique générique (ex. coussin), sinon une forme stat d'un KPI
+    // entrerait en collision avec coussin_urgence.
+    const g = b.kpi ? null : GROUPE_METRIQUE[b.type]
     if (g && groupes.has(g)) return false
-    types.add(b.type)
+    cles.add(cle)
     if (g) groupes.add(g)
     return true
   })
@@ -54,6 +61,15 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
       if (b && b.slot === 'graphique') {
         const type = resoudreSlot(b, snapshot)
         return type ? { type, params: {} } : null
+      }
+      // Emplacement KPI : la recette nomme {KPI, forme}. Le moteur résout la FORME
+      // (∈ blocsCompatibles, repli sûr sur le 1er sinon) ; le KPI inconnu est ignoré.
+      // Le bloc-forme reçoit la valeur résolue (kpi), il ne recalcule jamais la métrique.
+      if (b && b.KPI) {
+        const def = kpiPourId(b.KPI)
+        if (!def || !Array.isArray(def.blocsCompatibles) || def.blocsCompatibles.length === 0) return null
+        const forme = def.blocsCompatibles.includes(b.forme) ? b.forme : def.blocsCompatibles[0]
+        return composantPour(forme) ? { type: forme, params: b.params || {}, kpi: b.KPI } : null
       }
       return composantPour(b.type) ? b : null
     })
@@ -87,10 +103,26 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
     // resolve(snapshot, params) : les MONTANTS viennent du snapshot ; certains blocs
     // lisent aussi une INTENTION dans les params (ex. chaine → l'objectif choisi).
     const data = cfg && typeof cfg.resolve === 'function' ? cfg.resolve(snapshot, bloc.params) : {}
+    // Emplacement KPI : la métrique est résolue par la bibliothèque (pas de double
+    // source) ; le bloc-forme l'affiche via sa prop `kpi`. Donnée absente → resolveKPI
+    // rend un état honnête (valeur null), jamais un chiffre inventé.
+    //  • comparaison → DEUX résolutions du MÊME KPI (un ctx par côté : avant/après, A/B) ;
+    //  • toute autre forme → UNE résolution.
+    let kpi = null
+    if (bloc.kpi) {
+      if (bloc.type === 'comparaison') {
+        const base = bloc.params || {}
+        const a = resolveKPI(bloc.kpi, snapshot, { ...base, ...(base.ctxA || {}) })
+        const b = resolveKPI(bloc.kpi, snapshot, { ...base, ...(base.ctxB || {}) })
+        kpi = { a, b, etiquetteA: base.etiquetteA, etiquetteB: base.etiquetteB }
+      } else {
+        kpi = resolveKPI(bloc.kpi, snapshot, bloc.params)
+      }
+    }
     const Composant = composantPour(bloc.type)
     const el = (
       <div className={sequence ? 'bloc-reveal' : undefined} key={i}>
-        <Composant params={bloc.params} data={data} />
+        <Composant params={bloc.params} data={data} kpi={kpi} />
       </div>
     )
     if (cfg && cfg.taille === 'compacte') sides.push(el)

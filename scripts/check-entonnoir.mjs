@@ -46,7 +46,7 @@ for (const chemin of chemins) {
     !!def && def.dispo === true &&
     Array.isArray(v.blocs) && v.blocs.length > 0 &&
     !v.blocs.some((b) => b._ignore) &&
-    v.blocs.every((b) => (b.slot === 'graphique' ? !!b.choisi : estConnu(b.type)))
+    v.blocs.every((b) => (b.slot === 'graphique' ? !!b.choisi : b.KPI ? estConnu(b.forme) : estConnu(b.type)))
   if (!valide) { tousValides = false; console.log(`      ✗ ${chemin.join(' › ')} → ${situation}`) }
 }
 ok(tousValides, `les ${chemins.length} chemins résolvent vers une recette valide (situation dispo, blocs connus, aucun _ignore)`)
@@ -63,7 +63,7 @@ ok(r.reponses.objectif === 'maison', 'reponses.objectif = maison')
 ok(r.reponses.echeance === 'cette_annee', 'reponses.echeance = cette_annee')
 ok(r.complet === true, 'chemin complet (feuille atteinte)')
 const recetteObj = validerRecette(composerRecette(r.situation, r.reponses))
-ok(recetteObj.blocs.some((b) => b.type === 'chaine') && !recetteObj.blocs.some((b) => b._ignore), 'recette = bloc chaine valide')
+ok(recetteObj.blocs.some((b) => b.KPI === 'horizon_objectif' && b.forme === 'chaine') && !recetteObj.blocs.some((b) => b._ignore), 'recette = héros KPI (horizon_objectif, forme chaine) valide')
 
 console.log('\n— Couverture des situations requises (5 portes) —')
 const atteintes = new Set(chemins.map((c) => resoudreEntonnoir(c).situation))

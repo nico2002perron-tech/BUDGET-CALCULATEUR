@@ -169,7 +169,10 @@ export function composerRecette(situation, reponses = {}, snapshot = null) {
 
     const blocs = []
     if (estFonds) blocs.push({ type: 'coussin_urgence', params: {} }) // HÉROS du fonds d'urgence
-    blocs.push({ type: 'chaine', params: { objectif: { id: cle, nom: obj.nom, cible: obj.cible } } }) // HÉROS (maison/auto/voyage)
+    // HÉROS (maison/auto/voyage) = un KPI NOMMÉ (horizon_objectif), forme recommandée = la
+    // chaîne (elle montre d'où vient le chiffre). La tour pourra l'afficher autrement
+    // (ChoixAngle : chronologie, stat…) sans recalculer — c'est la même métrique.
+    blocs.push({ KPI: 'horizon_objectif', forme: 'chaine', recommande: 'chaine', params: { objectif: { id: cle, nom: obj.nom, cible: obj.cible } } })
     blocs.push({ type: 'barre_progression', params: { cible: obj.cible, etiquetteGauche: 'Déjà', etiquetteDroite: obj.nom } })
     // SOUTIEN qui VARIE selon l'échéance : court terme → compte à rebours ; long terme → « et si ».
     if (courtTerme) blocs.push({ type: 'chronologie', params: { label: `Cap ${obj.nom}`, dateCible: finAnneeCourante() } })

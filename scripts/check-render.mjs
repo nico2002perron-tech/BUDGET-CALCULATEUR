@@ -101,6 +101,19 @@ try {
   ok(htmlCE.includes('33') && htmlCE.includes('%'), 'carte_entite : progression 2 000 / 6 000 = 33 %')
   ok(htmlCE.includes('tu y arrives en 6 mois'), 'carte_entite : scénario choisi rendu (voix verrouillée)')
   ok(!htmlCE.includes('undefined') && !htmlCE.includes('NaN'), 'carte_entite : photo absente → état propre (aucun undefined/NaN)')
+
+  // ── VITRINE Étage 1 : le bloc comparaison (deux valeurs du MÊME KPI + écart).
+  // horizon_objectif sur snapEx : cible 20 000 → 15 mois (A) ; cible 12 000 → 5 mois (B) ; écart 10.
+  const cmpRec = { blocs: [{ KPI: 'horizon_objectif', forme: 'comparaison', params: { etiquetteA: 'Maison', etiquetteB: 'Voyage', ctxA: { objectif: { cible: 20000 } }, ctxB: { objectif: { cible: 12000 } } } }] }
+  const htmlCmp = normaliser(renderToString(React.createElement(MoteurRendu, { recette: cmpRec, snapshot: snapEx })))
+  ok(htmlCmp.includes('Maison') && htmlCmp.includes('Voyage'), 'comparaison : les deux étiquettes (Maison / Voyage) rendues')
+  ok(htmlCmp.includes('15 mois'), 'comparaison : valeur A du KPI (cible 20 000 → 15 mois)')
+  ok(htmlCmp.includes('10 mois') && htmlCmp.includes('Écart'), 'comparaison : écart factuel calculé (|15 − 5| = 10 mois)')
+  ok(!htmlCmp.includes('null') && !htmlCmp.includes('+—'), 'comparaison : aucun « null »/« +— » (deux valeurs présentes)')
+
+  // Data-aware : snapshot vide → KPI non résoluble des deux côtés → pas de faux écart.
+  const htmlCmpVide = normaliser(renderToString(React.createElement(MoteurRendu, { recette: cmpRec, snapshot: {} })))
+  ok(htmlCmpVide.includes('Rien à comparer'), 'comparaison : snapshot vide → état honnête (pas de faux écart, pas de « +null »)')
 } catch (e) {
   fail++
   console.log('  ✗ exception au rendu :', e && e.message)

@@ -18,6 +18,8 @@ import { filtrerFait } from '../recettes/schema.js'
 import { evaluerGraphe } from '../lib/graphe.js'
 import { formatCAD } from '../lib/format.js'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
+import ChoixAngle from '../recettes/ChoixAngle.jsx'
+import { formesPourKPI } from '../recettes/bibliotheque-kpis.js'
 
 /* ── Les DEUX réglages à ajuster sans rien casser ─────────────────────────── */
 // 1) Ton d'animation : la pièce glisse et se pose (posé/serein, jamais clinquant — §12).
@@ -71,7 +73,11 @@ const I_OUTIL = (
 function phraseAssemblee(situation, blocs, snapshot) {
   let texte
   if (situation === 'objectif_epargne') {
-    const g = evaluerGraphe(snapshot)
+    // L'horizon doit refléter l'objectif CHOISI (porté par le héros KPI), pas l'objectif
+    // par défaut — sinon la phrase (« … à N mois ») diverge du chiffre du héros.
+    const kb = Array.isArray(blocs) ? blocs.find((b) => b && b.KPI) : null
+    const objectif = kb && kb.params ? kb.params.objectif : null
+    const g = evaluerGraphe(snapshot, objectif ? { objectif } : {})
     if (g.actif) {
       const cap = formatCAD(g.noeuds.capaciteEpargne.valeur)
       const h = g.objectif.horizonMois
@@ -94,6 +100,10 @@ function phraseAssemblee(situation, blocs, snapshot) {
 export default function AtelierIndicateur({ snapshot, onAjouter }) {
   const [chemin, setChemin] = useState([])
   const [replieOuvert, setReplieOuvert] = useState(false)
+  // Porte « pendant » : explorer d'autres angles du héros KPI avant d'ajouter. Non bloquant
+  // (la forme posée = le recommandé ; ceci est optionnel).
+  const [angleOuvert, setAngleOuvert] = useState(false)
+  const [formeChoisie, setFormeChoisie] = useState(null) // null = on garde le recommandé
 
   const noeud = noeudCourant(chemin)
   const { situation, reponses, complet } = useMemo(() => resoudreEntonnoir(chemin), [chemin])
@@ -102,15 +112,24 @@ export default function AtelierIndicateur({ snapshot, onAjouter }) {
     [situation, reponses, snapshot],
   )
   const blocs = recette ? recette.blocs : []
+  // Le héros KPI (s'il existe) + la recette EFFECTIVEMENT affichée (forme échangée si choisie).
+  const kpiBloc = recette ? recette.blocs.find((b) => b && b.KPI) : null
+  const recetteAffichee = useMemo(() => {
+    if (!recette || !formeChoisie || !kpiBloc) return recette
+    return { ...recette, blocs: recette.blocs.map((b) => (b && b.KPI === kpiBloc.KPI ? { ...b, forme: formeChoisie } : b)) }
+  }, [recette, formeChoisie, kpiBloc])
   // Les pièces se révèlent une par réponse (plafonné au nombre de blocs réels).
   const piecesVisibles = complet ? blocs.length : Math.min(chemin.length, blocs.length)
   const fil = cheminLisible(chemin)
   const destination = reponses && reponses.objectif ? DESTINATIONS[reponses.objectif] : null
 
-  const choisir = (repId) => setChemin((c) => [...c, repId])
-  const reculerA = (i) => setChemin((c) => c.slice(0, i)) // tap sur un fil d'Ariane
-  const recommencer = () => { setChemin([]); setReplieOuvert(false) }
-  const ajouter = () => { if (recette) { onAjouter(recette); recommencer() } }
+  // Tout changement de chemin remet l'angle au recommandé (on ne traîne pas un choix
+  // d'angle d'une autre destination).
+  const resetAngle = () => { setAngleOuvert(false); setFormeChoisie(null) }
+  const choisir = (repId) => { resetAngle(); setChemin((c) => [...c, repId]) }
+  const reculerA = (i) => { resetAngle(); setChemin((c) => c.slice(0, i)) } // tap sur un fil d'Ariane
+  const recommencer = () => { resetAngle(); setChemin([]); setReplieOuvert(false) }
+  const ajouter = () => { if (recetteAffichee) { onAjouter(recetteAffichee); recommencer() } }
 
   return (
     <section className="atelier" aria-label="Atelier d'assemblage d'indicateur">
@@ -189,10 +208,26 @@ export default function AtelierIndicateur({ snapshot, onAjouter }) {
         <div className="atelier-verrou">
           <div className="atelier-badge"><span className="atelier-badge-dot" aria-hidden="true" />Indicateur assemblé</div>
           <p className="atelier-phrase">{phraseAssemblee(situation, blocs, snapshot)}</p>
-          {recette && (
+          {recetteAffichee && (
             <div className="atelier-apercu tour-vues is-anime">
               <span className="atelier-apercu-tag">Aperçu — ta tour a assemblé ceci</span>
-              <MoteurRendu recette={recette} snapshot={snapshot} anime />
+              {kpiBloc && formesPourKPI(kpiBloc.KPI, snapshot).length > 1 && (
+                <div className="atelier-angles">
+                  <button type="button" className="atelier-autres-angles" onClick={() => setAngleOuvert((o) => !o)} aria-expanded={angleOuvert}>
+                    {angleOuvert ? 'Masquer les angles' : 'Voir autrement'}
+                  </button>
+                  {angleOuvert && (
+                    <ChoixAngle
+                      kpiId={kpiBloc.KPI}
+                      snapshot={snapshot}
+                      recommande={kpiBloc.recommande || kpiBloc.forme}
+                      formeActuelle={formeChoisie || kpiBloc.forme}
+                      onChoisir={(f) => setFormeChoisie(f)}
+                    />
+                  )}
+                </div>
+              )}
+              <MoteurRendu recette={recetteAffichee} snapshot={snapshot} anime />
             </div>
           )}
           <div className="atelier-actions">

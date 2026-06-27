@@ -7,7 +7,7 @@
      data   : { valeur:number, label:string }  ← du snapshot
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { formatCAD } from '../lib/format.js'
+import { formatCAD, formatKPI } from '../lib/format.js'
 
 // Teinte de puce → classe CSS (présentation seulement ; défaut cyan).
 const TON_CLASSE = {
@@ -26,11 +26,14 @@ function reduceMotion() {
   )
 }
 
-export default function Stat({ params = {}, data = {} }) {
-  const cible = Number(data.valeur) || 0
+export default function Stat({ params = {}, data = {}, kpi = null }) {
+  // Mode KPI : on AFFICHE la valeur résolue par la bibliothèque (jamais recalculée ici).
+  const enKpi = !!kpi
+  const dispoKpi = enKpi && typeof kpi.valeur === 'number' && isFinite(kpi.valeur)
+  const cible = enKpi ? (dispoKpi ? kpi.valeur : 0) : Number(data.valeur) || 0
   const tonClasse = TON_CLASSE[params.ton] || ''
   const reduce = reduceMotion()
-  const [n, setN] = useState(reduce ? cible : 0)
+  const [n, setN] = useState(reduce || (enKpi && !dispoKpi) ? cible : 0)
 
   useEffect(() => {
     if (reduce) {
@@ -59,8 +62,8 @@ export default function Stat({ params = {}, data = {} }) {
           </svg>
         </span>
         <div>
-          <div className="stat-v">{formatCAD(n)}</div>
-          <div className="stat-l">{data.label || ''}</div>
+          <div className="stat-v">{enKpi ? (dispoKpi ? formatKPI(n, kpi.unite) : '—') : formatCAD(n)}</div>
+          <div className="stat-l">{enKpi ? kpi.texteFactuel || (dispoKpi ? '' : 'Pas encore de donnée pour ça.') : data.label || ''}</div>
         </div>
       </div>
     </section>

@@ -18,13 +18,13 @@ const ok = (cond, label) => {
   console.log(`  ${cond ? '✓' : '✗'} ${label}`)
   if (!cond) fail++
 }
-// Un slot (emplacement à candidats) est un héros/bloc valide : on le lit via son recommande.
-const typeBloc = (b) => (b && b.slot === 'graphique' ? b.recommande : b && b.type)
+// Un héros/bloc se lit via son recommande (slot), sa forme (KPI) ou son type (bloc simple).
+const typeBloc = (b) => (b && b.slot === 'graphique' ? b.recommande : b && b.KPI ? b.forme : b && b.type)
 const heros = (r) => (r.blocs[0] ? typeBloc(r.blocs[0]) : null)
-const types = (r) => r.blocs.map((b) => (b.slot === 'graphique' ? `slot(${b.recommande})` : b.type)).join(' · ')
+const types = (r) => r.blocs.map((b) => (b.slot === 'graphique' ? `slot(${b.recommande})` : b.KPI ? `kpi(${b.forme})` : b.type)).join(' · ')
 const valide = (r) => {
   const v = validerRecette(r)
-  return v.blocs.length > 0 && !v.blocs.some((b) => b._ignore) && v.blocs.every((b) => (b.slot === 'graphique' ? !!b.choisi : estConnu(b.type)))
+  return v.blocs.length > 0 && !v.blocs.some((b) => b._ignore) && v.blocs.every((b) => (b.slot === 'graphique' ? !!b.choisi : b.KPI ? estConnu(b.forme) : estConnu(b.type)))
 }
 // Snapshot RICHE (toutes les sections présentes → aucun bloc omis par data-aware).
 const snapRiche = {
@@ -58,9 +58,9 @@ console.log(`      voyage : ${types(voyage)}`)
 console.log(`      fonds  : ${types(fonds)}`)
 ok(heros(fonds) === 'coussin_urgence', 'fonds d’urgence → héros coussin_urgence (corps distinct)')
 ok(heros(maisonCourt) === 'chaine', 'maison → héros chaine')
-const chMaison = maisonCourt.blocs.find((b) => b.type === 'chaine')
-const chVoyage = voyage.blocs.find((b) => b.type === 'chaine')
-ok(chMaison.params.objectif.cible === 20000 && chVoyage.params.objectif.cible === 5000, 'la chaine reçoit le VRAI objectif (maison 20 000 ≠ voyage 5 000 — plus de 20 000 en dur)')
+const chMaison = maisonCourt.blocs.find((b) => b.KPI === 'horizon_objectif')
+const chVoyage = voyage.blocs.find((b) => b.KPI === 'horizon_objectif')
+ok(chMaison.params.objectif.cible === 20000 && chVoyage.params.objectif.cible === 5000, 'le héros KPI reçoit le VRAI objectif (maison 20 000 ≠ voyage 5 000 — plus de 20 000 en dur)')
 ok(chVoyage.params.objectif.nom === 'Voyage', 'le nom de l’objectif vient des réponses')
 const bpMaison = maisonCourt.blocs.find((b) => b.type === 'barre_progression')
 ok(bpMaison.params.cible === 20000 && bpMaison.params.etiquetteDroite === 'Maison', 'barre_progression personnalisée (cible + étiquette de l’objectif)')

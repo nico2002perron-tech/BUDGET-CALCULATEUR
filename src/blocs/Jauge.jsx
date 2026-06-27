@@ -8,7 +8,7 @@
      data   : { coussin:number, depensesMensuelles:number }  ← du snapshot
    ========================================================================== */
 import { useEffect, useRef } from 'react'
-import { formatCAD } from '../lib/format.js'
+import { formatCAD, formatKPI } from '../lib/format.js'
 
 function reduceMotion() {
   return (
@@ -18,9 +18,11 @@ function reduceMotion() {
   )
 }
 
-export default function Jauge({ params = {}, data = {} }) {
+export default function Jauge({ params = {}, data = {}, kpi = null }) {
   const arcRef = useRef(null)
   const reduce = reduceMotion()
+  const enKpi = !!kpi
+  const dispoKpi = enKpi && typeof kpi.valeur === 'number' && isFinite(kpi.valeur)
 
   const coussin = Number(data.coussin) || 0
   const dep = Number(data.depensesMensuelles) || 0
@@ -28,7 +30,15 @@ export default function Jauge({ params = {}, data = {} }) {
   const useMois = params.mesure !== 'montant'
 
   const couvre = dep > 0 ? coussin / dep : 0
-  const f = useMois ? Math.min(1, couvre / cible) : Math.min(1, coussin / (dep * cible || 1))
+  // Fraction de l'arc : en mode KPI elle vient de l'unité (% → /100 ; mois → /cible) ;
+  // sinon, comportement d'origine (coussin / cible).
+  const f = enKpi
+    ? (dispoKpi
+        ? (kpi.unite === '%' ? Math.min(1, Math.max(0, kpi.valeur / 100))
+          : kpi.unite === 'mois' ? Math.min(1, Math.max(0, kpi.valeur / (Number(params.cible) || 12)))
+          : kpi.valeur > 0 ? 0.5 : 0)
+        : 0)
+    : useMois ? Math.min(1, couvre / cible) : Math.min(1, coussin / (dep * cible || 1))
 
   const cx = 110, cy = 104, r = 78
   const ang = Math.PI * (1 - f)
@@ -51,8 +61,8 @@ export default function Jauge({ params = {}, data = {} }) {
     }
   }, [reduce, f])
 
-  const num = useMois ? `${couvre.toFixed(1).replace('.', ',')} mois` : formatCAD(coussin)
-  const lbl = useMois ? `couverts par ton coussin (cible ${cible})` : 'mis de côté pour l’hiver'
+  const num = enKpi ? (dispoKpi ? formatKPI(kpi.valeur, kpi.unite) : '—') : useMois ? `${couvre.toFixed(1).replace('.', ',')} mois` : formatCAD(coussin)
+  const lbl = enKpi ? kpi.texteFactuel || '' : useMois ? `couverts par ton coussin (cible ${cible})` : 'mis de côté pour l’hiver'
 
   return (
     <section className="card">
@@ -61,7 +71,7 @@ export default function Jauge({ params = {}, data = {} }) {
           <path d="M12 3a9 9 0 1 0 9 9" />
           <path d="M12 12l5-5" />
         </svg>
-        Ton coussin d&rsquo;hiver
+        {enKpi ? 'Où tu en es' : 'Ton coussin d’hiver'}
       </div>
       <svg viewBox="0 0 220 130" style={{ width: '100%', maxWidth: 240, height: 'auto', display: 'block', margin: '0 auto 6px' }}>
         <path d={`M${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#e7edf6" strokeWidth="15" strokeLinecap="round" />

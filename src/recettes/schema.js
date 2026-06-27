@@ -257,6 +257,16 @@ export const BLOCS = {
     },
   },
 
+  // Une FORME de plus pour un KPI : deux valeurs du MÊME KPI + leur écart. Les deux
+  // valeurs sont résolues par MoteurRendu (deux ctx) et passées via la prop `kpi` ;
+  // pas de données propres au snapshot ici (resolve neutre).
+  comparaison: {
+    taille: 'large',
+    bornes: {},
+    defauts: { etiquetteA: 'Option A', etiquetteB: 'Option B' },
+    resolve: () => ({}),
+  },
+
   fait: {
     taille: 'compacte',
     bornes: {},
@@ -318,6 +328,13 @@ export function validerRecette(recette) {
       const choisi = candidats.includes(bloc.choisi) ? bloc.choisi : recommande
       const f = filtrerFait(bloc.pourquoi)
       return { slot: 'graphique', recommande, alternatives, choisi, pourquoi: f.ok && f.texte ? f.texte : '', _ignore: candidats.length === 0 }
+    }
+
+    // Emplacement KPI : la recette NOMME une métrique + une forme. On passe le slot tel
+    // quel ; MoteurRendu vérifie l'existence du KPI + que `forme` ∈ blocsCompatibles
+    // (repli sûr sinon). On évite ici tout import de la bibliothèque (pas de cycle).
+    if (bloc.KPI) {
+      return { KPI: bloc.KPI, forme: bloc.forme || null, recommande: bloc.recommande || bloc.forme || null, params: bloc.params || {} }
     }
 
     const type = bloc.type
