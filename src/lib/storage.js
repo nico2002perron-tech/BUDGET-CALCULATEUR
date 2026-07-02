@@ -11,6 +11,10 @@ import { moisActifsDefaut, repartirSaisonnier } from './revenus.js'
 import { depensesParDefaut } from './depenses.js'
 
 export const STORAGE_KEY = 'budgetcalc_v1'
+// Repère « dernière visite » (VISION §7a·1) : le snapshot tel qu'il était au départ de la
+// dernière visite, pour mesurer « ce qui a bougé depuis ». Silo SÉPARÉ du budget (dérivé,
+// régénéré tout seul) → hors export/import. Comme tout le reste : reste sur l'appareil (§4).
+export const BASELINE_KEY = 'budgetcalc_baseline_v1'
 
 /** Silo VIDE — l'app démarre ici (état accueillant, rien d'inventé). */
 export function emptyStore() {
@@ -151,5 +155,32 @@ export function clearStore() {
     localStorage.removeItem(STORAGE_KEY)
   } catch {
     /* no-op */
+  }
+}
+
+/** Lit le repère « dernière visite » : { snapshot, visitedAt } ou null (absent/corrompu → null,
+ *  jamais d'exception). Le snapshot est du JSON pur (produit par snapshotFromStore). */
+export function loadBaseline() {
+  if (!hasLocal()) return null
+  try {
+    const raw = localStorage.getItem(BASELINE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || !parsed.snapshot) return null
+    return { snapshot: parsed.snapshot, visitedAt: parsed.visitedAt || null }
+  } catch {
+    return null
+  }
+}
+
+/** Écrit le snapshot courant comme repère de la PROCHAINE visite (+ horodatage). Appelé au
+ *  DÉPART (pagehide / onglet caché), pas à chaque frappe. snapshot absent → ne fait rien. */
+export function saveBaseline(snapshot) {
+  if (!hasLocal() || !snapshot || typeof snapshot !== 'object') return false
+  try {
+    localStorage.setItem(BASELINE_KEY, JSON.stringify({ snapshot, visitedAt: new Date().toISOString() }))
+    return true
+  } catch {
+    return false
   }
 }
