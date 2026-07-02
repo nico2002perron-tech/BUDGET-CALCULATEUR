@@ -2295,3 +2295,48 @@ svg { display: block; }
 /* Sur tactile (pas de survol) : l'indice reste visible, discret. */
 @media (hover: none) { .tour-tap-hint { opacity: 0.85; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tour-widget-retouche:active { transform: none; } }
+
+/* ============================================================================
+   CRÉER SON KPI — la cible, l'icône et le nom rejoignent la forme et la couleur.
+   ========================================================================== */
+/* SA CIBLE : gros nombre + steppers — le KPI se recalcule en direct dessus. */
+.gal-cible { display: flex; align-items: center; gap: 12px; }
+.gal-cible-pas { width: 42px; height: 42px; font-size: 22px; }
+.gal-cible-val {
+  min-width: 96px; text-align: center;
+  font-size: 26px; font-weight: 900; color: var(--acc); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: #fff; border: 2px solid color-mix(in srgb, var(--acc) 30%, #fff); border-bottom-width: 5px;
+  border-radius: 16px; padding: 8px 14px;
+  display: inline-flex; align-items: baseline; justify-content: center; gap: 6px;
+}
+.gal-cible-val small { font-size: 13px; font-weight: 800; color: var(--muted); }
+
+/* SON ICÔNE : des pastilles tappables (la choisie s'allume dans TA couleur). */
+.gal-icones { display: flex; flex-wrap: wrap; gap: 8px; max-width: 340px; }
+.gal-icone {
+  width: 42px; height: 42px; flex: none; border-radius: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); background: #fff;
+  border: 2px solid var(--line); border-bottom-width: 4px;
+  transition: transform 0.09s, border-bottom-width 0.09s, color 0.15s, border-color 0.15s, background 0.15s;
+}
+.gal-icone svg { width: 21px; height: 21px; }
+.gal-icone:active { transform: translateY(2px); border-bottom-width: 2px; }
+.gal-icone.is-choisie {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--acc) 80%, #fff), var(--acc) 60%, color-mix(in srgb, var(--acc) 70%, var(--navy)));
+  box-shadow: 0 8px 16px -7px color-mix(in srgb, var(--acc) 85%, transparent);
+}
+
+/* SON NOM : un champ chaleureux, jamais un formulaire. */
+.gal-nom {
+  width: 100%; max-width: 340px;
+  font-family: inherit; font-size: 14.5px; font-weight: 800; color: var(--navy);
+  background: #fff; border: 2px solid color-mix(in srgb, var(--acc) 28%, var(--line)); border-bottom-width: 4px;
+  border-radius: 14px; padding: 11px 14px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.2s;
+}
+.gal-nom:focus { border-color: var(--acc); box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--acc) 60%, transparent); }
+.gal-nom::placeholder { color: #a9b7d2; font-weight: 600; }
+.retouche-nom { flex-basis: 100%; }

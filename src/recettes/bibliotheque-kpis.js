@@ -124,7 +124,15 @@ export const REGISTRE_KPIS = [
   {
     id: 'taux_epargne', domaine: 'budget', question: 'Quelle part je mets de côté ?',
     requiert: ['depenses'], blocsCompatibles: ['jauge', 'stat', 'repartition'],
-    resolve: (s) => { const rev = num(s.depenses.revenu); const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne); const pct = rev > 0 ? Math.round((ep / rev) * 100) : null; return { valeur: pct, unite: '%', texteFactuel: pct == null ? '' : `Tu mets ${pct} % de ton revenu de côté.` } },
+    // réglable : TA cible d'épargne (ctx.cible, en %) — choisie par l'usager, jamais imposée
+    reglage: { label: 'Ta cible', unite: '%', defaut: 10, min: 1, max: 50, pas: 1 },
+    resolve: (s, ctx) => {
+      const rev = num(s.depenses.revenu); const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne)
+      const pct = rev > 0 ? Math.round((ep / rev) * 100) : null
+      const cible = num(ctx && ctx.cible)
+      const suite = pct != null && cible > 0 ? ` Ta cible : ${Math.round(cible)} %.` : ''
+      return { valeur: pct, unite: '%', texteFactuel: pct == null ? '' : `Tu mets ${pct} % de ton revenu de côté.${suite}` }
+    },
   },
   {
     id: 'equilibre_503020', domaine: 'budget', question: 'Mon budget est-il balancé ?',
@@ -156,7 +164,13 @@ export const REGISTRE_KPIS = [
   {
     id: 'mois_couverts', domaine: 'coussin', question: 'Mon coussin tient combien de mois ?',
     requiert: ['coussin'], blocsCompatibles: ['jauge', 'coussin_urgence'],
-    resolve: (s) => { const m = s.coussin.moisCouverts; return { valeur: m == null ? null : m, unite: 'mois', texteFactuel: m == null ? 'Entre tes besoins essentiels pour situer ton coussin.' : `Ton coussin couvre ${mois1(m)} mois de dépenses.` } },
+    reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
+    resolve: (s, ctx) => {
+      const m = s.coussin.moisCouverts
+      const cible = num(ctx && ctx.cible)
+      const suite = m != null && cible > 0 ? ` Ta cible : ${Math.round(cible)} mois.` : ''
+      return { valeur: m == null ? null : m, unite: 'mois', texteFactuel: m == null ? 'Entre tes besoins essentiels pour situer ton coussin.' : `Ton coussin couvre ${mois1(m)} mois de dépenses.${suite}` }
+    },
   },
   {
     id: 'montant_coussin', domaine: 'coussin', question: 'J’ai combien de côté ?',
@@ -164,14 +178,34 @@ export const REGISTRE_KPIS = [
     resolve: (s) => { const v = num(s.coussin.montant); return { valeur: v, unite: '$', texteFactuel: `Tu as ${formatCAD(v)} de côté.` } },
   },
   {
-    id: 'ecart_3_6_mois', domaine: 'coussin', question: 'Combien pour atteindre 3 mois ?',
+    id: 'ecart_3_6_mois', domaine: 'coussin', question: 'Combien pour atteindre ma cible ?',
     requiert: ['coussin'], blocsCompatibles: ['barre_progression', 'fait'],
-    resolve: (s) => { const c3 = num(s.coussin.cible3); const m = num(s.coussin.montant); const manque = Math.max(0, c3 - m); return { valeur: manque, unite: '$', texteFactuel: c3 <= 0 ? '' : manque === 0 ? 'Tu as dépassé le repère de 3 mois.' : `Il te manque ${formatCAD(manque)} pour atteindre 3 mois.` } },
+    reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
+    resolve: (s, ctx) => {
+      // TA cible en mois (défaut 3) → convertie en dollars via tes essentielles.
+      const ess = num(s.coussin.essentielles)
+      const nb = Math.max(1, Math.round(num(ctx && ctx.cible)) || 3)
+      const cibleM = ess > 0 ? ess * nb : num(s.coussin.cible3)
+      const m = num(s.coussin.montant)
+      const manque = Math.max(0, cibleM - m)
+      return { valeur: manque, unite: '$', texteFactuel: cibleM <= 0 ? '' : manque === 0 ? `Tu as dépassé ta cible de ${nb} mois.` : `Il te manque ${formatCAD(manque)} pour atteindre ${nb} mois.` }
+    },
   },
   {
-    id: 'temps_vers_coussin_cible', domaine: 'coussin', question: 'Un coussin de 3 mois, dans combien de temps ?',
+    id: 'temps_vers_coussin_cible', domaine: 'coussin', question: 'Ma cible de coussin, dans combien de temps ?',
     requiert: ['coussin', 'capacite'], blocsCompatibles: ['chronologie', 'chaine'],
-    resolve: (s) => { const c3 = num(s.coussin.cible3); const m = num(s.coussin.montant); const cap = num(s.depenses && s.depenses.reste); const manque = Math.max(0, c3 - m); if (c3 <= 0) return { valeur: null, unite: 'mois', texteFactuel: '' }; const h = manque === 0 ? 0 : cap > 0 ? Math.ceil(manque / cap) : null; return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Tu as déjà 3 mois de coussin.' : h == null ? 'À ton rythme actuel, ton coussin n’avance pas.' : `À ton rythme, 3 mois de coussin sont à ${h} mois.` } },
+    reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
+    resolve: (s, ctx) => {
+      const ess = num(s.coussin.essentielles)
+      const nb = Math.max(1, Math.round(num(ctx && ctx.cible)) || 3)
+      const cibleM = ess > 0 ? ess * nb : num(s.coussin.cible3)
+      const m = num(s.coussin.montant)
+      const cap = num(s.depenses && s.depenses.reste)
+      const manque = Math.max(0, cibleM - m)
+      if (cibleM <= 0) return { valeur: null, unite: 'mois', texteFactuel: '' }
+      const h = manque === 0 ? 0 : cap > 0 ? Math.ceil(manque / cap) : null
+      return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? `Tu as déjà ${nb} mois de coussin.` : h == null ? 'À ton rythme actuel, ton coussin n’avance pas.' : `À ton rythme, ${nb} mois de coussin sont à ${h} mois.` }
+    },
   },
   {
     id: 'taux_constitution', domaine: 'coussin', question: 'Mon coussin grossit à quelle vitesse ?',

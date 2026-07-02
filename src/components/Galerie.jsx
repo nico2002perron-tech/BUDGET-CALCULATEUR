@@ -23,7 +23,7 @@ import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { composerRecette } from '../recettes/composer.js'
 import { formatKPI } from '../lib/format.js'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
-import { iconeKPI, ICONE_DOMAINE, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './iconesGalerie.jsx'
+import { iconeKPI, ICONE_DOMAINE, ICONE_SITUATION, ICONES_CHOIX, I_VEDETTE, I_ECLAIR } from './iconesGalerie.jsx'
 
 const I_ETINCELLE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -114,13 +114,22 @@ function volVersLaTour(fromEl) {
   } catch { /* purement décoratif */ }
 }
 
-/* L'essayage (étape 2) : le VRAI bloc + formes + couleurs. Feuille du bas mobile. */
+/* L'essayage (étape 2) : CRÉER SON kpi — sa cible, sa forme, sa couleur, son
+   icône, SON nom. L'aperçu est le VRAI bloc, recalculé en direct (la cible passe
+   par resolveKPI — jamais un chiffre inventé). Feuille du bas mobile. */
 export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
   const formes = useMemo(() => formesPourKPI(kpi.id, snapshot, {}), [kpi.id, snapshot])
   const [forme, setForme] = useState(formes[0])
   const [accent, setAccent] = useState(kpi.accent)
+  const [nom, setNom] = useState('')
+  const [icone, setIcone] = useState(null) // null = l'icône automatique du KPI
+  const [cible, setCible] = useState(kpi.reglage ? kpi.reglage.defaut : null)
   const apercuRef = useRef(null)
   if (formes.length === 0) return null
+
+  const r = kpi.reglage
+  const params = r && cible != null ? { cible } : {}
+  const bougeCible = (delta) => setCible(Math.min(r.max, Math.max(r.min, (cible || r.defaut) + delta)))
 
   return (
     <>
@@ -133,11 +142,24 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
         </div>
 
         <div className="gal-essai-corps">
-          <div className="gal-essai-apercu" ref={apercuRef}>
-            <MoteurRendu recette={{ situation: `essai_${kpi.id}`, titre: '', blocs: [{ KPI: kpi.id, forme, params: {} }] }} snapshot={snapshot} />
+          {/* L'aperçu VIVANT : la cible, la forme et la couleur s'y reflètent en direct. */}
+          <div className="gal-essai-apercu" ref={apercuRef} key={`${forme}:${cible}`}>
+            <MoteurRendu recette={{ situation: `essai_${kpi.id}`, titre: '', blocs: [{ KPI: kpi.id, forme, params }] }} snapshot={snapshot} />
           </div>
 
           <div className="gal-essai-choix">
+            {/* SA CIBLE : la tienne — le KPI se recalcule dessus, en direct. */}
+            {r && (
+              <>
+                <span className="gal-essai-l">{r.label}</span>
+                <div className="gal-cible" role="group" aria-label={`${r.label} (${r.unite})`}>
+                  <button type="button" className="mis-pas gal-cible-pas" onClick={() => bougeCible(-r.pas)} aria-label={`Moins ${r.pas}`}>−</button>
+                  <span className="gal-cible-val">{cible}<small>{r.unite}</small></span>
+                  <button type="button" className="mis-pas gal-cible-pas" onClick={() => bougeCible(r.pas)} aria-label={`Plus ${r.pas}`}>+</button>
+                </div>
+              </>
+            )}
+
             {formes.length > 1 && (
               <>
                 <span className="gal-essai-l">Sa forme</span>
@@ -150,23 +172,67 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
                 </div>
               </>
             )}
+
             <span className="gal-essai-l">Ta couleur</span>
             <div className="gal-accents" role="group" aria-label="Choisis la couleur">
               {PALETTE_ACCENTS.map((a) => (
                 <button key={a.id} type="button" className={`gal-accent${a.hex === accent ? ' is-choisi' : ''}`} style={{ background: a.hex }} onClick={() => setAccent(a.hex)} aria-pressed={a.hex === accent} aria-label={`Couleur ${a.id}`} />
               ))}
             </div>
+
+            {/* SON ICÔNE : la première = l'automatique du KPI, le reste = ton choix. */}
+            <span className="gal-essai-l">Son icône</span>
+            <div className="gal-icones" role="group" aria-label="Choisis l'icône">
+              <button
+                type="button"
+                className={`gal-icone${icone == null ? ' is-choisie' : ''}`}
+                onClick={() => setIcone(null)}
+                aria-pressed={icone == null}
+                aria-label="Icône automatique"
+              >
+                {iconeKPI(kpi.id, kpi.domaine)}
+              </button>
+              {ICONES_CHOIX.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`gal-icone${icone === c.id ? ' is-choisie' : ''}`}
+                  onClick={() => setIcone(c.id)}
+                  aria-pressed={icone === c.id}
+                  aria-label={`Icône ${c.id}`}
+                >
+                  {c.svg}
+                </button>
+              ))}
+            </div>
+
+            {/* SON NOM : le tien. Vide = la question du registre. */}
+            <span className="gal-essai-l">Son nom</span>
+            <input
+              type="text"
+              className="gal-nom"
+              value={nom}
+              placeholder={kpi.question}
+              maxLength={60}
+              onChange={(e) => setNom(e.target.value)}
+              aria-label="Nomme ton outil"
+            />
+
             <button
               type="button"
               className="gal-ajouter"
               onClick={() => {
                 volVersLaTour(apercuRef.current)
-                onAjouter({ situation: `kpi_${kpi.id}`, titre: kpi.question, blocs: [{ KPI: kpi.id, forme, params: {} }] }, accent)
+                onAjouter(
+                  { situation: `kpi_${kpi.id}`, titre: nom.trim() || kpi.question, blocs: [{ KPI: kpi.id, forme, params }] },
+                  accent,
+                  icone,
+                )
               }}
             >
               Ajouter à ma tour
             </button>
-            <p className="gal-essai-note">Tu pourras l’enlever ou changer sa couleur en tout temps.</p>
+            <p className="gal-essai-note">Tu pourras tout retoucher en tout temps.</p>
           </div>
         </div>
       </div>
@@ -240,7 +306,7 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
         <EssayageForme
           kpi={kpiEssai}
           snapshot={snapshot}
-          onAjouter={(recette, accent) => { setEssai(null); onAjouter(recette, accent) }}
+          onAjouter={(recette, accent, icone) => { setEssai(null); onAjouter(recette, accent, icone) }}
           onFermer={() => setEssai(null)}
         />
       )}

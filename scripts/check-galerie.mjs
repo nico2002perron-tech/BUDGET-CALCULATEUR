@@ -18,7 +18,7 @@ const ok = (cond, label) => { console.log(`  ${cond ? '✓' : '✗'} ${label}`);
 
 try {
   const { construireGalerie, groupesAAllumer, DOMAINES } = await vite.ssrLoadModule('/src/lib/galerie.js')
-  const { REGISTRE_KPIS, candidatsKPI } = await vite.ssrLoadModule('/src/recettes/bibliotheque-kpis.js')
+  const { REGISTRE_KPIS, candidatsKPI, resolveKPI } = await vite.ssrLoadModule('/src/recettes/bibliotheque-kpis.js')
   const { filtrerFait } = await vite.ssrLoadModule('/src/recettes/schema.js')
   const { snapshotFromStore } = await vite.ssrLoadModule('/src/lib/canonical.js')
   const { exempleStore } = await vite.ssrLoadModule('/src/lib/storage.js')
@@ -48,6 +48,17 @@ try {
   ok(vide.indicateurs.every((k) => ['revenus', 'depenses', 'placements'].includes(k.sousSection)), 'chaque givrée sait où sa donnée se saisit')
   ok(vide.tableaux.every((t) => !t.pret && t.condition && t.sousSection), 'tableaux givrés pareil')
   ok(vide.totaux.prets === 0 && vide.totaux.aAllumer === attendu + 4, 'les totaux disent l\'état honnêtement')
+
+  console.log('\n— TA cible (les KPIs réglables) —')
+  const mc = g.indicateurs.find((k) => k.id === 'mois_couverts')
+  ok(mc && mc.reglage && mc.reglage.unite === 'mois' && mc.reglage.defaut === 3, 'mois_couverts porte son réglage (cible en mois, défaut 3)')
+  const e3 = resolveKPI('ecart_3_6_mois', snap, { cible: 3 })
+  const e6 = resolveKPI('ecart_3_6_mois', snap, { cible: 6 })
+  ok(e6.valeur > e3.valeur, `une cible de 6 mois demande plus que 3 (${e6.valeur} $ > ${e3.valeur} $) — le KPI se recalcule sur TA cible`)
+  ok(e6.texteFactuel.includes('6 mois'), 'le fait nomme TA cible')
+  const t4 = resolveKPI('temps_vers_coussin_cible', snap, { cible: 4 })
+  ok(t4.texteFactuel.includes('4 mois'), 'le temps-vers-cible suit aussi (4 mois)')
+  ok(resolveKPI('ecart_3_6_mois', snap, {}).valeur === e3.valeur, 'sans cible → le défaut de 3 mois (comportement d\'origine intact)')
 
   console.log('\n— Conformité (VISION §11) —')
   ok(vide.indicateurs.every((k) => filtrerFait(k.condition).ok), 'chaque condition passe filtrerFait')

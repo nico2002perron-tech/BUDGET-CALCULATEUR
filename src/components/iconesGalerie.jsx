@@ -53,3 +53,26 @@ export const I_ECLAIR = (
 export function iconeKPI(id, domaine) {
   return ICONE_KPI[id] || ICONE_DOMAINE[domaine] || ICONE_DOMAINE.budget
 }
+
+/* LE CHOIX D'ICÔNES (créer SON kpi) : une douzaine de lignes claires, tappables
+   à l'essayage et à la retouche. `iconeChoisie(id)` → le SVG, ou null. */
+export const ICONES_CHOIX = [
+  { id: 'portefeuille', svg: ICONE_DOMAINE.budget },
+  { id: 'bouclier', svg: ICONE_DOMAINE.coussin },
+  { id: 'vagues', svg: ICONE_DOMAINE.saisonnier },
+  { id: 'recu', svg: ICONE_DOMAINE.impot },
+  { id: 'courbe', svg: ICONE_DOMAINE.patrimoine },
+  { id: 'pieces', svg: ICONE_KPI.solde_mois },
+  { id: 'coussin', svg: ICONE_KPI.mois_couverts },
+  { id: 'cible', svg: (<svg {...S}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></svg>) },
+  { id: 'eclair', svg: I_ECLAIR },
+  { id: 'etoile', svg: (<svg {...S}><path d="M12 3l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7L12 3z" /></svg>) },
+  { id: 'coeur', svg: (<svg {...S}><path d="M12 20s-7.5-4.6-9.3-9.3C1.5 7.5 3.6 4.5 6.8 4.5c2 0 3.6 1.1 4.4 2.7.8-1.6 2.4-2.7 4.4-2.7 3.2 0 5.3 3 4.1 6.2C17.5 15.4 12 20 12 20z" /></svg>) },
+  { id: 'drapeau', svg: (<svg {...S}><path d="M5 21V4" /><path d="M5 4c4-2 7 2 11 0v9c-4 2-7-2-11 0" /></svg>) },
+  { id: 'maison', svg: (<svg {...S}><path d="M3 11.5 12 4l9 7.5" /><path d="M5 10v10h14V10" /><path d="M10 20v-5h4v5" /></svg>) },
+  { id: 'soleil', svg: (<svg {...S}><circle cx="12" cy="12" r="4.5" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>) },
+]
+export function iconeChoisie(id) {
+  const c = ICONES_CHOIX.find((x) => x.id === id)
+  return c ? c.svg : null
+}

@@ -58,8 +58,17 @@ try {
   ok(essai.includes('gal-essai-apercu') && essai.includes('card'), 'le VRAI bloc en aperçu')
   ok((essai.match(/gal-forme/g) || []).length >= 2 && (essai.match(/gal-accent/g) || []).length >= 6, 'formes + 6 couleurs')
   ok(essai.includes('Ajouter à ma tour'), 'le gros bouton d\'adoption')
-  ok(essai.includes('Tu pourras l’enlever ou changer sa couleur en tout temps.'), 'la réassurance de réversibilité')
+  ok(essai.includes('Tu pourras tout retoucher en tout temps.'), 'la réassurance de réversibilité')
   ok(essai.includes('gal-essai-poignee') && essai.includes('gal-essai-fond'), 'la feuille du bas (poignée + fond) est prête pour mobile')
+
+  console.log('\n— CRÉER SON KPI : cible + icône + nom —')
+  ok(essai.includes('gal-cible') && essai.includes('Ta cible'), 'SA CIBLE : le stepper est là (mois_couverts est réglable)')
+  ok(essai.includes('>3<') || essai.includes('3<small>'), 'la cible par défaut (3 mois) s\'affiche')
+  ok((essai.match(/gal-icone[ "]/g) || []).length >= 14, 'SON ICÔNE : l\'automatique + la douzaine au choix')
+  ok(essai.includes('gal-nom') && essai.includes('Nomme ton outil'), 'SON NOM : le champ est là (vide = la question)')
+  const sansReglage = g.indicateurs.find((k) => k.id === 'montant_coussin' && k.pret)
+  const essai2 = norm(renderToString(React.createElement(EssayageForme, { kpi: sansReglage, snapshot: snap, onAjouter: () => {}, onFermer: () => {} })))
+  ok(!essai2.includes('gal-cible'), 'un KPI sans réglage → pas de stepper cible (jamais un faux réglage)')
 
   console.log('\n— Zéro valeur cassée —')
   ok(!html.includes('NaN') && !html.includes('undefined'), 'aucun NaN/undefined rendu')

@@ -105,6 +105,7 @@ export function construireGalerie(snapshot) {
         indicateurs.push({
           id: def.id, domaine: d.id, accent: ACCENT[d.id], question: def.question,
           pret: true, valeur: r.valeur, unite: r.unite, texteFactuel: r.texteFactuel,
+          reglage: def.reglage || null, // la cible personnelle (si le KPI en supporte une)
         })
       } else {
         indicateurs.push({

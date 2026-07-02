@@ -20,7 +20,7 @@ import Galerie from './components/Galerie.jsx'
 import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie } from './lib/galerie.js'
-import { iconeKPI, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
+import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId } from './recettes/bibliotheque-kpis.js'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
@@ -271,7 +271,7 @@ function App() {
   // Ajoute/retire un indicateur persistant (store.tourWidgets). Les recettes restent
   // composées par composer.js (Galerie) ou par l'IA (barre « décris-le »). `accent` =
   // la couleur choisie à l'essayage (Galerie) — portée par le widget, pas la recette.
-  const ajouterWidget = (recette, accent) => {
+  const ajouterWidget = (recette, accent, icone) => {
     if (!recette || !Array.isArray(recette.blocs) || recette.blocs.length === 0) return
     // Anti-doublon : ne pas empiler deux fois la même vue (même situation).
     const dejaLa = (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).some(
@@ -280,7 +280,10 @@ function App() {
     if (dejaLa) { setErreur('Tu as déjà cette vue dans ta tour.'); return }
     setErreur(null)
     const id = 'w_' + Date.now()
-    setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette, accent: accent || null }] }))
+    setStore((s) => ({
+      ...s,
+      tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette, accent: accent || null, icone: icone || null }],
+    }))
     setNouveauWidget(id) // → ce widget se CONSTRUIT pièce par pièce
   }
   const retirerWidget = (id) =>
@@ -288,12 +291,28 @@ function App() {
 
   // Le héros KPI d'une recette (s'il y en a un) → ce qui peut « se voir autrement ».
   const heroKPI = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
-  // L'icône d'un widget : celle de son KPI héros, sinon celle de sa situation, sinon l'étincelle.
-  const iconeWidget = (recette) => {
+  // L'icône d'un widget : TON choix d'abord, sinon celle de son KPI héros, sinon
+  // celle de sa situation, sinon l'étincelle.
+  const iconeWidget = (w) => {
+    const choisie = w && w.icone ? iconeChoisie(w.icone) : null
+    if (choisie) return choisie
+    const recette = w && w.recette
     const kb = heroKPI(recette)
     if (kb) { const def = kpiPourId(kb.KPI); return iconeKPI(kb.KPI, def && def.domaine) }
     return (recette && ICONE_SITUATION[recette.situation]) || I_VEDETTE
   }
+  const changerIcone = (widgetId, iconeId) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => (w.id === widgetId ? { ...w, icone: iconeId } : w)),
+    }))
+  const changerTitre = (widgetId, titre) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) =>
+        w.id === widgetId && w.recette ? { ...w, recette: { ...w.recette, titre } } : w,
+      ),
+    }))
   // Porte « après » : échanger la FORME d'un KPI sur un widget persistant. Présentation
   // pure — le KPI est résolu une fois par MoteurRendu ; aucun montant n'est recalculé.
   const changerAngle = (widgetId, kpiId, forme) =>
@@ -538,7 +557,7 @@ function App() {
                       style={w.accent ? { '--wacc': w.accent } : undefined}
                     >
                       <div className="tour-widget-tete">
-                        <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w.recette)}</span>
+                        <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w)}</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
                         <button
                           type="button"
@@ -556,9 +575,20 @@ function App() {
                         <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
                       </div>
 
-                      {/* LA RETOUCHE : couleur + forme, en tout temps (la promesse tenue). */}
+                      {/* LA RETOUCHE : nom, couleur, forme, icône — TOUT, en tout temps. */}
                       {retoucheOuverte && (
                         <div className="retouche gal-anim" style={{ '--acc': w.accent || '#00b4d8' }}>
+                          <div className="retouche-bloc retouche-nom">
+                            <span className="gal-essai-l">Son nom</span>
+                            <input
+                              type="text"
+                              className="gal-nom"
+                              value={(w.recette && w.recette.titre) || ''}
+                              maxLength={60}
+                              onChange={(e) => changerTitre(w.id, e.target.value)}
+                              aria-label="Renommer cet outil"
+                            />
+                          </div>
                           <div className="retouche-bloc">
                             <span className="gal-essai-l">Ta couleur</span>
                             <div className="gal-accents">
@@ -592,6 +622,23 @@ function App() {
                               </div>
                             </div>
                           )}
+                          <div className="retouche-bloc">
+                            <span className="gal-essai-l">Son icône</span>
+                            <div className="gal-icones">
+                              {ICONES_CHOIX.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className={`gal-icone${w.icone === c.id ? ' is-choisie' : ''}`}
+                                  onClick={() => changerIcone(w.id, c.id)}
+                                  aria-pressed={w.icone === c.id}
+                                  aria-label={`Icône ${c.id}`}
+                                >
+                                  {c.svg}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
 
