@@ -11,8 +11,7 @@ import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline } from './lib/storage.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
-import ChoixAngle from './recettes/ChoixAngle.jsx'
-import { formesPourKPI } from './recettes/bibliotheque-kpis.js'
+import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
 import EvenementsSaillants from './components/EvenementsSaillants.jsx'
 import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
@@ -31,7 +30,7 @@ import SousSectionBientot from './components/SousSectionBientot.jsx'
 import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
 import { routerMessage } from './recettes/routeur.js'
-import { construireEntite } from './lib/entites.js'
+import { construireEntite, PALETTE_ACCENTS } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
 
 const RECETTE_CALENDRIER = {
@@ -306,6 +305,21 @@ function App() {
           : w,
       ),
     }))
+  // TAPE LA CARTE → la forme suivante (le widget se métamorphose sous le doigt).
+  const cyclerForme = (w) => {
+    const kb = heroKPI(w.recette)
+    if (!kb) return
+    const formes = formesPourKPI(kb.KPI, snapshot, kb.params)
+    if (formes.length < 2) return
+    const i = formes.indexOf(kb.forme)
+    changerAngle(w.id, kb.KPI, formes[(i + 1) % formes.length])
+  }
+  // Retoucher après coup : la couleur du widget (la promesse « en tout temps » tenue).
+  const changerCouleur = (widgetId, hex) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => (w.id === widgetId ? { ...w, accent: hex } : w)),
+    }))
 
   // Le « BAM » : la conversation studio → une ENTITÉ (silo) + sa tuile carte_entite qui
   // SE POSE dans le dashboard (animée, via nouveauWidget → stagger de MoteurRendu).
@@ -514,8 +528,9 @@ function App() {
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
-                  const peutVoirAutrement = !!kb && formesPourKPI(kb.KPI, snapshot, kb.params).length > 1
-                  const angleOuvert = angleWidget === w.id
+                  const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
+                  const peutMorpher = formes.length > 1
+                  const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
                       className={`tour-widget tour-vues${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}`}
@@ -525,25 +540,79 @@ function App() {
                       <div className="tour-widget-tete">
                         <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w.recette)}</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
-                        {peutVoirAutrement && (
-                          <button type="button" className="tour-widget-angle" onClick={() => setAngleWidget(angleOuvert ? null : w.id)} aria-expanded={angleOuvert} title="Voir autrement">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="2.5" /></svg>
-                            Voir autrement
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={`tour-widget-retouche${retoucheOuverte ? ' is-ouverte' : ''}`}
+                          onClick={() => setAngleWidget(retoucheOuverte ? null : w.id)}
+                          aria-expanded={retoucheOuverte}
+                          title="Retoucher (couleur, forme)"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-1.6c-1.5 0-2.4 1.6-1.5 2.8.8 1.1.2 3.2-2.9 3.2z" />
+                            <circle cx="7.5" cy="10.5" r="1.2" /><circle cx="12" cy="7.5" r="1.2" /><circle cx="16.5" cy="10.5" r="1.2" />
+                          </svg>
+                          Retoucher
+                        </button>
                         <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
                       </div>
-                      {peutVoirAutrement && angleOuvert && (
-                        <ChoixAngle
-                          kpiId={kb.KPI}
-                          snapshot={snapshot}
-                          ctx={kb.params}
-                          recommande={kb.recommande || kb.forme}
-                          formeActuelle={kb.forme}
-                          onChoisir={(f) => changerAngle(w.id, kb.KPI, f)}
-                        />
+
+                      {/* LA RETOUCHE : couleur + forme, en tout temps (la promesse tenue). */}
+                      {retoucheOuverte && (
+                        <div className="retouche gal-anim" style={{ '--acc': w.accent || '#00b4d8' }}>
+                          <div className="retouche-bloc">
+                            <span className="gal-essai-l">Ta couleur</span>
+                            <div className="gal-accents">
+                              {PALETTE_ACCENTS.map((a) => (
+                                <button
+                                  key={a.id}
+                                  type="button"
+                                  className={`gal-accent${(w.accent || '#00b4d8') === a.hex ? ' is-choisi' : ''}`}
+                                  style={{ background: a.hex }}
+                                  onClick={() => changerCouleur(w.id, a.hex)}
+                                  aria-label={`Couleur ${a.id}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {peutMorpher && (
+                            <div className="retouche-bloc">
+                              <span className="gal-essai-l">Sa forme</span>
+                              <div className="gal-formes">
+                                {formes.map((f) => (
+                                  <button
+                                    key={f}
+                                    type="button"
+                                    className={`gal-forme${f === kb.forme ? ' is-choisie' : ''}`}
+                                    onClick={() => changerAngle(w.id, kb.KPI, f)}
+                                    aria-pressed={f === kb.forme}
+                                  >
+                                    {nomForme(f)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
-                      <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
+
+                      {/* TAPE LA CARTE → la forme suivante (les contrôles internes gardent la main). */}
+                      <div
+                        className={`tour-rendu${peutMorpher ? ' est-tappable' : ''}`}
+                        key={kb ? `${kb.KPI}:${kb.forme}` : 'fixe'}
+                        onClick={
+                          peutMorpher
+                            ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; cyclerForme(w) }
+                            : undefined
+                        }
+                      >
+                        <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
+                        {peutMorpher && (
+                          <span className="tour-tap-hint" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" /></svg>
+                            tape&nbsp;: autre forme
+                          </span>
+                        )}
+                      </div>
                     </section>
                   )
                 })}
