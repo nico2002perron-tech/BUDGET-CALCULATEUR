@@ -18,7 +18,10 @@ import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import Galerie from './components/Galerie.jsx'
-import { iconeKPI, ICONE_SITUATION, I_VEDETTE } from './components/iconesGalerie.jsx'
+import MissionAllumage from './components/MissionAllumage.jsx'
+import { appliquerMission } from './lib/missions.js'
+import { construireGalerie } from './lib/galerie.js'
+import { iconeKPI, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId } from './recettes/bibliotheque-kpis.js'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
@@ -157,11 +160,24 @@ function App() {
   )
   // LE HÉROS du cockpit (VISION §7a·2) : le verdict du jour, produit pur du snapshot.
   const verdict = useMemo(() => construireVerdict(snapshot), [snapshot, jourCle]) // eslint-disable-line react-hooks/exhaustive-deps -- idem
-  // Une carte givrée sait où sa donnée se saisit : la Galerie t'y amène en un tap.
-  const allerSaisie = (sousSec) => {
-    setSection('donnees')
-    setSousSection(sousSec || 'revenus')
+  // Une carte givrée → LA MISSION « 2 min » (une question à la fois), pas le
+  // formulaire. Les saisies détaillées de « Mes données » restent là pour fignoler.
+  const [mission, setMission] = useState(null) // 'revenus' | 'depenses' | 'placements' | null
+  const [allumes, setAllumes] = useState(null) // célébration : N outils qui viennent de s'allumer
+  const allerSaisie = (sousSec) => setMission(sousSec || 'revenus')
+  const finirMission = (reponses) => {
+    const avant = construireGalerie(snapshot).totaux.prets
+    const storeApres = appliquerMission(mission, reponses, store)
+    const apres = construireGalerie(snapshotFromStore(storeApres)).totaux.prets
+    setStore(() => storeApres)
+    setMission(null)
+    if (apres > avant) setAllumes(apres - avant) // célébrer le GESTE, en fait
   }
+  useEffect(() => {
+    if (allumes == null) return
+    const id = setTimeout(() => setAllumes(null), 7000)
+    return () => clearTimeout(id)
+  }, [allumes])
   // Le snapshot courant devient le repère de la PROCHAINE visite — écrit au DÉPART (onglet
   // caché / pagehide), jamais au démontage React (StrictMode le double → corromprait le repère).
   const snapshotRef = useRef(snapshot)
@@ -457,10 +473,21 @@ function App() {
                 Data-aware : aucun verdict possible → rien (jamais de zéro inventé). */}
             <VerdictDuJour verdict={verdict} />
 
-            {/* LA GALERIE (« comme dans Canva »). Si une conversation studio est ouverte
-                (« puis-je me le permettre »), elle PREND LE RELAIS — le fil piloté → la
-                tuile se matérialise dans le tableau ci-dessous. */}
-            {studio ? (
+            {/* La célébration : N outils viennent de s'allumer (un fait, 7 s, jamais un jugement). */}
+            {allumes != null && !mission && (
+              <div className="tour-allume gal-anim" role="status">
+                <span className="gal-ic" aria-hidden="true">{I_ECLAIR}</span>
+                <span className="tour-allume-txt">
+                  <b>{allumes} outil{allumes > 1 ? 's' : ''}</b> {allumes > 1 ? 'viennent' : 'vient'} de s’allumer dans ton studio.
+                </span>
+              </div>
+            )}
+
+            {/* LE STUDIO GUIDÉ. La mission « 2 min » prend le relais quand on allume une
+                famille ; la conversation studio (« puis-je me le permettre ») garde le sien. */}
+            {mission ? (
+              <MissionAllumage famille={mission} onFini={finirMission} onAnnuler={() => setMission(null)} />
+            ) : studio ? (
               <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
             ) : (
               <Galerie

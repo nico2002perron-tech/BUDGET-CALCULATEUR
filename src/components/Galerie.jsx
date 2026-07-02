@@ -16,7 +16,7 @@
    Zéro emoji, zéro dessin — icônes en ligne + vraies valeurs + couleurs vives.
    ========================================================================== */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { construireGalerie, groupesAAllumer, DOMAINES, ACCENT_SITUATION } from '../lib/galerie.js'
+import { construireGalerie, DOMAINES, ACCENT_SITUATION } from '../lib/galerie.js'
 import { suggererIndicateurs } from '../recettes/suggestions.js'
 import { formesPourKPI, nomForme } from '../recettes/bibliotheque-kpis.js'
 import { PALETTE_ACCENTS } from '../lib/entites.js'
@@ -176,7 +176,9 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
 
 export default function Galerie({ snapshot, widgets = [], chargement, erreur, onDecrire, onAjouter, onAllerSaisie }) {
   const galerie = useMemo(() => construireGalerie(snapshot), [snapshot])
-  const groupes = useMemo(() => groupesAAllumer(galerie), [galerie])
+  // L'invitation d'une famille éteinte vient de SES propres cartes givrées (jamais
+  // de celles d'une autre famille — la mission lancée doit être la bonne).
+  const givreDe = (domaineId) => galerie.indicateurs.find((k) => !k.pret && k.domaine === domaineId)
   const dejaLa = useMemo(
     () => new Set((Array.isArray(widgets) ? widgets : []).map((w) => w.recette && w.recette.situation).filter(Boolean)),
     [widgets],
@@ -251,7 +253,8 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
     const tableau = tableauDe(famille)
     const visibles = voirTout ? prets : prets.slice(0, 3)
     const reste = prets.length - visibles.length
-    const groupe = groupes.find((g) => prets.length === 0 && g)
+    const givre = givreDe(famille)
+    const nGivres = galerie.indicateurs.filter((k) => !k.pret && k.domaine === famille).length + (tableau && !tableau.pret ? 1 : 0)
 
     return (
       <section className="galerie gal-guide" aria-label="Crée tes outils">
@@ -267,10 +270,10 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
             <div className="gal-eteinte gal-anim" style={{ '--acc': domaine.accent, '--i': 0 }}>
               <span className="gal-ic" aria-hidden="true">{I_ECLAIR}</span>
               <h3 className="gal-eteinte-titre">
-                {(groupe && `${groupe.n} outils s’allument avec ${groupe.manque}`) || 'Ces outils s’allument avec tes données'}
+                {(givre && `${nGivres} outil${nGivres > 1 ? 's' : ''} s’allume${nGivres > 1 ? 'nt' : ''} avec ${givre.manque}`) || 'Ces outils s’allument avec tes données'}
               </h3>
               <p className="gal-eteinte-sous">Rien n’est brisé — il manque juste une info.</p>
-              <button type="button" className="gal-ajouter" onClick={() => onAllerSaisie((groupe && groupe.sousSection) || 'revenus')}>
+              <button type="button" className="gal-ajouter" onClick={() => onAllerSaisie((givre && givre.sousSection) || 'revenus')}>
                 Aller la saisir · 2 min
               </button>
             </div>
@@ -351,7 +354,7 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
         {FAMILLES.map((f, i) => {
           const d = DOMAINES.find((x) => x.id === f.id)
           const n = pretsParDomaine(f.id).length + (tableauDe(f.id) && tableauDe(f.id).pret ? 1 : 0)
-          const groupe = groupes.find((g) => n === 0)
+          const givre = n === 0 ? givreDe(f.id) : null
           return (
             <button
               key={f.id}
@@ -364,7 +367,7 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
               <span className="gal-famille-txt">
                 <span className="gal-famille-l">{f.label}</span>
                 <span className="gal-famille-s">
-                  {n > 0 ? `${n} outil${n > 1 ? 's' : ''} prêt${n > 1 ? 's' : ''}` : (groupe ? `s’allume avec ${groupe.manque}` : 'à allumer')}
+                  {n > 0 ? `${n} outil${n > 1 ? 's' : ''} prêt${n > 1 ? 's' : ''}` : (givre ? `s’allume avec ${givre.manque}` : 'à allumer')}
                 </span>
               </span>
               <span className="gal-chev" aria-hidden="true">{I_CHEVRON}</span>

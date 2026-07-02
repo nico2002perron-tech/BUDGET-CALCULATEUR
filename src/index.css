@@ -2182,3 +2182,71 @@ svg { display: block; }
 .tour-board .tour-widget-x { border-width: 1.5px; border-bottom-width: 3px; border-radius: 12px; }
 /* Un widget mono-bloc (un seul KPI) : colonne bornée, jamais une grille à moitié vide. */
 .grid-solo { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
+
+/* ============================================================================
+   LA MISSION « 2 MIN » (style Duolingo) — une question à la fois, barre de
+   progression, choix joufflus, montants à steppers. La famille s'allume à la fin.
+   ========================================================================== */
+.mission { --acc: var(--cyan); position: relative; z-index: 1; width: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.mis-tete { display: flex; align-items: center; gap: 12px; }
+.mis-prog { flex: 1; height: 12px; border-radius: 999px; background: rgba(3, 4, 94, 0.08); overflow: hidden; }
+.mis-prog-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  transition: width 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.mis-compte { flex: none; font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mis-corps { display: flex; flex-direction: column; gap: 14px; animation: galCascade 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mis-question { margin: 10px 0 0; text-align: center; font-size: 23px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em; line-height: 1.25; }
+.mis-sous { margin: -6px 0 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* Les choix : gros boutons joufflus qui s'enfoncent. */
+.mis-choix-liste { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.mis-choix {
+  width: 100%; font-family: inherit; font-size: 15.5px; font-weight: 800; color: var(--navy); text-align: center;
+  background: #fff; border: 2px solid rgba(0, 180, 216, 0.35); border-bottom-width: 6px;
+  border-radius: 20px; padding: 16px 18px; cursor: pointer;
+  transition: transform 0.09s, border-bottom-width 0.09s, background 0.15s, border-color 0.15s;
+}
+.mis-choix:hover { background: rgba(0, 180, 216, 0.06); border-color: rgba(0, 180, 216, 0.55); }
+.mis-choix:active { transform: translateY(4px); border-bottom-width: 2px; }
+
+/* Le montant : gros chiffre central + steppers ronds. */
+.mis-montant { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
+.mis-pas {
+  width: 52px; height: 52px; flex: none; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 26px; font-weight: 800; color: var(--accent);
+  background: #fff; border: 2px solid rgba(0, 119, 182, 0.3); border-bottom-width: 5px;
+  transition: transform 0.09s, border-bottom-width 0.09s;
+}
+.mis-pas:active { transform: translateY(3px); border-bottom-width: 2px; }
+.mis-champ {
+  display: flex; align-items: baseline; gap: 8px;
+  background: #fff; border: 2px solid rgba(0, 180, 216, 0.35); border-bottom-width: 6px;
+  border-radius: 20px; padding: 12px 20px; min-width: 190px; justify-content: center;
+}
+.mis-input {
+  width: 130px; border: none; outline: none; background: transparent; text-align: center;
+  font-family: inherit; font-size: 34px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mis-input::placeholder { color: #c3cfe4; }
+.mis-unite { font-size: 18px; font-weight: 800; color: var(--muted); }
+.mis-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
+.mis-continuer { align-self: center; min-width: 230px; text-align: center; }
+.mis-continuer[disabled] { opacity: 0.45; cursor: default; }
+.mis-passer { font-family: inherit; font-size: 13px; font-weight: 700; color: var(--muted); background: none; border: none; cursor: pointer; padding: 8px; }
+.mis-passer:hover { color: var(--navy); }
+.mis-note { margin: 4px 0 0; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* La célébration : un fait qui fait sourire — N outils viennent de s'allumer. */
+.tour-allume {
+  position: relative; z-index: 1; width: 100%; max-width: 600px; margin: 0 auto;
+  display: flex; align-items: center; gap: 12px;
+  --acc: var(--cyan);
+  background: linear-gradient(160deg, rgba(0, 180, 216, 0.12), #fff 60%);
+  border: 2px solid rgba(0, 180, 216, 0.4); border-bottom-width: 5px;
+  border-radius: 20px; padding: 12px 16px;
+}
+.tour-allume-txt { font-size: 14.5px; font-weight: 700; color: var(--navy); }
+.tour-allume-txt b { color: var(--accent); font-weight: 900; }
