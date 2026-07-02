@@ -137,6 +137,9 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
   })
 
   if (!aSide) return <div className="grid-main">{mains}</div>
+  // Que des blocs compacts (ex. un seul KPI) → pas de grille à moitié vide :
+  // une colonne bornée, le bloc respire au centre.
+  if (mains.length === 0) return <div className="grid-solo">{sides}</div>
   return (
     <div className="grid">
       <div className="grid-main">{mains}</div>

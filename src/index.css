@@ -336,6 +336,296 @@ svg { display: block; }
 .band-erreur { font-size: 12.5px; font-weight: 600; color: #ffd9b0; margin: 10px 0 0; }
 .band-demande { font-style: italic; }
 
+/* ---- Le verdict du jour (héros cockpit, VISION §7a·2) — habite la bande ---- */
+/* z-index : comme .tour-hero/.tour-board, la section passe DEVANT la brume .tour::after
+   (sinon le halo lavande voile le coin droit de la seule zone foncée). Le rythme vertical
+   vient du gap de .tour — pas de marge qui s'y cumulerait. */
+.verdict { position: relative; z-index: 1; }
+/* La CONSOLE vit : un balayage lumineux lent traverse la bande (subtil, jamais criard).
+   Le ::before est libre (le halo occupe ::after) ; overflow:hidden de .band le contient. */
+.verdict.band::before {
+  content: '';
+  position: absolute; top: -40%; bottom: -40%; left: -30%; width: 26%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+  transform: skewX(-18deg);
+  animation: bandSheen 7.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes bandSheen { 0%, 52% { left: -30%; } 88%, 100% { left: 126%; } }
+.verdict-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #7fe9ff;
+}
+.verdict-tag::before {
+  content: ''; width: 7px; height: 7px; border-radius: 999px;
+  background: #7fe9ff; box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.22);
+  animation: voyantVerdict 2.6s ease-in-out infinite; /* le voyant EN DIRECT du poste */
+}
+@keyframes voyantVerdict {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.22); }
+  50% { box-shadow: 0 0 0 7px rgba(127, 233, 255, 0.09); }
+}
+/* ambre RÉSERVÉ à l'exception (déficit) — même ton que .band-erreur (VISION §12) */
+.band-verdict b.neg { color: #ffd9b0; }
+
+/* Le rythme du mois : piste blanche translucide, portion écoulée, points de
+   sortie (à venir = cyan clair, passé = éteint), curseur « aujourd'hui ». */
+.vr { position: relative; margin-top: 16px; }
+.vr-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 9px; }
+.vr-titre { font-size: 11.5px; font-weight: 700; color: #bfe4f3; }
+.vr-detail { font-size: 11.5px; font-weight: 700; color: rgba(255, 255, 255, 0.85); text-align: right; }
+.vr-piste { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); }
+/* Le balayage radar : une lueur traverse la piste par intervalles (poste de commande).
+   Course bornée à la piste (pas d'overflow:hidden — il rognerait curseur et points). */
+.vr-piste::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0; width: 42px; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0;
+  animation: vrScan 5.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes vrScan {
+  0%, 42% { left: 0; opacity: 0; }
+  56% { opacity: 0.9; }
+  84%, 100% { left: calc(100% - 42px); opacity: 0; }
+}
+.vr-ecoule {
+  position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.34); /* assez de relief pour lire l'axe « argent sorti » jusque sur le bout cyan */
+  transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.vr-pt {
+  position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 999px;
+  background: #7fe9ff; box-shadow: 0 0 0 2.5px rgba(3, 4, 94, 0.55); /* anneau foncé : le point reste lisible sur le bout cyan du dégradé */
+  transform: translate(-50%, -50%);
+}
+.vr-pt.is-passe { background: rgba(255, 255, 255, 0.42); box-shadow: none; }
+.vr-auj {
+  position: absolute; top: -4px; width: 3px; height: 18px; border-radius: 2px;
+  background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+  transform: translateX(-50%);
+  pointer-events: none; /* décoratif — ne doit jamais intercepter le survol d'un marqueur dû aujourd'hui */
+}
+.vr-bornes { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+@media (max-width: 767px) {
+  .verdict.band { padding: 18px 18px 20px; }
+}
+
+/* ============================================================================
+   LE STUDIO GUIDÉ (Galerie v3, façon Duolingo) — une décision à la fois, des
+   boutons JOUFFLUS qui s'enfoncent au tap (rebord 3D), une colonne centrée,
+   peu de mots, des couleurs vives. Zéro dessin : icônes + vraies valeurs.
+   ========================================================================== */
+.galerie { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; }
+.gal-tete { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding-top: 4px; }
+.gal-titre { font-size: 25px; font-weight: 900; color: var(--navy); letter-spacing: -0.02em; margin: 0; }
+
+/* La barre « décris-le » : ronde et lumineuse. */
+.gal-chat {
+  width: 100%; max-width: 600px;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 999px; padding: 8px 8px 8px 18px;
+  box-shadow: 0 18px 44px -14px rgba(3, 4, 94, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: box-shadow 0.25s, border-color 0.25s;
+}
+.gal-chat:focus-within { border-color: rgba(0, 180, 216, 0.55); box-shadow: 0 22px 52px -14px rgba(0, 119, 182, 0.32), 0 0 0 3px rgba(0, 180, 216, 0.22); }
+.gal-chat-ic { width: 20px; height: 20px; color: var(--cyan); flex: none; }
+.gal-chat-ic svg { width: 100%; height: 100%; }
+.gal-chat-input { flex: 1; min-width: 0; border: none; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink); outline: none; }
+.gal-chat-input::placeholder { color: #93a4c4; font-weight: 500; }
+.gal-chat-go {
+  width: 40px; height: 40px; flex: none; border-radius: 999px; border: none; cursor: pointer; color: #fff;
+  background: linear-gradient(135deg, #1ec3e8, #0092c6);
+  box-shadow: 0 8px 18px -6px rgba(0, 180, 216, 0.55);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.gal-chat-go:hover:not([disabled]) { transform: translateY(-1px); }
+.gal-chat-go[disabled] { opacity: 0.6; cursor: default; }
+.gal-chat-go svg { width: 18px; height: 18px; }
+
+/* La colonne du studio : étroite, centrée, aérée — jamais un mur. */
+.gal-colonne { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.gal-question { margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 800; color: var(--navy); }
+.gal-note { margin: 6px 0 0; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* La cascade d'apparition (delay = --i × 55ms) + compteurs stables. */
+.gal-anim { animation: galCascade 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+@keyframes galCascade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* La pastille-icône : le petit soleil de chaque case. */
+.gal-ic {
+  width: 46px; height: 46px; flex: none; border-radius: 15px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--acc) 80%, #fff), var(--acc) 60%, color-mix(in srgb, var(--acc) 70%, var(--navy)));
+  box-shadow: 0 8px 16px -7px color-mix(in srgb, var(--acc) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.gal-ic svg { width: 24px; height: 24px; }
+
+/* LE BOUTON-FAMILLE : gros, joufflu, il S'ENFONCE au tap (rebord 3D Duolingo). */
+.gal-famille {
+  position: relative; width: 100%;
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  font-family: inherit; cursor: pointer;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 9%, #fff), #fff 70%);
+  border: 2px solid color-mix(in srgb, var(--acc) 30%, #fff);
+  border-bottom-width: 6px;
+  border-radius: 22px; padding: 14px 18px;
+  transition: transform 0.09s, border-bottom-width 0.09s, box-shadow 0.2s, filter 0.15s;
+  box-shadow: 0 10px 22px -16px color-mix(in srgb, var(--acc) 50%, rgba(3, 4, 94, 0.2));
+}
+.gal-famille:hover { filter: brightness(1.015); box-shadow: 0 16px 30px -16px color-mix(in srgb, var(--acc) 65%, rgba(3, 4, 94, 0.25)); }
+.gal-famille:active { transform: translateY(4px); border-bottom-width: 2px; }
+.gal-famille.is-eteinte { border-style: dashed; border-bottom-width: 2px; background: #fff; opacity: 0.85; }
+.gal-famille.is-eteinte .gal-ic { background: color-mix(in srgb, var(--acc) 22%, #fff); color: var(--acc); box-shadow: none; }
+.gal-famille-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gal-famille-l { font-size: 16.5px; font-weight: 900; color: var(--navy); letter-spacing: -0.01em; }
+.gal-famille-s { font-size: 12px; font-weight: 700; color: var(--acc); }
+.gal-famille.is-eteinte .gal-famille-s { color: var(--muted); }
+.gal-chev { flex: none; width: 18px; height: 18px; color: color-mix(in srgb, var(--acc) 65%, var(--muted)); }
+.gal-chev svg { width: 100%; height: 100%; }
+
+/* LA CARTE-OUTIL (étape 1) : rangée joufflue — icône, question, TA valeur à droite. */
+.gal-cellule { display: flex; flex-direction: column; gap: 12px; }
+.gal-carte {
+  position: relative; width: 100%;
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  font-family: inherit; cursor: pointer;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 8%, #fff), #fff 65%);
+  border: 2px solid color-mix(in srgb, var(--acc) 26%, #fff);
+  border-bottom-width: 6px;
+  border-radius: 22px; padding: 16px 18px;
+  transition: transform 0.09s, border-bottom-width 0.09s, box-shadow 0.2s;
+  box-shadow: 0 10px 22px -16px color-mix(in srgb, var(--acc) 45%, rgba(3, 4, 94, 0.2));
+}
+.gal-carte:hover { box-shadow: 0 16px 30px -16px color-mix(in srgb, var(--acc) 60%, rgba(3, 4, 94, 0.25)); }
+.gal-carte:active { transform: translateY(4px); border-bottom-width: 2px; }
+.gal-carte.is-ouverte { border-color: color-mix(in srgb, var(--acc) 55%, #fff); }
+.gal-carte-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.gal-q { margin: 0; font-size: 16px; font-weight: 800; color: var(--navy); line-height: 1.25; }
+.gal-fait { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.4; }
+.gal-valeur { flex: none; font-size: 22px; font-weight: 900; letter-spacing: -0.02em; color: var(--acc); font-variant-numeric: tabular-nums; }
+.gal-cat { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, #fff); padding: 3px 9px; border-radius: 999px; }
+.gal-deja { position: absolute; top: -9px; right: 14px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #fff; background: #0f8a5f; padding: 3px 9px; border-radius: 999px; box-shadow: 0 4px 10px -4px rgba(15, 138, 95, 0.6); }
+
+/* La vedette « choisi pour toi » : un cran plus riche. */
+.gal-vedette { border-color: color-mix(in srgb, var(--acc) 45%, #fff); background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 13%, #fff), #fff 70%); }
+
+/* L'en-tête d'une famille (étape 1) : ← retour + pastille + titre. */
+.gal-etape-tete { display: flex; align-items: center; gap: 12px; max-width: 600px; width: 100%; margin: 0 auto; }
+.gal-etape-titre { margin: 0; font-size: 20px; font-weight: 900; color: var(--navy); letter-spacing: -0.01em; }
+.gal-retour {
+  width: 42px; height: 42px; flex: none; border-radius: 14px; cursor: pointer;
+  border: 2px solid var(--line); border-bottom-width: 4px; background: #fff; color: var(--navy);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform 0.09s, border-bottom-width 0.09s;
+}
+.gal-retour:active { transform: translateY(2px); border-bottom-width: 2px; }
+.gal-retour svg { width: 20px; height: 20px; }
+
+/* « Voir les N autres » : la porte discrète. */
+.gal-voirplus {
+  width: 100%; font-family: inherit; font-size: 14px; font-weight: 800; color: var(--acc);
+  background: #fff; border: 2px dashed color-mix(in srgb, var(--acc) 40%, #fff);
+  border-radius: 18px; padding: 14px; cursor: pointer;
+  transition: background 0.15s;
+}
+.gal-voirplus:hover { background: color-mix(in srgb, var(--acc) 5%, #fff); }
+
+/* Famille éteinte (étape 1) : UNE invitation, un seul gros geste. */
+.gal-eteinte {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 7%, #fff), #fff 60%);
+  border: 2px dashed color-mix(in srgb, var(--acc) 40%, #fff);
+  border-radius: 24px; padding: 30px 22px;
+}
+.gal-eteinte-titre { margin: 4px 0 0; font-size: 17px; font-weight: 900; color: var(--navy); }
+.gal-eteinte-sous { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+
+/* Le gros bouton d'action : joufflu, 3D, il s'enfonce. */
+.gal-ajouter {
+  font-family: inherit; font-size: 15px; font-weight: 900; letter-spacing: 0.01em; color: #fff;
+  background: linear-gradient(135deg, var(--acc, var(--cyan)), color-mix(in srgb, var(--acc, var(--cyan)) 60%, var(--navy)));
+  border: none; border-bottom: 5px solid color-mix(in srgb, var(--acc, var(--cyan)) 55%, #000);
+  border-radius: 18px; padding: 14px 26px; cursor: pointer;
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--acc, var(--cyan)) 75%, transparent);
+  transition: transform 0.09s, border-bottom-width 0.09s, box-shadow 0.2s;
+}
+.gal-ajouter:active { transform: translateY(3px); border-bottom-width: 2px; }
+
+/* L'ESSAYAGE : le VRAI bloc en aperçu + formes + couleurs. */
+.gal-essai {
+  display: flex; flex-direction: column; gap: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 2px solid color-mix(in srgb, var(--acc) 40%, #fff);
+  border-radius: 22px; padding: 16px 18px 18px;
+  box-shadow: 0 26px 50px -22px color-mix(in srgb, var(--acc) 45%, rgba(3, 4, 94, 0.3));
+  animation: galEssai 0.3s ease both;
+}
+@keyframes galEssai { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.gal-essai-tete { display: flex; align-items: center; gap: 10px; }
+.gal-essai-titre { font-size: 15px; font-weight: 900; color: var(--navy); }
+.gal-essai-x { margin-left: auto; width: 32px; height: 32px; flex: none; border-radius: 10px; border: 1.5px solid var(--line); border-bottom-width: 3px; background: #fff; color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; }
+.gal-essai-corps { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
+.gal-essai-choix { display: flex; flex-direction: column; gap: 9px; }
+.gal-essai-l { font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.gal-essai-note { margin: 2px 0 0; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.gal-essai-poignee { display: none; }
+.gal-essai-fond { display: none; }
+.gal-formes { display: flex; flex-wrap: wrap; gap: 8px; }
+.gal-forme {
+  font-family: inherit; font-size: 13px; font-weight: 800; color: var(--navy);
+  background: #fff; border: 2px solid var(--line); border-bottom-width: 4px;
+  border-radius: 14px; padding: 10px 15px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.09s, border-bottom-width 0.09s;
+}
+.gal-forme:active { transform: translateY(2px); border-bottom-width: 2px; }
+.gal-forme.is-choisie { border-color: var(--acc); color: var(--acc); background: color-mix(in srgb, var(--acc) 8%, #fff); }
+.gal-accents { display: flex; gap: 9px; }
+.gal-accent { width: 28px; height: 28px; border-radius: 999px; border: 2.5px solid #fff; cursor: pointer; box-shadow: 0 0 0 1.5px var(--line); transition: transform 0.15s, box-shadow 0.15s; }
+.gal-accent.is-choisi { transform: scale(1.15); box-shadow: 0 0 0 3px var(--acc); }
+
+/* Le widget adopté porte SA couleur (l'accent choisi à l'essayage). */
+.tour-widget { --wacc: var(--accent); }
+.tour-widget .tour-widget-tag { color: var(--wacc); background: color-mix(in srgb, var(--wacc) 10%, #fff); }
+
+@media (max-width: 767px) {
+  .gal-titre { font-size: 21px; }
+  .gal-valeur { font-size: 19px; }
+  .gal-famille-l { font-size: 15px; }
+
+  /* L'ESSAYAGE DEVIENT UNE FEUILLE DU BAS (le pattern que le grand public connaît). */
+  .gal-essai-fond { display: block; position: fixed; inset: 0; z-index: 80; background: rgba(3, 4, 94, 0.35); animation: galFond 0.25s ease both; }
+  .gal-essai {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 81;
+    border-radius: 24px 24px 0 0; border-bottom: none;
+    max-height: 84vh; overflow-y: auto;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.97);
+    animation: galFeuille 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .gal-essai-poignee { display: block; width: 42px; height: 4.5px; border-radius: 999px; background: rgba(3, 4, 94, 0.16); margin: 0 auto 2px; }
+  .gal-essai-corps { grid-template-columns: 1fr; gap: 12px; }
+  .gal-ajouter { align-self: stretch; text-align: center; padding: 16px 26px; }
+}
+@keyframes galFond { from { opacity: 0; } to { opacity: 1; } }
+@keyframes galFeuille { from { transform: translateY(24%); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .gal-chat-go:hover:not([disabled]) { transform: none; }
+  .gal-anim, .gal-essai, .gal-essai-fond { animation: none; }
+  .gal-famille:active, .gal-carte:active, .gal-ajouter:active, .gal-forme:active, .gal-retour:active { transform: none; }
+}
+
+
 /* ============================================================================
    « MA TOUR » — accueil centré, chat qui rayonne, cartes qui flottent (ServiceNow)
    ========================================================================== */
@@ -365,6 +655,7 @@ svg { display: block; }
 }
 @keyframes brumeA { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(48px, 36px, 0); } }
 @keyframes brumeB { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-42px, 30px, 0); } }
+
 .tour-hero {
   position: relative;
   z-index: 1;
@@ -442,6 +733,22 @@ svg { display: block; }
 
 /* ---- Ma tour : tableau de widgets persistants + emplacements « + créer » ---- */
 .tour-board { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 20px; }
+
+/* En-tête façon salle de contrôle : voyant qui pulse + « N indicateurs en service »
+   + filet qui file vers la droite. La tour VEILLE — et ça se voit. */
+.tour-board-tete { display: flex; align-items: center; gap: 9px; padding: 0 4px; }
+.tour-board-tete::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(3, 4, 94, 0.16), transparent); }
+.tb-voyant {
+  width: 9px; height: 9px; border-radius: 999px; flex: none;
+  background: var(--cyan); box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.16);
+  animation: voyantTour 2.4s ease-in-out infinite;
+}
+@keyframes voyantTour {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.16); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 180, 216, 0.07); }
+}
+.tb-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); }
+.tb-etat { font-size: 12px; font-weight: 700; color: var(--muted); }
 
 .tour-widget { position: relative; }
 .tour-widget-tete { display: flex; align-items: center; gap: 10px; }
@@ -1532,6 +1839,38 @@ svg { display: block; }
 .angles { margin-bottom: 12px; }
 .atelier-angles { margin: 4px 0 14px; }
 
+/* ---- Tour : « Ce qui bouge » (1re vue sur le primitif événement) ---- */
+/* Couleur = sens (VISION §12) : exception = ambre (réservé), attention = cyan, info = neutre. */
+/* z-index : devant la brume .tour::after (patron .tour-hero) ; rythme vertical = gap de .tour. */
+.evts { position: relative; z-index: 1; }
+.evts-tete { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 10px; }
+.evts-ic { width: 20px; height: 20px; margin-top: 1px; color: var(--cyan); flex: none; }
+.evts-ic svg { width: 100%; height: 100%; }
+.evts-tete-txt { min-width: 0; }
+.evts-titre { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; margin: 0; }
+.evts-sous { margin: 1px 0 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.evts-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.evt {
+  display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72); border: 0.5px solid var(--line); border-left: 3px solid var(--cyan);
+}
+.evt-dot { flex: none; width: 9px; height: 9px; border-radius: 999px; margin-top: 5px; background: var(--cyan); }
+.evt-corps { min-width: 0; }
+.evt-titre { margin: 0; font-size: 13.5px; font-weight: 800; color: var(--navy); }
+.evt-conseq { margin: 3px 0 0; font-size: 12.5px; font-weight: 600; color: var(--muted); line-height: 1.4; }
+.evt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.evt-chip { font-size: 11px; font-weight: 800; color: var(--cyan); background: rgba(0, 180, 216, 0.1); border-radius: 999px; padding: 3px 9px; }
+/* info : accent neutre (pas d'urgence). */
+.evt--info { border-left-color: rgba(3, 4, 94, 0.18); }
+.evt--info .evt-dot { background: var(--muted); }
+/* attention : cyan (toi / maintenant). */
+.evt--attention { border-left-color: var(--cyan); }
+.evt--attention .evt-dot { background: var(--cyan); }
+/* exception : ambre, RÉSERVÉ à la vraie exception (flux négatif). */
+.evt--exception { border-left-color: #e0a23c; background: rgba(224, 162, 60, 0.07); }
+.evt--exception .evt-dot { background: #e0a23c; }
+.evt--exception .evt-chip { color: #b8740a; background: rgba(224, 162, 60, 0.14); }
+
 /* ---- Bloc liste (éléments itemisés) ---- */
 .liste-ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; }
 .liste-li { display: flex; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
@@ -1811,3 +2150,35 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ============================================================================
+   LES WIDGETS DU TABLEAU — aussi joufflus et colorés que le studio. La couleur
+   choisie à l'essayage (--wacc) teinte TOUT : bordure, jauge, barres, chiffres.
+   ========================================================================== */
+/* La couleur choisie remplace les accents de data-viz DANS ce widget seulement. */
+.tour-board .tour-widget.a-couleur { --accent: var(--wacc); --cyan: var(--wacc); }
+.jauge-arc { stroke: var(--cyan); }
+
+/* L'en-tête : pastille-icône + titre costaud (fini le tag clinique). */
+.tour-board .tour-widget-tete { gap: 12px; margin-bottom: 12px; }
+.tour-widget-ic {
+  width: 42px; height: 42px; flex: none; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--wacc) 80%, #fff), var(--wacc) 60%, color-mix(in srgb, var(--wacc) 70%, var(--navy)));
+  box-shadow: 0 8px 16px -7px color-mix(in srgb, var(--wacc) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.tour-widget-ic svg { width: 22px; height: 22px; }
+.tour-board .tour-widget-titre { font-size: 18px; }
+
+/* Les cases des blocs : joufflues, teintées de TA couleur, coins généreux. */
+.tour-board .tour-widget .card {
+  border: 2px solid color-mix(in srgb, var(--wacc) 22%, #fff);
+  border-bottom-width: 6px;
+  border-radius: 22px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--wacc) 6%, #fff), rgba(255, 255, 255, 0.92) 55%);
+}
+.tour-board .tour-widget .card-title svg { color: var(--wacc); }
+/* Les petits boutons du widget suivent le style joufflu. */
+.tour-board .tour-widget-x { border-width: 1.5px; border-bottom-width: 3px; border-radius: 12px; }
+/* Un widget mono-bloc (un seul KPI) : colonne bornée, jamais une grille à moitié vide. */
+.grid-solo { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }

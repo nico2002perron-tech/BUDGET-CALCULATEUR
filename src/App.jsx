@@ -8,12 +8,18 @@
    ========================================================================== */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
-import { loadStore, saveStore, emptyStore, exempleStore } from './lib/storage.js'
+import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline } from './lib/storage.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import ChoixAngle from './recettes/ChoixAngle.jsx'
 import { formesPourKPI } from './recettes/bibliotheque-kpis.js'
-import AtelierIndicateur from './components/AtelierIndicateur.jsx'
+import EvenementsSaillants from './components/EvenementsSaillants.jsx'
+import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
+import VerdictDuJour from './components/VerdictDuJour.jsx'
+import { construireVerdict } from './lib/verdict.js'
+import Galerie from './components/Galerie.jsx'
+import { iconeKPI, ICONE_SITUATION, I_VEDETTE } from './components/iconesGalerie.jsx'
+import { kpiPourId } from './recettes/bibliotheque-kpis.js'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
 import SaisiePatrimoine from './components/SaisiePatrimoine.jsx'
@@ -21,8 +27,6 @@ import PanneauVivant from './components/PanneauVivant.jsx'
 import SousSectionBientot from './components/SousSectionBientot.jsx'
 import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
-import { composerRecette } from './recettes/composer.js'
-import { suggererIndicateurs } from './recettes/suggestions.js'
 import { routerMessage } from './recettes/routeur.js'
 import { construireEntite } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
@@ -92,19 +96,6 @@ const I_CAL = (
     <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
   </svg>
 )
-// Ampoule « ta tour te suggère » (push conscient des données — calme, jamais une alerte).
-const I_AMPOULE = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8.9.9 1.6h5.2c.1-.7.4-1.2.9-1.6A6 6 0 0 0 12 3z" />
-  </svg>
-)
-// Icônes des suggestions (clé `icon` de suggestions.js → SVG).
-const ICONE_SUGG = {
-  saison: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 14c2-3 4-3 6 0s4 3 6 0 4-3 6 0" /><path d="M3 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0" /></svg>),
-  patrimoine: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 7-7" /><path d="M17 8h4v4" /></svg>),
-  portrait: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h9l3 3v15l-2-1-2 1-2-1-2 1-2-1-2 1V3z" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>),
-  budget: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18" /><circle cx="16.5" cy="14.5" r="1.2" /></svg>),
-}
 
 function aDesRevenus(store) {
   return revenuMensuel(store && store.revenus) > 0
@@ -138,24 +129,58 @@ function App() {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const fileRef = useRef(null)
 
-  // Fabrication (section « Ma tour ») — 3 portes : suggestions (push) · atelier (pull) · chat libre (IA).
+  // Fabrication (section « Ma tour ») — LA GALERIE (cartes vivantes + barre « décris-le »).
   const [nouveauWidget, setNouveauWidget] = useState(null) // id du widget à animer (à sa CRÉATION seulement)
-  const [chatText, setChatText] = useState('')
   const [chargement, setChargement] = useState(false)
   const [erreur, setErreur] = useState(null)
-  const [suggestionsEcartees, setSuggestionsEcartees] = useState(() => new Set()) // écartées pour la session
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
+  // « DEPUIS TA DERNIÈRE VISITE » (VISION §7a·1) : le repère n'est plus le montage, mais la
+  // DERNIÈRE VISITE — persistée dans son propre silo. Lu UNE fois (état précédent de toute la
+  // session) ; « ce qui bouge » s'ajoute ensuite en direct à mesure que l'usager édite. Absent
+  // (1re visite jamais) → null : seules les échéances parlent, jamais d'événement inventé (§10).
+  const baselineRef = useRef(undefined)
+  const visiteRef = useRef(null) // horodatage de la dernière visite → « il y a N jours »
+  if (baselineRef.current === undefined) {
+    const repere = loadBaseline()
+    baselineRef.current = (repere && repere.snapshot) || null
+    visiteRef.current = (repere && repere.visitedAt) || null
+  }
+  // La « clé du jour » : le verdict et les échéances lisent l'horloge — un onglet laissé
+  // ouvert passé minuit afficherait hier. Rafraîchie au retour d'onglet (visibilitychange).
+  const [jourCle, setJourCle] = useState(() => new Date().toDateString())
+  const evenementsListe = useMemo(
+    () => evenementsSaillants(genererEvenements(snapshot, baselineRef.current), 4),
+    [snapshot, jourCle], // eslint-disable-line react-hooks/exhaustive-deps -- jourCle = dépendance temporelle voulue
+  )
+  // LE HÉROS du cockpit (VISION §7a·2) : le verdict du jour, produit pur du snapshot.
+  const verdict = useMemo(() => construireVerdict(snapshot), [snapshot, jourCle]) // eslint-disable-line react-hooks/exhaustive-deps -- idem
+  // Une carte givrée sait où sa donnée se saisit : la Galerie t'y amène en un tap.
+  const allerSaisie = (sousSec) => {
+    setSection('donnees')
+    setSousSection(sousSec || 'revenus')
+  }
+  // Le snapshot courant devient le repère de la PROCHAINE visite — écrit au DÉPART (onglet
+  // caché / pagehide), jamais au démontage React (StrictMode le double → corromprait le repère).
+  const snapshotRef = useRef(snapshot)
+  useEffect(() => { snapshotRef.current = snapshot }, [snapshot])
+  useEffect(() => {
+    const estamper = () => saveBaseline(snapshotRef.current)
+    const surVisibilite = () => {
+      if (document.visibilityState === 'hidden') estamper()
+      else setJourCle(new Date().toDateString()) // retour d'onglet → le « jour » se rafraîchit
+    }
+    window.addEventListener('pagehide', estamper)
+    document.addEventListener('visibilitychange', surVisibilite)
+    return () => {
+      window.removeEventListener('pagehide', estamper)
+      document.removeEventListener('visibilitychange', surVisibilite)
+    }
+  }, [])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
-  // « La tour pense » : suggestions conscientes des données, moins celles écartées cette session
-  // et celles déjà dans la tour (pas de doublon).
-  const suggestionsBrutes = useMemo(() => suggererIndicateurs(snapshot), [snapshot])
-  const suggestions = suggestionsBrutes.filter(
-    (s) => !suggestionsEcartees.has(s.situation) && !widgets.some((w) => w.recette && w.recette.situation === s.situation),
-  )
 
   useEffect(() => {
     const id = setTimeout(() => saveStore(store), 250)
@@ -229,8 +254,9 @@ function App() {
   }
 
   // Ajoute/retire un indicateur persistant (store.tourWidgets). Les recettes restent
-  // composées par composer.js (atelier/suggestions) ou par l'IA (chat libre).
-  const ajouterWidget = (recette) => {
+  // composées par composer.js (Galerie) ou par l'IA (barre « décris-le »). `accent` =
+  // la couleur choisie à l'essayage (Galerie) — portée par le widget, pas la recette.
+  const ajouterWidget = (recette, accent) => {
     if (!recette || !Array.isArray(recette.blocs) || recette.blocs.length === 0) return
     // Anti-doublon : ne pas empiler deux fois la même vue (même situation).
     const dejaLa = (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).some(
@@ -239,7 +265,7 @@ function App() {
     if (dejaLa) { setErreur('Tu as déjà cette vue dans ta tour.'); return }
     setErreur(null)
     const id = 'w_' + Date.now()
-    setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette }] }))
+    setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette, accent: accent || null }] }))
     setNouveauWidget(id) // → ce widget se CONSTRUIT pièce par pièce
   }
   const retirerWidget = (id) =>
@@ -247,6 +273,12 @@ function App() {
 
   // Le héros KPI d'une recette (s'il y en a un) → ce qui peut « se voir autrement ».
   const heroKPI = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
+  // L'icône d'un widget : celle de son KPI héros, sinon celle de sa situation, sinon l'étincelle.
+  const iconeWidget = (recette) => {
+    const kb = heroKPI(recette)
+    if (kb) { const def = kpiPourId(kb.KPI); return iconeKPI(kb.KPI, def && def.domaine) }
+    return (recette && ICONE_SITUATION[recette.situation]) || I_VEDETTE
+  }
   // Porte « après » : échanger la FORME d'un KPI sur un widget persistant. Présentation
   // pure — le KPI est résolu une fois par MoteurRendu ; aucun montant n'est recalculé.
   const changerAngle = (widgetId, kpiId, forme) =>
@@ -275,13 +307,11 @@ function App() {
     setStudio(null)
   }
 
-  // Chat libre : le 1er message est ROUTÉ. « puis-je me le permettre » → studio (canal
-  // projet_abordable, zéro IA) ; sinon → l'IA compose une recette parmi les blocs.
-  async function demanderIA(e) {
-    e.preventDefault()
-    const texte = chatText.trim()
+  // Barre « décris-le » (Galerie) : le message est ROUTÉ. « puis-je me le permettre »
+  // → studio (canal projet_abordable, zéro IA) ; sinon → l'IA compose une recette.
+  async function demanderIA(texte) {
     if (!texte || chargement) return
-    if (routerMessage(texte).canal === 'projet_abordable') { setStudio({ texteInitial: texte }); setChatText(''); setErreur(null); return }
+    if (routerMessage(texte).canal === 'projet_abordable') { setStudio({ texteInitial: texte }); setErreur(null); return }
     setChargement(true)
     setErreur(null)
     try {
@@ -293,9 +323,8 @@ function App() {
       const data = await res.json()
       if (!res.ok || !data || !Array.isArray(data.blocs)) throw new Error('réponse invalide')
       ajouterWidget(data)
-      setChatText('')
     } catch {
-      setErreur("Ta tour n'a pas pu composer ton indicateur. Réessaie, ou crée-en un ci-dessous.")
+      setErreur("Ta tour n'a pas pu composer ton outil. Réessaie, ou choisis une carte ci-dessous.")
     } finally {
       setChargement(false)
     }
@@ -417,80 +446,57 @@ function App() {
               <h1 className="tour-bonjour">
                 {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
               </h1>
-              <p className="tour-accroche">Pas sûr de quoi suivre&nbsp;? Regarde ce que ta tour te suggère, laisse-toi guider, ou décris-le toi-même.</p>
+              <p className="tour-accroche">Ta tour, tes outils — choisis une carte, tes vrais chiffres sont déjà dedans.</p>
             </div>
 
-            {/* SURFACE « CRÉER ». Si une conversation studio est ouverte (« puis-je me le
-                permettre »), elle PREND LE RELAIS — le fil piloté → la tuile se matérialise
-                dans le tableau ci-dessous. Sinon : 3 couches (suggère → atelier → barre libre). */}
+            {/* 1re vue sur le primitif événement : ce qui bouge maintenant (data-aware : rien → rien).
+                depuis = dernière visite → sous-titre « depuis ta dernière visite » quand un changement est détecté. */}
+            <EvenementsSaillants events={evenementsListe} depuis={visiteRef.current} />
+
+            {/* LE HÉROS (VISION §7a·2) : le verdict du jour — la SEULE zone navy→cyan.
+                Data-aware : aucun verdict possible → rien (jamais de zéro inventé). */}
+            <VerdictDuJour verdict={verdict} />
+
+            {/* LA GALERIE (« comme dans Canva »). Si une conversation studio est ouverte
+                (« puis-je me le permettre »), elle PREND LE RELAIS — le fil piloté → la
+                tuile se matérialise dans le tableau ci-dessous. */}
             {studio ? (
               <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
             ) : (
-            <div className="creer">
-              {suggestions.length > 0 && (
-                <section className="sugg" aria-label="Suggestions de ta tour">
-                  <div className="sugg-tete">
-                    <span className="sugg-ic" aria-hidden="true">{I_AMPOULE}</span>
-                    <h2 className="sugg-titre">Ta tour te suggère</h2>
-                  </div>
-                  <div className="sugg-liste">
-                    {suggestions.map((s) => (
-                      <article className="sugg-carte" key={s.situation}>
-                        <span className="sugg-carte-ic" aria-hidden="true">{ICONE_SUGG[s.icon] || I_AMPOULE}</span>
-                        <div className="sugg-carte-txt">
-                          <span className="sugg-carte-titre">{s.titre}</span>
-                          <span className="sugg-carte-raison">{s.raison}</span>
-                        </div>
-                        <div className="sugg-carte-actions">
-                          <button type="button" className="sugg-ajouter" onClick={() => ajouterWidget(composerRecette(s.situation, {}, snapshot))}>Ajouter</button>
-                          <button type="button" className="sugg-ecarter" onClick={() => setSuggestionsEcartees((set) => new Set(set).add(s.situation))}>Écarter</button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* L'atelier d'assemblage (porte principale, pull guidé). */}
-              <AtelierIndicateur snapshot={snapshot} onAjouter={ajouterWidget} />
-
-              {/* Porte secondaire : décrire librement → l'IA compose. */}
-              <div className="creer-libre">
-                <span className="creer-libre-l">Ou décris ce que tu veux suivre&nbsp;:</span>
-                <form className="chat creer-libre-chat" onSubmit={demanderIA}>
-                  <span className="chat-plus" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg>
-                  </span>
-                  <input
-                    className="chat-input"
-                    type="text"
-                    placeholder="ex. « je suis paysagiste, je gagne rien l'hiver »"
-                    value={chatText}
-                    onChange={(e) => setChatText(e.target.value)}
-                    aria-label="Décris ta situation"
-                  />
-                  <button className="chat-go" type="submit" disabled={chargement} aria-label="Composer">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                  </button>
-                </form>
-              </div>
-              {chargement && <p className="tour-hint">Ta tour compose ton indicateur…</p>}
-              {erreur && <p className="tour-erreur">{erreur}</p>}
-            </div>
+              <Galerie
+                snapshot={snapshot}
+                widgets={widgets}
+                chargement={chargement}
+                erreur={erreur}
+                onDecrire={demanderIA}
+                onAjouter={ajouterWidget}
+                onAllerSaisie={allerSaisie}
+              />
             )}
 
-            {/* LE TABLEAU : les indicateurs déjà créés (persistants). */}
+            {/* LE TABLEAU : les indicateurs déjà créés (persistants). En-tête façon
+                salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
+                en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
             {widgets.length > 0 && (
               <div className="tour-board">
+                <div className="tour-board-tete">
+                  <span className="tb-voyant" aria-hidden="true" />
+                  <span className="tb-label">Tes indicateurs</span>
+                  <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
+                </div>
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
                   const peutVoirAutrement = !!kb && formesPourKPI(kb.KPI, snapshot, kb.params).length > 1
                   const angleOuvert = angleWidget === w.id
                   return (
-                    <section className={`tour-widget tour-vues${anime ? ' is-anime' : ''}`} key={w.id}>
+                    <section
+                      className={`tour-widget tour-vues${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}`}
+                      key={w.id}
+                      style={w.accent ? { '--wacc': w.accent } : undefined}
+                    >
                       <div className="tour-widget-tete">
-                        <span className="tour-widget-tag">Ton indicateur</span>
+                        <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w.recette)}</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
                         {peutVoirAutrement && (
                           <button type="button" className="tour-widget-angle" onClick={() => setAngleWidget(angleOuvert ? null : w.id)} aria-expanded={angleOuvert} title="Voir autrement">
