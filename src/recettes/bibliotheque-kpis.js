@@ -28,7 +28,9 @@ function num(v) {
 const mois1 = (m) => (m == null ? '—' : Number(m).toFixed(1).replace('.', ','))
 
 // Disponibilité d'une donnée dans le snapshot (le « requiert » des KPIs). PUR.
-const DONNEE_DISPO = {
+// Exporté : progression.js (la carte de la tour) dérive les étages allumés/éteints
+// de CES prédicats — une seule source de vérité, jamais de copie.
+export const DONNEE_DISPO = {
   capacite: (s) => !!((s.depenses && s.depenses.revenu > 0) || (s.budget && s.budget.revenuMensuel > 0)),
   coussin: (s) => !!s.coussin,
   depenses: (s) => !!s.depenses,
@@ -125,12 +127,12 @@ export const REGISTRE_KPIS = [
     resolve: (s) => { const rev = num(s.depenses.revenu); const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne); const pct = rev > 0 ? Math.round((ep / rev) * 100) : null; return { valeur: pct, unite: '%', texteFactuel: pct == null ? '' : `Tu mets ${pct} % de ton revenu de côté.` } },
   },
   {
-    id: 'equilibre_503020', domaine: 'budget', question: 'Mon équilibre vs un repère ?',
+    id: 'equilibre_503020', domaine: 'budget', question: 'Mon budget est-il balancé ?',
     requiert: ['depenses'], blocsCompatibles: ['repartition', 'beignet'],
     resolve: (s) => { const p = s.depenses.pct; if (!p) return { valeur: null, unite: '%', texteFactuel: '' }; return { valeur: p, unite: '%', texteFactuel: `Tes parts : ${p.besoin} % besoins, ${p.envie} % désirs, ${p.epargne} % épargne.` } },
   },
   {
-    id: 'engage_vs_libre', domaine: 'budget', question: 'Combien est déjà engagé ?',
+    id: 'engage_vs_libre', domaine: 'budget', question: 'Combien part tout seul chaque mois ?',
     requiert: ['depenses'], blocsCompatibles: ['barre_empilee', 'jauge'],
     resolve: (s) => { const el = s.depenses.engageLibre || {}; const fixe = num(el.fixe); const variable = num(el.variable); const tot = fixe + variable; const pct = tot > 0 ? Math.round((fixe / tot) * 100) : null; return { valeur: pct, unite: '%', texteFactuel: pct == null ? '' : `${pct} % de tes dépenses sont fixes (déjà engagées).` } },
   },
@@ -167,19 +169,19 @@ export const REGISTRE_KPIS = [
     resolve: (s) => { const c3 = num(s.coussin.cible3); const m = num(s.coussin.montant); const manque = Math.max(0, c3 - m); return { valeur: manque, unite: '$', texteFactuel: c3 <= 0 ? '' : manque === 0 ? 'Tu as dépassé le repère de 3 mois.' : `Il te manque ${formatCAD(manque)} pour atteindre 3 mois.` } },
   },
   {
-    id: 'temps_vers_coussin_cible', domaine: 'coussin', question: 'En combien de temps un vrai coussin ?',
+    id: 'temps_vers_coussin_cible', domaine: 'coussin', question: 'Un coussin de 3 mois, dans combien de temps ?',
     requiert: ['coussin', 'capacite'], blocsCompatibles: ['chronologie', 'chaine'],
     resolve: (s) => { const c3 = num(s.coussin.cible3); const m = num(s.coussin.montant); const cap = num(s.depenses && s.depenses.reste); const manque = Math.max(0, c3 - m); if (c3 <= 0) return { valeur: null, unite: 'mois', texteFactuel: '' }; const h = manque === 0 ? 0 : cap > 0 ? Math.ceil(manque / cap) : null; return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Tu as déjà 3 mois de coussin.' : h == null ? 'À ton rythme actuel, ton coussin n’avance pas.' : `À ton rythme, 3 mois de coussin sont à ${h} mois.` } },
   },
   {
-    id: 'taux_constitution', domaine: 'coussin', question: 'À quelle vitesse il grossit ?',
+    id: 'taux_constitution', domaine: 'coussin', question: 'Mon coussin grossit à quelle vitesse ?',
     requiert: ['coussin', 'depenses'], blocsCompatibles: ['stat', 'fait'],
     resolve: (s) => { const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne); return { valeur: ep, unite: '$/mois', texteFactuel: ep > 0 ? `Tu ajoutes ${formatCAD(ep)} par mois à ton épargne.` : 'Aucune épargne mensuelle saisie pour l’instant.' } },
   },
 
   // ── 4. Revenus variables (saisonnier) ─────────────────────────────────────
   {
-    id: 'amplitude_revenus', domaine: 'saisonnier', question: 'De combien ça varie ?',
+    id: 'amplitude_revenus', domaine: 'saisonnier', question: 'Mes revenus varient de combien ?',
     requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'stat'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const mn = Math.min(...r); const mx = Math.max(...r); return { valeur: mx - mn, unite: '$', texteFactuel: `Tes revenus varient de ${formatCAD(mn)} à ${formatCAD(mx)} selon les mois.` } },
   },
@@ -199,7 +201,7 @@ export const REGISTRE_KPIS = [
     resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const nets = s.saison.revenusMensuels.map((x) => num(x) - dep); const minNet = Math.min(...nets); return { valeur: minNet, unite: '$', texteFactuel: `Ton mois le plus serré finit à ${formatCAD(minNet)} après tes dépenses.` } },
   },
   {
-    id: 'revenu_lisse', domaine: 'saisonnier', question: 'Si je lissais sur l’année ?',
+    id: 'revenu_lisse', domaine: 'saisonnier', question: 'Étalé sur l’année, ça fait combien par mois ?',
     requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const moy = Math.round(r.reduce((a, x) => a + num(x), 0) / 12); return { valeur: moy, unite: '$/mois', texteFactuel: `Lissé sur l’année, ça ferait ${formatCAD(moy)} par mois.` } },
   },
@@ -238,7 +240,7 @@ export const REGISTRE_KPIS = [
     resolve: (s) => { const v = num(s.patrimoine.net); return { valeur: v, unite: '$', texteFactuel: `Ta valeur nette est de ${formatCAD(v)}.` } },
   },
   {
-    id: 'ratio_actifs_passifs', domaine: 'patrimoine', question: 'Mon équilibre avoirs/dettes ?',
+    id: 'ratio_actifs_passifs', domaine: 'patrimoine', question: 'Mes dettes pèsent combien face à mes avoirs ?',
     requiert: ['patrimoine'], blocsCompatibles: ['composition', 'jauge'],
     resolve: (s) => { const a = num(s.patrimoine.actifs); const p = num(s.patrimoine.passifs); const ratio = p > 0 ? a / p : null; return { valeur: ratio, unite: 'x', texteFactuel: p > 0 ? `Tu as ${ratio.toFixed(1).replace('.', ',')} $ d’actif pour 1 $ de dette.` : 'Tu n’as aucune dette enregistrée.' } },
   },
@@ -297,6 +299,10 @@ export function pourquoiForme(forme) {
 const NOM_FORME = {
   stat: 'Chiffre', jauge: 'Jauge', chronologie: 'Compte à rebours', chaine: 'Chaîne',
   comparaison: 'Comparaison', barre_progression: 'Barre', fait: 'Constat', beignet: 'Beignet',
+  // les formes-blocs restantes (l'essayage de la Galerie les nomme en clair)
+  coussin_urgence: 'Cadran à zones', barre_empilee: 'Barres empilées', repartition: 'Répartition',
+  solde: 'Solde', liste: 'Liste', flux_annuel: 'Année en barres', anatomie_dollar: 'Anatomie du dollar',
+  impot_palier: 'Paliers d’impôt', patrimoine_vie: 'Trajectoire', composition: 'Composition',
 }
 export function nomForme(forme) {
   return NOM_FORME[forme] || forme
