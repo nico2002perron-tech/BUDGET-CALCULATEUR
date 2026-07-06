@@ -2340,3 +2340,62 @@ svg { display: block; }
 .gal-nom:focus { border-color: var(--acc); box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--acc) 60%, transparent); }
 .gal-nom::placeholder { color: #a9b7d2; font-weight: 600; }
 .retouche-nom { flex-basis: 100%; }
+
+/* ============================================================================
+   LE CARRÉ DE SABLE — l'atelier immersif d'UN KPI. SEULE surface sombre de
+   l'app : tout est isolé sous .sable, rien ne fuit vers le thème clair.
+   ========================================================================== */
+.sable {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; flex-direction: column;
+  background:
+    radial-gradient(90% 60% at 82% -12%, rgba(0, 180, 216, 0.13), transparent 60%),
+    radial-gradient(70% 52% at 8% 112%, rgba(122, 111, 230, 0.11), transparent 62%),
+    #070912;
+  color: #eef2ff;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  animation: sableEntre 0.3s ease both;
+}
+@keyframes sableEntre { from { opacity: 0; } to { opacity: 1; } }
+
+.sable-tete { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 1040px; margin: 0 auto; padding: 6px 2px 18px; }
+.sable-retour {
+  width: 44px; height: 44px; flex: none; border-radius: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.06); color: #eef2ff;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sable-retour:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.24); }
+.sable-retour:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sable-retour svg { width: 20px; height: 20px; }
+.sable-tete-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sable-titre { font-size: 18px; font-weight: 900; color: #fff; letter-spacing: -0.01em; line-height: 1.2; }
+.sable-sous {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  color: rgba(238, 242, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sable-badge {
+  margin-left: auto; flex: none;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--cyan-soft); border: 1px solid rgba(127, 233, 255, 0.35); background: rgba(0, 180, 216, 0.10);
+  border-radius: 999px; padding: 5px 11px;
+}
+
+.sable-corps { width: 100%; max-width: 1040px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.sable-scene {
+  position: relative; border-radius: 26px; padding: clamp(14px, 3vw, 28px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #0a0e1a, #070912);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.sable-note { font-size: 12.5px; color: rgba(238, 242, 255, 0.45); text-align: center; padding: 2px 0 10px; }
+
+@media (max-width: 767px) {
+  .sable-titre { font-size: 16px; }
+  .sable-scene { border-radius: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sable { animation: none; }
+}

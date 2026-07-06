@@ -32,6 +32,7 @@ import { formatCAD } from './lib/format.js'
 import { routerMessage } from './recettes/routeur.js'
 import { construireEntite, PALETTE_ACCENTS } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
+import CarreDeSable from './components/CarreDeSable.jsx'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -137,6 +138,7 @@ function App() {
   const [erreur, setErreur] = useState(null)
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
+  const [sable, setSable] = useState(null) // id du widget ouvert dans le carré de sable (null = fermé)
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // « DEPUIS TA DERNIÈRE VISITE » (VISION §7a·1) : le repère n'est plus le montage, mais la
@@ -324,15 +326,6 @@ function App() {
           : w,
       ),
     }))
-  // TAPE LA CARTE → la forme suivante (le widget se métamorphose sous le doigt).
-  const cyclerForme = (w) => {
-    const kb = heroKPI(w.recette)
-    if (!kb) return
-    const formes = formesPourKPI(kb.KPI, snapshot, kb.params)
-    if (formes.length < 2) return
-    const i = formes.indexOf(kb.forme)
-    changerAngle(w.id, kb.KPI, formes[(i + 1) % formes.length])
-  }
   // Retoucher après coup : la couleur du widget (la promesse « en tout temps » tenue).
   const changerCouleur = (widgetId, hex) =>
     setStore((s) => ({
@@ -547,6 +540,9 @@ function App() {
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
+                  // Le sable ne s'offre que pour un KPI CONNU du registre (un id disparu —
+                  // vieux silo, import — laisserait sinon une tuile « tappable » vers rien).
+                  const kpiSable = kb && kpiPourId(kb.KPI) ? kb : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
@@ -642,21 +638,21 @@ function App() {
                         </div>
                       )}
 
-                      {/* TAPE LA CARTE → la forme suivante (les contrôles internes gardent la main). */}
+                      {/* TAPE LA CARTE → le carré de sable de son KPI (les contrôles internes gardent la main). */}
                       <div
-                        className={`tour-rendu${peutMorpher ? ' est-tappable' : ''}`}
+                        className={`tour-rendu${kpiSable ? ' est-tappable' : ''}`}
                         key={kb ? `${kb.KPI}:${kb.forme}` : 'fixe'}
                         onClick={
-                          peutMorpher
-                            ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; cyclerForme(w) }
+                          kpiSable
+                            ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; setSable(w.id) }
                             : undefined
                         }
                       >
                         <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
-                        {peutMorpher && (
+                        {kpiSable && (
                           <span className="tour-tap-hint" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" /></svg>
-                            tape&nbsp;: autre forme
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>
+                            tape&nbsp;: carré de sable
                           </span>
                         )}
                       </div>
@@ -729,6 +725,13 @@ function App() {
           </p>
         </footer>
       </main>
+
+      {/* LE CARRÉ DE SABLE : l'atelier immersif d'UN KPI, PAR-DESSUS l'app (le thème
+          clair dessous reste intact). Widget retiré pendant qu'il est ouvert → se referme seul. */}
+      {(() => {
+        const w = sable ? widgets.find((x) => x.id === sable) : null
+        return w ? <CarreDeSable widget={w} snapshot={snapshot} onFermer={() => setSable(null)} /> : null
+      })()}
     </div>
   )
 }
