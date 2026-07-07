@@ -13,7 +13,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { CANAUX, coerceMontant } from '../recettes/entonnoir.js'
 import { genererScenarios } from '../lib/scenarios.js'
-import { PALETTE_ACCENTS, photoBornee, MAX_PHOTO_CARS, accentValide } from '../lib/entites.js'
+import { PALETTE_ACCENTS, accentValide } from '../lib/entites.js'
+import { lirePhoto } from '../lib/photo.js'
 import { formatCAD } from '../lib/format.js'
 
 // Le moment « laisse-moi aller voir » : assez long pour qu'on CROIE que la tour a
@@ -24,28 +25,8 @@ const ETAPES = CANAUX.projet_abordable.etapes
 const Q = (id) => { const e = ETAPES.find((x) => x.id === id); return e ? e.question : '' }
 const OPTIONS_ECHEANCE = (ETAPES.find((e) => e.id === 'echeance') || {}).options || []
 
-// Lit une photo LOCALE : SVG → tel quel ; raster → downscale canvas + JPEG, borné (~200 Ko).
-function lirePhoto(file, cb) {
-  if (!file) return cb(null)
-  const r = new FileReader()
-  if (file.type === 'image/svg+xml') { r.onload = () => cb(photoBornee(String(r.result))); r.readAsDataURL(file); return }
-  r.onload = () => {
-    const img = new Image()
-    img.onload = () => {
-      const max = 720
-      let w = img.width, h = img.height
-      if (w > max || h > max) { const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k) }
-      const c = document.createElement('canvas'); c.width = w; c.height = h
-      c.getContext('2d').drawImage(img, 0, 0, w, h)
-      let q = 0.82, out = c.toDataURL('image/jpeg', q)
-      while (out.length > MAX_PHOTO_CARS && q > 0.4) { q -= 0.15; out = c.toDataURL('image/jpeg', q) }
-      cb(photoBornee(out))
-    }
-    img.onerror = () => cb(null)
-    img.src = String(r.result)
-  }
-  r.readAsDataURL(file)
-}
+// La lecture de photo locale (compressée, bornée) vit dans lib/photo.js — réutilisée
+// telle quelle par la personnalité du carré de sable.
 
 export default function StudioConversation({ snapshot, onFini, onAnnuler }) {
   const [phase, setPhase] = useState('cout') // cout · echeance · calcul · scenarios · perso

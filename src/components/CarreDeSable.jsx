@@ -11,7 +11,8 @@
    ========================================================================== */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
-import { kpiPourId, formesPourKPI, nomForme, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
+import PersonaStrip from './PersonaStrip.jsx'
+import { kpiPourId, formesPourKPI, nomForme, resolveKPI, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 
 // Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
@@ -53,6 +54,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
   const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
   const [cible, setCible] = useState(null) // null = celle de la recette, sinon le défaut du KPI
+  const [persona, setPersona] = useState(null) // null = celle du widget (épinglée), sinon ton choix du moment
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -265,6 +267,11 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     // cible posée → transmise ; objectif retiré (0) → on l'enlève même si la recette en portait une.
     ...(reglage ? (cibleActive > 0 ? { cible: cibleActive } : { cible: undefined }) : {}),
   }
+
+  // LA PERSONNALITÉ : celle du widget (épinglée) tant que tu n'y touches pas.
+  // Le fait qu'elle énonce = la résolution du KPI avec les params du moment.
+  const personaActive = persona || (widget.persona && widget.persona.type ? widget.persona : { type: 'neutre' })
+  const kpiResolu = resolveKPI(kb.KPI, snapshot, paramsScene)
   const recetteScene = formeActive
     ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: paramsScene }] }
     : recette
@@ -379,10 +386,15 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           </div>
         )}
 
+        {/* LA PERSONNALITÉ : identité et voix — jamais un jugement (filtrerFait). */}
+        {formeActive && (
+          <PersonaStrip persona={personaActive} onChange={setPersona} kpi={kpiResolu} kpiId={kb.KPI} domaine={def.domaine} />
+        )}
+
         <div className="sable-scene">
           <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
-        <p className="sable-note">Les commandes du sable (objectif, personnalité) s’assemblent ici, étape par étape.</p>
+        <p className="sable-note">Dernière pièce à venir : « Épingler à ma tour ».</p>
       </div>
       </div>
     </div>

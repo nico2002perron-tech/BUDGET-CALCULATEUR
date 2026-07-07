@@ -2585,6 +2585,61 @@ svg { display: block; }
   .sable-types { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .sable-type { flex: none; }
 }
+/* LA PERSONNALITÉ : la bande d'identité (mascotte / mentor / entité) — une
+   voix qui énonce LE fait du KPI, jamais un jugement. */
+.persona { display: flex; flex-direction: column; gap: 10px; }
+.persona-bande {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: 18px;
+  background: #fff; border: 1.5px solid var(--line); border-bottom-width: 4px;
+}
+.persona-bulle {
+  width: 40px; height: 40px; flex: none; border-radius: 13px;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--wacc, var(--cyan)) 80%, #fff), var(--wacc, var(--cyan)) 60%, color-mix(in srgb, var(--wacc, var(--cyan)) 70%, var(--navy)));
+  box-shadow: 0 8px 16px -7px color-mix(in srgb, var(--wacc, var(--cyan)) 85%, transparent);
+}
+.persona-bulle svg { width: 21px; height: 21px; }
+.persona-avatar {
+  width: 40px; height: 40px; flex: none; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; color: #fff; letter-spacing: 0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--navy));
+}
+.persona-photo {
+  width: 44px; height: 44px; flex: none; border-radius: 14px;
+  background-size: cover; background-position: center;
+  border: 2px solid var(--pacc, var(--cyan));
+}
+.persona-init { background: linear-gradient(135deg, color-mix(in srgb, var(--pacc, var(--cyan)) 80%, #fff), var(--pacc, var(--cyan))); font-size: 16px; font-weight: 900; }
+.persona-corps { display: flex; flex-direction: column; gap: 9px; min-width: 0; flex: 1; }
+.persona-texte { font-size: 13.5px; font-weight: 500; color: var(--ink); line-height: 1.45; margin-top: 8px; }
+.persona-corps .persona-texte { margin-top: 0; }
+.persona-texte b { color: var(--navy); font-weight: 800; }
+.persona-voix { display: flex; flex-wrap: wrap; gap: 6px; }
+.persona-voix-chip {
+  min-height: 36px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700; color: var(--muted);
+  background: #fff; border: 1.5px solid var(--line);
+  transition: color 0.15s, border-color 0.15s;
+}
+.persona-voix-chip:hover { border-color: #b9c6da; }
+.persona-voix-chip.est-choisie { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, #fff); background: rgba(0, 180, 216, 0.07); }
+.persona-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.persona-nom {
+  flex: 1; min-width: 180px; min-height: 40px; padding: 8px 14px; border-radius: 12px; outline: none;
+  border: 1.5px solid var(--line); background: #fff; color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.persona-nom::placeholder { color: #a9b7d2; }
+.persona-nom:focus-visible { border-color: var(--cyan); }
+.persona-photo-btn {
+  min-height: 40px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--navy);
+  background: #fff; border: 1.5px solid var(--line); border-bottom-width: 3px;
+}
+.persona-photo-btn:hover { border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 40%, #fff); }
+
 /* La scène n'est plus un cadre : les cartes y vivent DIRECTEMENT, comme sur la
    tuile (le prisme 3D garde SON canvas sombre autoportant, identique partout). */
 .sable-scene { position: relative; }
