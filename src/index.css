@@ -799,7 +799,7 @@ svg { display: block; }
 /* La poignée de TAILLE : coin bas-droit, cycle S → M → L (→ XL). */
 .tw-taille {
   position: absolute; right: 8px; bottom: 8px; z-index: 7;
-  min-width: 40px; height: 40px; padding: 0 10px; border-radius: 13px; cursor: pointer;
+  min-width: 44px; height: 44px; padding: 0 10px; border-radius: 13px; cursor: pointer;
   font-family: inherit; font-size: 12px; font-weight: 900; letter-spacing: 0.05em;
   color: var(--accent); background: rgba(255, 255, 255, 0.96);
   border: 1.5px solid rgba(0, 119, 182, 0.32); border-bottom-width: 3px;
@@ -827,7 +827,7 @@ svg { display: block; }
 
 /* En-tête façon salle de contrôle : voyant qui pulse + « N indicateurs en service »
    + filet qui file vers la droite. La tour VEILLE — et ça se voit. */
-.tour-board-tete { display: flex; align-items: center; gap: 9px; padding: 0 4px; }
+.tour-board-tete { display: flex; align-items: center; flex-wrap: wrap; row-gap: 8px; gap: 9px; padding: 0 4px; }
 .tour-board-tete::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(3, 4, 94, 0.16), transparent); }
 .tb-voyant {
   width: 9px; height: 9px; border-radius: 999px; flex: none;
