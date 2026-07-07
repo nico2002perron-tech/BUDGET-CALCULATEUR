@@ -31,6 +31,7 @@ import Prisme3D from '../blocs/Prisme3D.jsx'
 import Bandes from '../blocs/Bandes.jsx'
 import Courbe from '../blocs/Courbe.jsx'
 import Nuage from '../blocs/Nuage.jsx'
+import Anneau3D from '../blocs/Anneau3D.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -59,6 +60,7 @@ export const REGISTRE = {
   bandes: Bandes,
   courbe: Courbe,
   nuage: Nuage,
+  anneau3d: Anneau3D,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

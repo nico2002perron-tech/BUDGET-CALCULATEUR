@@ -23,6 +23,7 @@
    Data-aware : série vide → état honnête. prefers-reduced-motion : aucune
    rotation ni croissance, tout s'affiche d'un coup.
    ========================================================================== */
+import { useRef } from 'react'
 import { MOIS_COURTS, formatCAD } from '../lib/format.js'
 
 const I_CUBE = (
@@ -64,6 +65,36 @@ function Prisme({ hauteur, delai, sous, couleur }) {
 }
 
 export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
+  // ROTATION AU DOIGT : glisser horizontalement fait tourner la scène (CSS 3D
+  // piloté au pointeur — zéro dépendance ; three.js reste une porte future).
+  // Une fois touchée, la scène reste où TU la laisses (l'oscillation cesse).
+  const stageRef = useRef(null)
+  const sceneRef = useRef(null)
+  const tourneRef = useRef(null) // { pointerId, x, angle } pendant le glisser
+  const angleRef = useRef(-14) // l'angle « laissé là »
+  const aTourneRef = useRef(false) // un vrai glisser → le clic qui suit est avalé
+  const surPrisePointer = (e) => {
+    if (e.button > 0 || e.target.closest('button, input, a, select, textarea')) return
+    tourneRef.current = { pointerId: e.pointerId, x: e.clientX, angle: angleRef.current }
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
+  }
+  const surTournePointer = (e) => {
+    const t = tourneRef.current
+    if (!t || e.pointerId !== t.pointerId) return
+    const delta = e.clientX - t.x
+    if (Math.abs(delta) > 5) aTourneRef.current = true
+    angleRef.current = t.angle + delta * 0.45
+    if (sceneRef.current) sceneRef.current.classList.add('est-manuel')
+    if (stageRef.current) stageRef.current.style.transform = `rotateX(10deg) rotateY(${angleRef.current}deg)`
+  }
+  const surLachePointer = (e) => {
+    const t = tourneRef.current
+    if (t && e.pointerId === t.pointerId) tourneRef.current = null
+  }
+  const avaleClicApresGlisser = (e) => {
+    if (aTourneRef.current) { e.stopPropagation(); e.preventDefault(); aTourneRef.current = false }
+  }
+
   const serie = (Array.isArray(data.serie) ? data.serie : [])
     .slice(0, 12)
     .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
@@ -108,10 +139,17 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
 
       <div
         className={`p3d-scene${reduce ? ' est-fixe' : ''}`}
+        ref={sceneRef}
         role="img"
         aria-label={`Tes 12 mois en prismes 3D${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
+        title="Glisse pour faire tourner la scène"
+        onPointerDown={surPrisePointer}
+        onPointerMove={surTournePointer}
+        onPointerUp={surLachePointer}
+        onPointerCancel={surLachePointer}
+        onClickCapture={avaleClicApresGlisser}
       >
-        <div className="p3d-stage">
+        <div className="p3d-stage" ref={stageRef}>
           <div className="p3d-sol" aria-hidden="true" />
           {/* LE PLAN CIBLE : une nappe ambre couchée à la hauteur de ton objectif. */}
           {cible > 0 && (

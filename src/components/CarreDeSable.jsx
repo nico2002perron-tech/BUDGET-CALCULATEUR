@@ -14,10 +14,11 @@ import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
+import { sons } from '../lib/sons.js'
 
 // Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
 // avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
-const TYPES_SABLE = ['prisme3d', 'bandes', 'beignet', 'courbe', 'nuage']
+const TYPES_SABLE = ['prisme3d', 'bandes', 'beignet', 'anneau3d', 'courbe', 'nuage']
 
 // Les formes qui PORTENT des séries de comparaison (le nuage lit une seule série).
 const FORMES_COMPARABLES = ['prisme3d', 'bandes', 'courbe']
@@ -209,6 +210,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const sujetOffert = (ctx) => resoudreComparaisons(snapshot, [{ contexte: ctx }]).length > 0
   const estAjoute = (ctx) => compActives.some((c) => c && c.contexte === ctx)
   const basculerSujet = (s) => {
+    sons.tap()
     setIaNote(null)
     setComparaisons(estAjoute(s.contexte)
       ? compActives.filter((c) => c.contexte !== s.contexte)
@@ -262,6 +264,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const cibleActive = reglage ? (cible != null ? cible : cibleRecette) : 0
   const bougeCible = (delta) => {
     if (!reglage || !(cibleActive > 0)) return
+    sons.tap()
     setCible(clampCible(cibleActive + delta))
   }
 
@@ -340,7 +343,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                   disabled={!offert}
                   aria-pressed={t === formeActive}
                   title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
-                  onClick={() => setFormeChoisie(t)}
+                  onClick={() => { sons.tap(); setFormeChoisie(t) }}
                 >
                   {nomForme(t)}
                 </button>
@@ -400,10 +403,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(-reglage.pas)} aria-label={`Moins ${reglage.pas}`}>−</button>
                 <span className="sable-obj-val">{cibleActive}<small>{reglage.unite}</small></span>
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(reglage.pas)} aria-label={`Plus ${reglage.pas}`}>+</button>
-                <button type="button" className="sable-obj-retirer" onClick={() => setCible(0)}>Retirer</button>
+                <button type="button" className="sable-obj-retirer" onClick={() => { sons.tap(); setCible(0) }}>Retirer</button>
               </>
             ) : (
-              <button type="button" className="sable-type" onClick={() => setCible(cibleRecette || reglage.defaut)}>
+              <button type="button" className="sable-type" onClick={() => { sons.tap(); setCible(cibleRecette || reglage.defaut) }}>
                 Poser un objectif
               </button>
             )}

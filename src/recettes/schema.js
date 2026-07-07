@@ -282,6 +282,17 @@ export const BLOCS = {
   courbe: { taille: 'large', bornes: {}, defauts: {}, resolve: resolveSerie },
   nuage: { taille: 'large', bornes: {}, defauts: {}, resolve: resolveSerie },
 
+  // L'anneau 3D : le MÊME contenu que le beignet (catégories du snapshot), en relief.
+  anneau3d: {
+    taille: 'large',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => {
+      const d = snap && snap.depenses
+      return d ? { parCategorie: d.parCategorie, total: d.total } : { parCategorie: [], total: 0 }
+    },
+  },
+
   // Une FORME de plus pour un KPI : deux valeurs du MÊME KPI + leur écart. Les deux
   // valeurs sont résolues par MoteurRendu (deux ctx) et passées via la prop `kpi` ;
   // pas de données propres au snapshot ici (resolve neutre).

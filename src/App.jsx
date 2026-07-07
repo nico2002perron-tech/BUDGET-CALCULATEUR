@@ -35,6 +35,7 @@ import { construireEntite, PALETTE_ACCENTS, photoBornee } from './lib/entites.js
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
 import { VOIX_MENTOR } from './lib/personas.js'
+import { sons, reglerSons } from './lib/sons.js'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -294,6 +295,7 @@ function App() {
   // LA POIGNÉE DE TAILLE : cycle s → m → l (→ xl pour les vues complètes),
   // persistée sur le widget ; les voisines glissent (même FLIP que le drag).
   const cyclerTaille = (w) => {
+    sons.tap()
     const multi = w.recette && Array.isArray(w.recette.blocs) && w.recette.blocs.filter(Boolean).length > 1
     const cycle = multi ? ['s', 'm', 'l', 'xl'] : ['s', 'm', 'l']
     const prochaine = cycle[(cycle.indexOf(tailleWidget(w)) + 1) % cycle.length]
@@ -340,6 +342,9 @@ function App() {
       }
     })
   }, [ordreCle]) // eslint-disable-line react-hooks/exhaustive-deps -- rejoue au changement d'ORDRE seulement
+
+  // Les sons discrets suivent la préférence persistée (défaut : activés).
+  useEffect(() => { reglerSons(store.sons !== false) }, [store.sons])
 
   // La persistance peut ÉCHOUER (quota localStorage plein — photos base64…) :
   // jamais en silence. saveStore retourne false → alerte visible.
@@ -426,6 +431,7 @@ function App() {
     )
     if (dejaLa) { setErreur('Tu as déjà cette vue dans ta tour.'); return }
     setErreur(null)
+    sons.pose()
     const id = 'w_' + Date.now()
     setStore((s) => ({
       ...s,
@@ -447,6 +453,7 @@ function App() {
   }, [epingleFete])
   const epinglerSable = (maj) => {
     if (!sable) return
+    sons.pose()
     setEpingleFete(true)
     setStore((s) => ({
       ...s,
@@ -737,9 +744,24 @@ function App() {
                     type="button"
                     className={`tb-reorg${reorganise ? ' est-actif' : ''}`}
                     aria-pressed={reorganise}
-                    onClick={() => setReorganise((v) => !v)}
+                    onClick={() => { sons.tap(); setReorganise((v) => !v) }}
                   >
                     {reorganise ? 'Terminé' : 'Réorganiser'}
+                  </button>
+                  {/* Les sons discrets : activés par défaut, coupables d'un tap. */}
+                  <button
+                    type="button"
+                    className="tb-sons"
+                    aria-pressed={store.sons !== false}
+                    aria-label={store.sons !== false ? 'Couper les sons' : 'Activer les sons'}
+                    title={store.sons !== false ? 'Sons : activés' : 'Sons : coupés'}
+                    onClick={() => setStore((s) => ({ ...s, sons: s.sons === false }))}
+                  >
+                    {store.sons !== false ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M16 9l5 6M21 9l-5 6" /></svg>
+                    )}
                   </button>
                 </div>
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
@@ -864,6 +886,7 @@ function App() {
                             ? (e) => {
                                 if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return
                                 // le rect de la tuile = point de départ du FLIP (le sable grandit sur place)
+                                sons.ouvre()
                                 const el = tuilesRef.current.get(w.id)
                                 const r = el ? el.getBoundingClientRect() : null
                                 setSable({ id: w.id, rect: r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null })

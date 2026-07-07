@@ -792,6 +792,16 @@ svg { display: block; }
 }
 .tb-reorg:hover { background: rgba(0, 119, 182, 0.13); }
 .tb-reorg.est-actif { color: #fff; background: var(--accent); border-color: var(--accent); }
+/* La bascule des sons discrets (défaut : activés). */
+.tb-sons {
+  width: 34px; height: 34px; border-radius: 999px; cursor: pointer; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); background: none; border: 1.5px solid var(--line);
+  transition: color 0.15s, border-color 0.15s;
+}
+.tb-sons:hover { color: var(--accent); border-color: rgba(0, 119, 182, 0.35); }
+.tb-sons svg { width: 16px; height: 16px; }
+.tb-sons[aria-pressed='false'] { opacity: 0.65; }
 .tour-board.est-reorg .tour-widget { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tour-board.est-reorg .tour-widget:not(.est-tiree) { animation: twJiggle 0.4s ease-in-out infinite alternate; }
 .tour-board.est-reorg .tour-widget:nth-child(2n) { animation-delay: -0.2s; }
@@ -2721,6 +2731,11 @@ svg { display: block; }
   to { transform: rotateX(10deg) rotateY(16deg); }
 }
 .p3d-scene.est-fixe .p3d-stage { animation: none; }
+/* Rotation AU DOIGT : glisser horizontal (le vertical continue de défiler) ;
+   une fois touchée, la scène reste où l'usager la laisse. */
+.p3d-scene { cursor: grab; touch-action: pan-y; }
+.p3d-scene:active { cursor: grabbing; }
+.p3d-scene.est-manuel .p3d-stage { animation: none; }
 
 /* Le plancher quadrillé : un plan couché (rotateX 90°) centré sur la ligne de
    base — la moitié file derrière les barres, l'autre vient vers toi. */
@@ -2800,6 +2815,34 @@ svg { display: block; }
   transform: translate(-50%, -50%) rotateX(90deg);
   background: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), var(--pc);
 }
+
+/* ── L'ANNEAU 3D : le beigne couché qui tourne (couches empilées = épaisseur). ── */
+.a3d-scene { position: relative; height: 250px; perspective: 900px; overflow: clip; contain: paint; border-radius: 18px; }
+.a3d-stage {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  transform-style: preserve-3d;
+  transform: rotateX(58deg);
+  animation: a3dTourne 26s linear infinite;
+}
+@keyframes a3dTourne {
+  from { transform: rotateX(58deg) rotateZ(0deg); }
+  to { transform: rotateX(58deg) rotateZ(360deg); }
+}
+.a3d-scene.est-fixe .a3d-stage { animation: none; }
+.a3d-couche { position: absolute; width: min(72%, 320px); aspect-ratio: 1; }
+/* Le HUD plat : le total se lit toujours, jamais couché avec l'anneau. */
+.a3d-hud {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; pointer-events: none;
+}
+.a3d-total {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -0.01em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+.a3d-sous { font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(238, 242, 255, 0.6); }
+@media (prefers-reduced-motion: reduce) { .a3d-stage { animation: none; } }
 
 /* Étiquettes (mois) et valeur du sommet : police mono, dans la scène. */
 .p3d-etiq {

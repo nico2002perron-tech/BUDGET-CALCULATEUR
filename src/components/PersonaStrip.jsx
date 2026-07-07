@@ -19,6 +19,7 @@ import { filtrerFait } from '../recettes/schema.js'
 import { PALETTE_ACCENTS, accentValide, photoBornee } from '../lib/entites.js'
 import { lirePhoto } from '../lib/photo.js'
 import { MASCOTTES, MASCOTTE_REPLI, VOIX_MENTOR } from '../lib/personas.js'
+import { sons } from '../lib/sons.js'
 import { iconeKPI } from './iconesGalerie.jsx'
 const TYPES_PERSONA = [
   { id: 'neutre', label: 'Neutre' },
@@ -49,7 +50,7 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
             type="button"
             className={`sable-type${p.type === t.id ? ' est-actif' : ''}`}
             aria-pressed={p.type === t.id}
-            onClick={() => onChange(t.id === 'neutre' ? { type: 'neutre' } : { ...p, type: t.id })}
+            onClick={() => { sons.tap(); onChange(t.id === 'neutre' ? { type: 'neutre' } : { ...p, type: t.id }) }}
           >
             {t.label}
           </button>
@@ -83,7 +84,7 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
                   type="button"
                   className={`persona-voix-chip${voix.id === v.id ? ' est-choisie' : ''}`}
                   aria-pressed={voix.id === v.id}
-                  onClick={() => poser({ voix: v.id })}
+                  onClick={() => { sons.tap(); poser({ voix: v.id }) }}
                 >
                   {v.nom}
                 </button>

@@ -30,6 +30,7 @@ const GLYPHE = {
   courbe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 16c3 0 3-7 6-7s3 5 6 5 2-6 4-8" strokeLinecap="round" /></svg>,
   nuage: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="7" cy="15" r="2.2" /><circle cx="13" cy="8" r="3" /><circle cx="18" cy="15.5" r="1.6" /></svg>,
   beignet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg>,
+  anneau3d: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="4.5" /><ellipse cx="12" cy="12" rx="4" ry="2" /></svg>,
 }
 
 export default function ChoixAngle({ kpiId, snapshot, recommande, formeActuelle, onChoisir, formes, ctx }) {

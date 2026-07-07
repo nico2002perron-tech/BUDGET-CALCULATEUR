@@ -136,7 +136,7 @@ export const REGISTRE_KPIS = [
   },
   {
     id: 'equilibre_503020', domaine: 'budget', question: 'Mon budget est-il balancé ?',
-    requiert: ['depenses'], blocsCompatibles: ['repartition', 'beignet'],
+    requiert: ['depenses'], blocsCompatibles: ['repartition', 'beignet', 'anneau3d'],
     resolve: (s) => { const p = s.depenses.pct; if (!p) return { valeur: null, unite: '%', texteFactuel: '' }; return { valeur: p, unite: '%', texteFactuel: `Tes parts : ${p.besoin} % besoins, ${p.envie} % désirs, ${p.epargne} % épargne.` } },
   },
   {
@@ -151,7 +151,7 @@ export const REGISTRE_KPIS = [
   },
   {
     id: 'top_categorie', domaine: 'budget', question: 'Qu’est-ce qui pèse le plus ?',
-    requiert: ['categories'], blocsCompatibles: ['beignet', 'liste', 'fait'],
+    requiert: ['categories'], blocsCompatibles: ['beignet', 'anneau3d', 'liste', 'fait'],
     resolve: (s) => { const cats = [...s.depenses.parCategorie].sort((a, b) => num(b.montant) - num(a.montant)); const top = cats[0]; return { valeur: num(top.montant), unite: '$', texteFactuel: `Ta plus grosse catégorie : ${top.label || 'Dépense'}, à ${formatCAD(top.montant)}.` } },
   },
   {
@@ -331,6 +331,7 @@ const POURQUOI_FORME = {
   fait: 'Une phrase qui dit le constat en clair.',
   beignet: 'Le circulaire montre la part de chaque poste.',
   prisme3d: 'La scène 3D met tes 12 mois en relief.',
+  anneau3d: 'L’anneau 3D fait tourner la part de chaque poste.',
   bandes: 'Des barres nettes, mois par mois.',
   courbe: 'La courbe montre le mouvement de l’année.',
   nuage: 'Chaque mois devient une bulle — son poids saute aux yeux.',
@@ -344,7 +345,7 @@ export function pourquoiForme(forme) {
 const NOM_FORME = {
   stat: 'Chiffre', jauge: 'Jauge', chronologie: 'Compte à rebours', chaine: 'Chaîne',
   comparaison: 'Comparaison', barre_progression: 'Barre', fait: 'Constat', beignet: 'Circulaire',
-  prisme3d: '3D prisme', bandes: 'Bandes', courbe: 'Courbe', nuage: 'Nuage',
+  prisme3d: '3D prisme', anneau3d: 'Anneau 3D', bandes: 'Bandes', courbe: 'Courbe', nuage: 'Nuage',
   // les formes-blocs restantes (l'essayage de la Galerie les nomme en clair)
   coussin_urgence: 'Cadran à zones', barre_empilee: 'Barres empilées', repartition: 'Répartition',
   solde: 'Solde', liste: 'Liste', flux_annuel: 'Année en barres', anatomie_dollar: 'Anatomie du dollar',
