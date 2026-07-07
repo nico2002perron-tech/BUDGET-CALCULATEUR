@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee } from './recettes/bibliotheque-kpis.js'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
 import SaisiePatrimoine from './components/SaisiePatrimoine.jsx'
@@ -289,10 +289,33 @@ function App() {
     if (!reorganise) finirDragRef.current(true)
   }, [reorganise])
   useEffect(() => () => finirDragRef.current(true), [])
+
+  // LA POIGNÉE DE TAILLE : cycle s → m → l (→ xl pour les vues complètes),
+  // persistée sur le widget ; les voisines glissent (même FLIP que le drag).
+  const cyclerTaille = (w) => {
+    const multi = w.recette && Array.isArray(w.recette.blocs) && w.recette.blocs.filter(Boolean).length > 1
+    const cycle = multi ? ['s', 'm', 'l', 'xl'] : ['s', 'm', 'l']
+    const prochaine = cycle[(cycle.indexOf(tailleWidget(w)) + 1) % cycle.length]
+    rectsAvantRef.current = new Map([...tuilesRef.current].map(([oid, n]) => [oid, n.getBoundingClientRect()]))
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((x) => (x.id === w.id ? { ...x, taille: prochaine } : x)),
+    }))
+  }
+
+  // La recette AFFICHÉE s'adapte à la taille de la tuile (S → forme compacte,
+  // L/XL → forme large) — présentation pure, la recette STOCKÉE reste intacte.
+  const recetteAffichee = (w) => {
+    const kb = heroKPI(w.recette)
+    if (!kb) return w.recette
+    const forme = formeAdaptee(kb.KPI, kb.forme, tailleWidget(w), snapshot, kb.params)
+    if (forme === kb.forme) return w.recette
+    return { ...w.recette, blocs: w.recette.blocs.map((b) => (b && b.KPI === kb.KPI ? { ...b, forme } : b)) }
+  }
   // FLIP : après un réordonnancement, chaque tuile part de son ANCIENNE place et
   // glisse vers la nouvelle. La tuile tirée, elle, reste collée au pointeur
   // (on compense le saut de mise en page dans son transform manuel).
-  const ordreCle = widgets.map((w) => w.id).join('|')
+  const ordreCle = widgets.map((w) => `${w.id}:${w.taille || ''}`).join('|') // ordre ET taille → FLIP
   useLayoutEffect(() => {
     const avant = rectsAvantRef.current
     rectsAvantRef.current = null
@@ -669,6 +692,8 @@ function App() {
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
+                  const rAff = recetteAffichee(w) // la forme suit la taille de la tuile
+                  const kbAff = heroKPI(rAff)
                   // Le sable ne s'offre que pour un KPI CONNU du registre (un id disparu —
                   // vieux silo, import — laisserait sinon une tuile « tappable » vers rien).
                   const kpiSable = kb && kpiPourId(kb.KPI) ? kb : null
@@ -777,14 +802,14 @@ function App() {
                       {/* TAPE LA CARTE → le carré de sable de son KPI (les contrôles internes gardent la main). */}
                       <div
                         className={`tour-rendu${kpiSable ? ' est-tappable' : ''}`}
-                        key={kb ? `${kb.KPI}:${kb.forme}` : 'fixe'}
+                        key={kbAff ? `${kbAff.KPI}:${kbAff.forme}` : 'fixe'}
                         onClick={
                           kpiSable && !reorganise
                             ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; setSable(w.id) }
                             : undefined
                         }
                       >
-                        <MoteurRendu recette={w.recette} snapshot={snapshot} anime={anime} />
+                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} />
                         {kpiSable && (
                           <span className="tour-tap-hint" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>
@@ -792,6 +817,19 @@ function App() {
                           </span>
                         )}
                       </div>
+
+                      {/* LA POIGNÉE DE TAILLE (mode réorganiser) : S → M → L (→ XL). */}
+                      {reorganise && (
+                        <button
+                          type="button"
+                          className="tw-taille"
+                          onClick={() => cyclerTaille(w)}
+                          title={`Taille : ${tailleWidget(w).toUpperCase()} — taper pour changer`}
+                          aria-label={`Taille de la tuile : ${tailleWidget(w).toUpperCase()} — changer`}
+                        >
+                          {tailleWidget(w).toUpperCase()}
+                        </button>
+                      )}
                     </section>
                   )
                 })}

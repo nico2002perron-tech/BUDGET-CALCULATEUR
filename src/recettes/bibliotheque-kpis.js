@@ -17,7 +17,7 @@
      comparaison, ligne_evolution… — s'ajouteront quand elles seront bâties).
    ========================================================================== */
 import { evaluerGraphe } from '../lib/graphe.js'
-import { filtrerFait, estConnu } from './schema.js'
+import { filtrerFait, estConnu, BLOCS } from './schema.js'
 import { formatCAD, formatPct } from '../lib/format.js'
 import { genererScenarios } from '../lib/scenarios.js'
 
@@ -392,6 +392,24 @@ export function formesPourKPI(kpiId, snapshot, ctx) {
   if (snapshot !== undefined && snapshot !== null && !resolveKPI(kpiId, snapshot, ctx || {}).disponible) return []
   const comparaisonOk = !!(snapshot && comparaisonScenarios(snapshot, ctx || {}))
   return def.blocsCompatibles.filter((t) => estConnu(t) && (t !== 'comparaison' || comparaisonOk))
+}
+
+/** La forme ADAPTÉE à la TAILLE de tuile (présentation pure — resolveKPI reste la
+ *  seule source de chiffres) : une tuile S rend une forme compacte, une tuile
+ *  L/XL une forme large — parmi les formes OFFERTES du KPI. La forme stockée
+ *  n'est jamais mutée ; M garde la forme telle quelle. PUR. */
+export function formeAdaptee(kpiId, forme, taille, snapshot, ctx) {
+  const formes = formesPourKPI(kpiId, snapshot, ctx)
+  if (!formes.length) return forme
+  const actuelle = formes.includes(forme) ? forme : formes[0]
+  const estLarge = (f) => { const c = BLOCS[f]; return !!(c && c.taille === 'large') }
+  if (taille === 's' && estLarge(actuelle)) {
+    return formes.find((f) => f === 'stat') || formes.find((f) => !estLarge(f)) || actuelle
+  }
+  if ((taille === 'l' || taille === 'xl') && !estLarge(actuelle)) {
+    return formes.find(estLarge) || actuelle
+  }
+  return actuelle
 }
 
 /** La forme à RENDRE pour un KPI : la choisie si offerte, sinon la 1re offerte, sinon

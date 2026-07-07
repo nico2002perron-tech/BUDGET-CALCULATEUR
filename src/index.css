@@ -796,6 +796,18 @@ svg { display: block; }
 .tour-board.est-reorg .tour-widget-retouche { display: none; }
 .tw-poignee { display: inline-flex; color: var(--muted); flex: none; }
 .tw-poignee svg { width: 16px; height: 16px; }
+/* La poignée de TAILLE : coin bas-droit, cycle S → M → L (→ XL). */
+.tw-taille {
+  position: absolute; right: 8px; bottom: 8px; z-index: 7;
+  min-width: 40px; height: 40px; padding: 0 10px; border-radius: 13px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 900; letter-spacing: 0.05em;
+  color: var(--accent); background: rgba(255, 255, 255, 0.96);
+  border: 1.5px solid rgba(0, 119, 182, 0.32); border-bottom-width: 3px;
+  box-shadow: 0 8px 18px -8px rgba(3, 4, 94, 0.3);
+  transition: border-color 0.15s, background 0.15s;
+}
+.tw-taille:hover { background: #fff; border-color: var(--accent); }
+.tw-taille:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .tour-widget.est-tiree {
   animation: none !important; cursor: grabbing; z-index: 60; position: relative;
   box-shadow: 0 34px 70px -22px rgba(3, 4, 94, 0.45), 0 10px 26px rgba(3, 4, 94, 0.18);
