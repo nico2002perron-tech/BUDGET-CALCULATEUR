@@ -11,11 +11,23 @@
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
-import { kpiPourId, formesPourKPI, nomForme } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI, nomForme, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
+import { resoudreComparaisons } from '../recettes/schema.js'
 
 // Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
 // avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
 const TYPES_SABLE = ['prisme3d', 'bandes', 'beignet', 'courbe', 'nuage']
+
+// Les formes qui PORTENT des séries de comparaison (le nuage lit une seule série).
+const FORMES_COMPARABLES = ['prisme3d', 'bandes', 'courbe']
+
+// Les sujets « Ajouter à comparer » (déterministes, sans clé API). Un sujet dont
+// la donnée manque reste visible, grisé, avec sa condition (jamais inventé).
+const SUJETS_COMPARER = [
+  { contexte: 'moyenne', label: 'ta moyenne' },
+  { contexte: 'cout_vie', label: 'ton coût de vie' },
+  { contexte: 'an_passe', label: 'l’an passé', condition: 's’allume avec ton historique' },
+]
 
 const I_RETOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -27,6 +39,10 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
+  const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
+  const [iaTexte, setIaTexte] = useState('')
+  const [iaCharge, setIaCharge] = useState(false)
+  const [iaNote, setIaNote] = useState(null)
   const recette = widget && widget.recette
   const kb = recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null
   const def = kb ? kpiPourId(kb.KPI) : null
@@ -83,8 +99,58 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
   const formeDefaut = formes.includes('prisme3d') ? 'prisme3d' : formes.includes(kb.forme) ? kb.forme : formes[0] || null
   const formeActive = formeChoisie && formes.includes(formeChoisie) ? formeChoisie : formeDefaut
 
+  // « AJOUTER À COMPARER » : tes comparaisons du moment (celles de la recette tant
+  // que tu n'y touches pas). Un sujet est offert si sa série se RÉSOUT vraiment.
+  const compActives = comparaisons !== null ? comparaisons : (kb.params && Array.isArray(kb.params.comparaisons) ? kb.params.comparaisons : [])
+  const comparable = FORMES_COMPARABLES.includes(formeActive)
+  const sujetOffert = (ctx) => resoudreComparaisons(snapshot, [{ contexte: ctx }]).length > 0
+  const estAjoute = (ctx) => compActives.some((c) => c && c.contexte === ctx)
+  const basculerSujet = (s) => {
+    setIaNote(null)
+    setComparaisons(estAjoute(s.contexte)
+      ? compActives.filter((c) => c.contexte !== s.contexte)
+      : [...compActives, { contexte: s.contexte, label: s.label }].slice(0, 3))
+  }
+  // L'IA choisit QUELS contextes ajouter — le payload est la FORME des données
+  // (ids, question, clés, booléen) : AUCUN montant ne quitte l'appareil.
+  const demanderIA = async (e) => {
+    e.preventDefault()
+    const texte = iaTexte.trim()
+    if (!texte || iaCharge) return
+    setIaCharge(true)
+    setIaNote(null)
+    try {
+      const offerts = SUJETS_COMPARER.filter((s) => sujetOffert(s.contexte)).map((s) => s.contexte)
+      const res = await fetch('/api/build-tool', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(15000), // jamais une barre IA verrouillée sans issue
+        body: JSON.stringify({
+          mode: 'comparer',
+          texte,
+          kpi: kb.KPI,
+          question: def.question,
+          saisonnier: !!DONNEE_DISPO.saison(snapshot || {}),
+          donneesDisponibles: Object.keys(DONNEE_DISPO).filter((k) => DONNEE_DISPO[k](snapshot || {})),
+          contextesDisponibles: offerts,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data || !Array.isArray(data.series)) throw new Error('réponse invalide')
+      const valides = data.series.filter((s) => s && offerts.includes(s.contexte) && !estAjoute(s.contexte))
+      if (valides.length === 0) setIaNote('Rien à ajouter pour cette demande — les sujets offerts sont ci-dessus.')
+      else setComparaisons([...compActives, ...valides.map((s) => ({ contexte: s.contexte, label: typeof s.label === 'string' ? s.label : undefined }))].slice(0, 3))
+      setIaTexte('')
+    } catch {
+      setIaNote('Ta tour n’a pas pu traiter la demande. Réessaie, ou tape un sujet ci-dessus.')
+    } finally {
+      setIaCharge(false)
+    }
+  }
+
+  const paramsScene = comparable ? { ...(kb.params || {}), comparaisons: compActives } : kb.params || {}
   const recetteScene = formeActive
-    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: kb.params || {} }] }
+    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: paramsScene }] }
     : recette
 
   return (
@@ -131,10 +197,50 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
           </div>
         )}
 
+        {/* AJOUTER À COMPARER : chips tappables (ajouté = pastille retirable ×) +
+            la barre « demande à l'IA ». Le nuage lit une seule série → pas de bloc. */}
+        {formeActive && comparable && (
+          <div className="sable-comparer" role="group" aria-label="Ajouter à comparer">
+            <span className="sable-types-l">Comparer</span>
+            {SUJETS_COMPARER.map((s) => {
+              const offert = sujetOffert(s.contexte)
+              const ajoute = estAjoute(s.contexte)
+              return (
+                <button
+                  key={s.contexte}
+                  type="button"
+                  className={`sable-type sable-chip${ajoute ? ' est-ajoute' : ''}`}
+                  disabled={!offert}
+                  aria-pressed={ajoute}
+                  title={offert ? (ajoute ? `Retirer « ${s.label} »` : `Comparer à ${s.label}`) : `${s.label} — ${s.condition || 'pas de donnée pour l’instant'}`}
+                  onClick={() => basculerSujet(s)}
+                >
+                  {s.label}
+                  {ajoute && <span className="sable-chip-x" aria-hidden="true">×</span>}
+                </button>
+              )
+            })}
+            <form className="sable-ia" onSubmit={demanderIA}>
+              <input
+                type="text"
+                className="sable-ia-input"
+                placeholder="demande à l’IA — ex. « compare à ma moyenne »"
+                value={iaTexte}
+                onChange={(e) => setIaTexte(e.target.value)}
+                aria-label="Demander une comparaison à l’IA"
+              />
+              <button type="submit" className="sable-ia-go" disabled={iaCharge || !iaTexte.trim()}>
+                {iaCharge ? '…' : 'IA'}
+              </button>
+            </form>
+            {iaNote && <p className="sable-ia-note" role="status">{iaNote}</p>}
+          </div>
+        )}
+
         <div className="sable-scene">
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={formeActive || 'tuile'} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}`} />
         </div>
-        <p className="sable-note">Les commandes du sable (comparaisons, objectif, personnalité) s’assemblent ici, étape par étape.</p>
+        <p className="sable-note">Les commandes du sable (objectif, personnalité) s’assemblent ici, étape par étape.</p>
       </div>
     </div>
   )

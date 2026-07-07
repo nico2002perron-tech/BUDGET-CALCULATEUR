@@ -112,16 +112,27 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
     if (bloc.kpi) {
       if (bloc.type === 'comparaison') {
         const base = bloc.params || {}
-        // ctxA/ctxB explicites (recette authored) sinon AUTO-DÉRIVÉS des scénarios de
-        // l'objectif (le tuyau scenarios.js → comparaison). Chaque côté reste un resolveKPI.
-        let ctxA = base.ctxA, ctxB = base.ctxB, etiquetteA = base.etiquetteA, etiquetteB = base.etiquetteB
-        if (!ctxA || !ctxB) {
-          const d = comparaisonScenarios(snapshot, base)
-          if (d) { ctxA = d.ctxA; ctxB = d.ctxB; etiquetteA = etiquetteA || d.etiquetteA; etiquetteB = etiquetteB || d.etiquetteB }
+        // N CONTEXTES explicites (recette/IA/chips) → une résolution PAR contexte
+        // (kpi.liste) — le bloc supporte plus de deux séries. Sinon : ctxA/ctxB
+        // explicites, sinon AUTO-DÉRIVÉS des scénarios de l'objectif (le tuyau
+        // scenarios.js → comparaison). Chaque côté reste un resolveKPI.
+        if (Array.isArray(base.contextes) && base.contextes.length >= 2) {
+          kpi = {
+            liste: base.contextes.slice(0, 4).map((c, i) => ({
+              etiquette: (c && typeof c.etiquette === 'string' && c.etiquette) || `Option ${i + 1}`,
+              r: resolveKPI(bloc.kpi, snapshot, { ...base, ...((c && c.ctx) || {}) }),
+            })),
+          }
+        } else {
+          let ctxA = base.ctxA, ctxB = base.ctxB, etiquetteA = base.etiquetteA, etiquetteB = base.etiquetteB
+          if (!ctxA || !ctxB) {
+            const d = comparaisonScenarios(snapshot, base)
+            if (d) { ctxA = d.ctxA; ctxB = d.ctxB; etiquetteA = etiquetteA || d.etiquetteA; etiquetteB = etiquetteB || d.etiquetteB }
+          }
+          const a = resolveKPI(bloc.kpi, snapshot, { ...base, ...(ctxA || {}) })
+          const b = resolveKPI(bloc.kpi, snapshot, { ...base, ...(ctxB || {}) })
+          kpi = { a, b, etiquetteA, etiquetteB }
         }
-        const a = resolveKPI(bloc.kpi, snapshot, { ...base, ...(ctxA || {}) })
-        const b = resolveKPI(bloc.kpi, snapshot, { ...base, ...(ctxB || {}) })
-        kpi = { a, b, etiquetteA, etiquetteB }
       } else {
         kpi = resolveKPI(bloc.kpi, snapshot, bloc.params)
       }

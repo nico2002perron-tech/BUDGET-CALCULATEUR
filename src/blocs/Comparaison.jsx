@@ -23,6 +23,46 @@ function dispo(v) {
 
 export default function Comparaison({ params = {}, data = {}, kpi = null }) {
   void data
+
+  // Mode LISTE (2+ séries, résolues par MoteurRendu via params.contextes) : une
+  // rangée par contexte, barres à l'échelle commune. Étiquettes filtrées.
+  if (kpi && Array.isArray(kpi.liste)) {
+    const rangs = kpi.liste.map((x, i) => {
+      const f = filtrerFait(x.etiquette)
+      return { etiquette: (f.ok && f.texte) || `Option ${i + 1}`, r: x.r, ok: dispo(x.r) }
+    })
+    const valides = rangs.filter((x) => x.ok)
+    if (valides.length === 0) {
+      return (
+        <section className="card cmp">
+          <div className="card-title">{I}Comparaison</div>
+          <p className="bloc-vide">Rien à comparer pour l’instant.</p>
+        </section>
+      )
+    }
+    const unite = valides[0].r.unite
+    const maxL = Math.max(...valides.map((x) => Math.abs(x.r.valeur)), 1)
+    return (
+      <section className="card cmp">
+        <div className="card-title">{I}Comparaison</div>
+        {rangs.map((x, i) => (
+          <div key={i}>
+            <div className="cmp-rang">
+              <span className="cmp-l">{x.etiquette}</span>
+              <span className="cmp-v">{x.ok ? formatKPI(x.r.valeur, x.r.unite) : '—'}</span>
+            </div>
+            <div className="cmp-piste"><span className={`cmp-rempli ${i === 0 ? 'cmp-a' : 'cmp-b'}`} style={{ width: x.ok ? `${Math.round((Math.abs(x.r.valeur) / maxL) * 100)}%` : '0%' }} /></div>
+          </div>
+        ))}
+        {valides.length >= 2 && (() => {
+          const vals = valides.map((x) => x.r.valeur)
+          const f = filtrerFait(`Écart : ${formatKPI(Math.max(...vals) - Math.min(...vals), unite)} entre le plus haut et le plus bas.`)
+          return <p className="cmp-ecart">{f.ok ? f.texte : `Écart : ${formatKPI(Math.max(...vals) - Math.min(...vals), unite)}.`}</p>
+        })()}
+      </section>
+    )
+  }
+
   const a = kpi && kpi.a
   const b = kpi && kpi.b
   const eA = (kpi && kpi.etiquetteA) || params.etiquetteA || 'Option A'

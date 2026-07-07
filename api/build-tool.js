@@ -89,6 +89,34 @@ EXEMPLES (situation décrite → blocs choisis) :
 
 Réponds UNIQUEMENT avec un objet JSON valide { "situation": "...", "titre": "...", "blocs": [ {"type":"...","params":{...}} ] }, sans aucun texte avant ou après.`;
 
+// ── Mode COMPARER : « phrase → contextes de comparaison » (carré de sable).
+// L'IA choisit QUELS contextes ajouter parmi la liste DISPONIBLE envoyée par le
+// client (forme des données seulement — jamais un montant). Les séries sont
+// ensuite résolues LOCALEMENT depuis le snapshot (schema.js/resoudreComparaisons).
+const SYSTEM_COMPARER = `Tu es le SÉLECTIONNEUR de comparaisons de « la tour de contrôle », une plateforme québécoise de finances personnelles.
+On te donne : le KPI regardé (id + question), si les revenus sont saisonniers, les DONNÉES PRÉSENTES (clés), la liste des CONTEXTES DISPONIBLES (ids), et la phrase de l'usager.
+Ton rôle : choisir 1 à 3 contextes PARMI la liste disponible SEULEMENT — tu ne crées jamais de contexte, tu ne mets JAMAIS de chiffres (les valeurs se calculent sur l'appareil de l'usager).
+
+Sens des contextes : "moyenne" = sa moyenne mensuelle lissée ; "cout_vie" = son coût de vie mensuel ; "an_passe" = la même métrique l'an passé.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
+{"series":[{"contexte":"<id disponible>","label":"<2-4 mots, tutoiement, factuel>"}]}
+- "label" : court et factuel (ex. « ta moyenne », « ton coût de vie »), SANS emoji, sans conseil ni jugement.
+- La phrase demande un contexte hors liste → omets-le (série vide permise : {"series":[]}).`;
+
+// Maquette déterministe du mode comparer (clé absente) : mots-clés → contextes.
+function mockComparer(message, disponibles) {
+  const dispo = Array.isArray(disponibles) ? disponibles : [];
+  const t = String(message || '').toLowerCase();
+  const series = [];
+  const ajoute = (contexte, label) => { if (dispo.includes(contexte) && !series.some(s => s.contexte === contexte)) series.push({ contexte, label }); };
+  if (/moyenne|liss/.test(t)) ajoute('moyenne', 'ta moyenne');
+  if (/co[uû]t|vie|d[ée]pense|seuil/.test(t)) ajoute('cout_vie', 'ton coût de vie');
+  if (/pass[ée]|dernier|historique/.test(t)) ajoute('an_passe', 'l’an passé');
+  if (series.length === 0) ajoute('moyenne', 'ta moyenne');
+  return { series };
+}
+
 // Maquette déterministe sans IA (clé absente) : la situation saisonnière, seul cas outillé.
 function mockRecette(message) {
   void message;
@@ -159,27 +187,42 @@ export default async function handler(req, res) {
   if (req.method === 'GET') return res.status(200).json({ service: 'build-tool', version: VERSION, ok: true });
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
-  // Lecture du corps : message + mode (entite | recette)
-  let message = '', mode = 'entite';
+  // Lecture du corps : message + mode (entite | recette | comparer)
+  let message = '', mode = 'entite', comparer = null;
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b || '{}');
     message = (b && (b.message || b.texte) ? String(b.message || b.texte) : '').trim();
     if (b && b.mode) mode = String(b.mode);
+    if (mode === 'comparer') {
+      // FORME des données seulement (privacy) : ids, question, clés, booléen.
+      // Chaque champ est BORNÉ (endpoint public : pas de prompt gonflé par un POST direct).
+      comparer = {
+        kpi: String(b.kpi || '').slice(0, 60),
+        question: String(b.question || '').slice(0, 200),
+        saisonnier: !!b.saisonnier,
+        donneesDisponibles: Array.isArray(b.donneesDisponibles) ? b.donneesDisponibles.slice(0, 20).map((x) => String(x).slice(0, 40)) : [],
+        contextesDisponibles: Array.isArray(b.contextesDisponibles) ? b.contextesDisponibles.slice(0, 10).map((x) => String(x).slice(0, 40)) : [],
+      };
+    }
   } catch { /* ignore */ }
   if (!message) return res.status(400).json({ error: 'empty_message' });
   if (message.length > 600) message = message.slice(0, 600);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const system = (mode === 'recette') ? SYSTEM_RECETTE : SYSTEM;
+  const system = (mode === 'comparer') ? SYSTEM_COMPARER : (mode === 'recette') ? SYSTEM_RECETTE : SYSTEM;
+  const texteUsager = message; // la phrase BRUTE (le mock lit celle-ci, jamais le gabarit)
+  if (mode === 'comparer') {
+    const c = comparer || { kpi: '', question: '', saisonnier: false, donneesDisponibles: [], contextesDisponibles: [] };
+    message = `KPI : ${c.kpi} — « ${c.question} »\nRevenus saisonniers : ${c.saisonnier ? 'oui' : 'non'}\nDonnées présentes : ${c.donneesDisponibles.join(', ') || '(aucune)'}\nContextes disponibles : ${c.contextesDisponibles.join(', ') || '(aucun)'}\nDemande de l'usager : ${message}`;
+  }
 
-  // Sans clé : en mode recette on renvoie une MAQUETTE locale (le flux reste
-  // testable hors ligne) ; en mode entité on signale l'absence de clé.
+  // Sans clé : en modes recette/comparer on renvoie une MAQUETTE locale (le flux
+  // reste testable hors ligne) ; en mode entité on signale l'absence de clé.
   if (!apiKey) {
-    if (mode === 'recette') {
-      res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json(Object.assign({ _mock: true }, mockRecette(message)));
-    }
+    res.setHeader('Cache-Control', 'no-store');
+    if (mode === 'recette') return res.status(200).json(Object.assign({ _mock: true }, mockRecette(message)));
+    if (mode === 'comparer') return res.status(200).json(Object.assign({ _mock: true }, mockComparer(texteUsager, comparer && comparer.contextesDisponibles)));
     return res.status(503).json({ error: 'no_key' });
   }
 
@@ -189,6 +232,7 @@ export default async function handler(req, res) {
     if (!data) return res.status(502).json({ error: 'bad_response', status: out.status, raw: (out.raw || '').slice(0, 300) });
     if (data.type === 'error') return res.status(502).json({ error: 'api_error', status: out.status, anthropic_type: data.error && data.error.type, message: data.error && data.error.message, request_id: data.request_id });
     if (data.stop_reason === 'refusal') {
+      if (mode === 'comparer') return res.status(200).json(mockComparer(texteUsager, comparer && comparer.contextesDisponibles));
       if (mode === 'recette') return res.status(200).json(mockRecette(message));
       return res.status(200).json({ kind: 'unknown', name: '', icon: 'target', target: null, monthly: null, date: null, note: 'Je ne peux pas traiter cette demande. Décris-moi plutôt un objectif d\'épargne à suivre.' });
     }
