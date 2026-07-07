@@ -18,20 +18,8 @@ import { useRef } from 'react'
 import { filtrerFait } from '../recettes/schema.js'
 import { PALETTE_ACCENTS, accentValide, photoBornee } from '../lib/entites.js'
 import { lirePhoto } from '../lib/photo.js'
+import { MASCOTTES, MASCOTTE_REPLI, VOIX_MENTOR } from '../lib/personas.js'
 import { iconeKPI } from './iconesGalerie.jsx'
-
-// Un personnage par catégorie : une IDENTITÉ (jamais une évaluation).
-const MASCOTTES = {
-  objectif: 'Le Cap', budget: 'Le Compteur', coussin: 'Le Gardien',
-  saisonnier: 'Le Veilleur', impot: 'Le Percepteur', patrimoine: 'Le Bâtisseur',
-  dette: 'Le Libéré',
-}
-// Les voix mentor : un NOM et des initiales — le fait reste le même fait.
-export const VOIX_MENTOR = [
-  { id: 'prudent', nom: 'Le Prudent' },
-  { id: 'stratege', nom: 'La Stratège' },
-  { id: 'complice', nom: 'Le Complice' },
-]
 const TYPES_PERSONA = [
   { id: 'neutre', label: 'Neutre' },
   { id: 'mascotte', label: 'Mascotte' },
@@ -73,7 +61,7 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
         <div className="persona-bande" role="note">
           <span className="persona-bulle" aria-hidden="true">{iconeKPI(kpiId, domaine)}</span>
           <p className="persona-texte">
-            <b>{MASCOTTES[domaine] || 'Le Témoin'}</b>
+            <b>{MASCOTTES[domaine] || MASCOTTE_REPLI}</b>
             {fait && <span> · {fait}</span>}
           </p>
         </div>

@@ -34,7 +34,7 @@ import { tailleWidget } from './recettes/schema.js'
 import { construireEntite, PALETTE_ACCENTS, photoBornee } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
-import { VOIX_MENTOR } from './components/PersonaStrip.jsx'
+import { VOIX_MENTOR } from './lib/personas.js'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -439,8 +439,15 @@ function App() {
   // ÉPINGLER depuis le carré de sable : la vue fabriquée (forme, comparaisons,
   // cible, personnalité) devient LA tuile — mise à jour EN PLACE (même id,
   // jamais un doublon), persistée par le debounce existant.
+  const [epingleFete, setEpingleFete] = useState(false) // célébration factuelle après un épinglage
+  useEffect(() => {
+    if (!epingleFete) return
+    const id = setTimeout(() => setEpingleFete(false), 6000)
+    return () => clearTimeout(id)
+  }, [epingleFete])
   const epinglerSable = (maj) => {
     if (!sable) return
+    setEpingleFete(true)
     setStore((s) => ({
       ...s,
       tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => {
@@ -680,6 +687,14 @@ function App() {
             {/* LE HÉROS (VISION §7a·2) : le verdict du jour — la SEULE zone navy→cyan.
                 Data-aware : aucun verdict possible → rien (jamais de zéro inventé). */}
             <VerdictDuJour verdict={verdict} />
+
+            {/* La célébration d'épinglage : ta tuile vient d'être mise à jour (un fait, 6 s). */}
+            {epingleFete && !mission && (
+              <div className="tour-allume gal-anim" role="status">
+                <span className="gal-ic" aria-hidden="true">{I_ECLAIR}</span>
+                <span className="tour-allume-txt"><b>Épinglée.</b> Ta tuile est à jour — tape-la pour la retoucher quand tu veux.</span>
+              </div>
+            )}
 
             {/* La célébration : N outils viennent de s'allumer (un fait, 7 s, jamais un jugement). */}
             {allumes != null && !mission && (
