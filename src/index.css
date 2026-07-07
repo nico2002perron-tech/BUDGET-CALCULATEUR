@@ -775,6 +775,36 @@ svg { display: block; }
 /* La scène 3D épouse la hauteur restante de sa tuile (le monde est absolu dedans). */
 .tour-board .card.p3d .p3d-scene { height: auto; flex: 1 1 auto; min-height: 140px; }
 
+/* ── MODE « RÉORGANISER » : les tuiles gigotent, la tirée se soulève, les
+   voisines glissent (FLIP côté App). Tout se coupe sous reduced-motion. ── */
+.tb-reorg {
+  margin-left: 10px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 800; color: var(--accent);
+  background: rgba(0, 119, 182, 0.07); border: 1.5px solid rgba(0, 119, 182, 0.22);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tb-reorg:hover { background: rgba(0, 119, 182, 0.13); }
+.tb-reorg.est-actif { color: #fff; background: var(--accent); border-color: var(--accent); }
+.tour-board.est-reorg .tour-widget { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tour-board.est-reorg .tour-widget:not(.est-tiree) { animation: twJiggle 0.4s ease-in-out infinite alternate; }
+.tour-board.est-reorg .tour-widget:nth-child(2n) { animation-delay: -0.2s; }
+.tour-board.est-reorg .tour-widget:nth-child(3n) { animation-delay: -0.3s; }
+@keyframes twJiggle { from { transform: rotate(-0.45deg); } to { transform: rotate(0.45deg); } }
+/* le contenu ne capte plus rien : pas d'ouverture de sable, pas de survol de blocs */
+.tour-board.est-reorg .tour-rendu { pointer-events: none; }
+.tour-board.est-reorg .tour-tap-hint { display: none; }
+.tour-board.est-reorg .tour-widget-retouche { display: none; }
+.tw-poignee { display: inline-flex; color: var(--muted); flex: none; }
+.tw-poignee svg { width: 16px; height: 16px; }
+.tour-widget.est-tiree {
+  animation: none !important; cursor: grabbing; z-index: 60; position: relative;
+  box-shadow: 0 34px 70px -22px rgba(3, 4, 94, 0.45), 0 10px 26px rgba(3, 4, 94, 0.18);
+  border-radius: 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-board.est-reorg .tour-widget:not(.est-tiree) { animation: none; }
+}
+
 /* LA RETOUCHE devient un panneau POSÉ sur la tuile (la grille ne saute pas). */
 .tour-board .retouche {
   position: absolute; left: 6px; right: 6px; top: 52px; z-index: 6;

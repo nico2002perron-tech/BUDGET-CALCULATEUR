@@ -6,7 +6,7 @@
    3 sections : Ma tour · Mes données · Calendrier. + menu Données (JSON).
    Un seul silo (budgetcalc_v1) → un seul snapshot → tout en direct.
    ========================================================================== */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline } from './lib/storage.js'
 import { revenuMensuel } from './lib/revenus.js'
@@ -104,6 +104,9 @@ const I_CAL = (
 function aDesRevenus(store) {
   return revenuMensuel(store && store.revenus) > 0
 }
+function reduitMouvement() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 function aDesDonnees(store) {
   if (!store) return false
   if (revenuMensuel(store.revenus) > 0) return true
@@ -140,6 +143,7 @@ function App() {
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
   const [sable, setSable] = useState(null) // id du widget ouvert dans le carré de sable (null = fermé)
+  const [reorganise, setReorganise] = useState(false) // mode « Réorganiser » du board
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // « DEPUIS TA DERNIÈRE VISITE » (VISION §7a·1) : le repère n'est plus le montage, mais la
@@ -199,6 +203,119 @@ function App() {
   }, [])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
+
+  // ── MODE « RÉORGANISER » : glisser pour réordonner (pointer events maison,
+  // zéro dépendance). La tuile tirée suit le doigt (style direct, pas de
+  // re-rendu par frame) ; les voisines GLISSENT à leur place (FLIP via WAAPI) ;
+  // l'ordre est persisté dans store.tourWidgets (debounce existant).
+  const tuilesRef = useRef(new Map()) // id → élément .tour-widget
+  const dragRef = useRef(null) // le geste en cours { id, pointerId, px, py, tx, ty, derniereCible, tCible, surMove, surFin }
+  const rectsAvantRef = useRef(null) // photos des rects AVANT un réordonnancement (FLIP)
+  const [tireeId, setTireeId] = useState(null) // la tuile soulevée — PILOTÉE par React (jamais classList : un re-rendu l'effacerait)
+  const poseTuile = (id) => (n) => { if (n) tuilesRef.current.set(id, n); else tuilesRef.current.delete(id) }
+  const reordonnerWidgets = (deId, versId) => {
+    setStore((s) => {
+      const liste = Array.isArray(s.tourWidgets) ? [...s.tourWidgets] : []
+      const de = liste.findIndex((w) => w.id === deId)
+      const vers = liste.findIndex((w) => w.id === versId)
+      if (de < 0 || vers < 0 || de === vers) return s
+      const [bouge] = liste.splice(de, 1)
+      liste.splice(vers, 0, bouge)
+      return { ...s, tourWidgets: liste }
+    })
+  }
+  // Fin de geste (relâché, annulé, sortie de mode, démontage) : TOUJOURS nettoyer.
+  const finirDrag = (annule) => {
+    const d = dragRef.current
+    if (!d) return
+    dragRef.current = null
+    document.removeEventListener('pointermove', d.surMove)
+    document.removeEventListener('pointerup', d.surFin)
+    document.removeEventListener('pointercancel', d.surFin)
+    setTireeId(null)
+    const el = tuilesRef.current.get(d.id)
+    if (!el) return
+    const t = el.style.transform
+    el.style.transform = ''
+    if (t && !annule && !reduitMouvement()) {
+      try { el.animate([{ transform: t }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }) } catch { /* décoratif */ }
+    }
+  }
+  const finirDragRef = useRef(finirDrag)
+  finirDragRef.current = finirDrag
+  const bougeDrag = (e, d) => {
+    const el = tuilesRef.current.get(d.id)
+    if (!el) return
+    d.tx += e.clientX - d.px
+    d.ty += e.clientY - d.py
+    d.px = e.clientX
+    d.py = e.clientY
+    // auto-scroll doux près des bords (au doigt, touch-action:none bloque le défilement natif)
+    if (e.clientY < 90) { window.scrollBy(0, -16); d.ty -= 16 }
+    else if (e.clientY > window.innerHeight - 90) { window.scrollBy(0, 16); d.ty += 16 }
+    el.style.transform = `translate(${d.tx}px, ${d.ty}px) scale(1.04)`
+    // la tuile SOUS le pointeur devient la destination ; hors cible → on débloque
+    // (le retour en arrière re-marche) ; 120 ms entre deux échanges (anti ping-pong).
+    let cible = null
+    tuilesRef.current.forEach((n, oid) => {
+      if (oid === d.id || !n) return
+      const r = n.getBoundingClientRect()
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) cible = oid
+    })
+    if (!cible) { d.derniereCible = null; return }
+    const maintenant = performance.now()
+    if (cible === d.derniereCible || maintenant - d.tCible < 120) return
+    d.derniereCible = cible
+    d.tCible = maintenant
+    rectsAvantRef.current = new Map([...tuilesRef.current].map(([oid, n]) => [oid, n.getBoundingClientRect()]))
+    reordonnerWidgets(d.id, cible)
+  }
+  // Le geste vit sur DOCUMENT (pas de capture d'élément : React déplace les nœuds
+  // au reorder et la capture se perdrait ; un 2e pointeur est ignoré).
+  const surTuilePointerDown = (e, id) => {
+    if (!reorganise || dragRef.current || e.button > 0) return
+    if (e.target.closest('button, input, a, select, textarea')) return
+    const d = { id, pointerId: e.pointerId, px: e.clientX, py: e.clientY, tx: 0, ty: 0, derniereCible: null, tCible: 0 }
+    d.surMove = (ev) => { if (ev.pointerId === d.pointerId) bougeDrag(ev, d) }
+    d.surFin = (ev) => { if (ev.pointerId === d.pointerId) finirDragRef.current(false) }
+    dragRef.current = d
+    document.addEventListener('pointermove', d.surMove)
+    document.addEventListener('pointerup', d.surFin)
+    document.addEventListener('pointercancel', d.surFin)
+    setTireeId(id)
+  }
+  // Sortie du mode ou démontage en plein geste → jamais une tuile figée « soulevée ».
+  useEffect(() => {
+    if (!reorganise) finirDragRef.current(true)
+  }, [reorganise])
+  useEffect(() => () => finirDragRef.current(true), [])
+  // FLIP : après un réordonnancement, chaque tuile part de son ANCIENNE place et
+  // glisse vers la nouvelle. La tuile tirée, elle, reste collée au pointeur
+  // (on compense le saut de mise en page dans son transform manuel).
+  const ordreCle = widgets.map((w) => w.id).join('|')
+  useLayoutEffect(() => {
+    const avant = rectsAvantRef.current
+    rectsAvantRef.current = null
+    if (!avant) return
+    const reduce = reduitMouvement()
+    const d = dragRef.current
+    tuilesRef.current.forEach((el, id) => {
+      const oa = avant.get(id)
+      if (!el || !oa) return
+      const na = el.getBoundingClientRect()
+      const dx = oa.left - na.left
+      const dy = oa.top - na.top
+      if (d && id === d.id) {
+        d.tx += dx
+        d.ty += dy
+        el.style.transform = `translate(${d.tx}px, ${d.ty}px) scale(1.04)`
+        return
+      }
+      if ((dx || dy) && !reduce) {
+        try { el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 190, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }) } catch { /* décoratif */ }
+      }
+    })
+  }, [ordreCle]) // eslint-disable-line react-hooks/exhaustive-deps -- rejoue au changement d'ORDRE seulement
 
   useEffect(() => {
     const id = setTimeout(() => saveStore(store), 250)
@@ -537,10 +654,18 @@ function App() {
                   <span className="tb-voyant" aria-hidden="true" />
                   <span className="tb-label">Tes indicateurs</span>
                   <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
+                  <button
+                    type="button"
+                    className={`tb-reorg${reorganise ? ' est-actif' : ''}`}
+                    aria-pressed={reorganise}
+                    onClick={() => setReorganise((v) => !v)}
+                  >
+                    {reorganise ? 'Terminé' : 'Réorganiser'}
+                  </button>
                 </div>
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
-                <div className="tour-board">
+                <div className={`tour-board${reorganise ? ' est-reorg' : ''}`}>
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
@@ -552,11 +677,18 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}`}
                       key={w.id}
+                      ref={poseTuile(w.id)}
                       style={w.accent ? { '--wacc': w.accent } : undefined}
+                      onPointerDown={reorganise ? (e) => surTuilePointerDown(e, w.id) : undefined}
                     >
                       <div className="tour-widget-tete">
+                        {reorganise && (
+                          <span className="tw-poignee" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.7" /><circle cx="15" cy="6" r="1.7" /><circle cx="9" cy="12" r="1.7" /><circle cx="15" cy="12" r="1.7" /><circle cx="9" cy="18" r="1.7" /><circle cx="15" cy="18" r="1.7" /></svg>
+                          </span>
+                        )}
                         <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w)}</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
                         <button
@@ -647,7 +779,7 @@ function App() {
                         className={`tour-rendu${kpiSable ? ' est-tappable' : ''}`}
                         key={kb ? `${kb.KPI}:${kb.forme}` : 'fixe'}
                         onClick={
-                          kpiSable
+                          kpiSable && !reorganise
                             ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; setSable(w.id) }
                             : undefined
                         }
