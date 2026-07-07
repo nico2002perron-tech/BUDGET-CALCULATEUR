@@ -16,7 +16,7 @@
    ========================================================================== */
 import { useRef } from 'react'
 import { filtrerFait } from '../recettes/schema.js'
-import { PALETTE_ACCENTS, accentValide } from '../lib/entites.js'
+import { PALETTE_ACCENTS, accentValide, photoBornee } from '../lib/entites.js'
 import { lirePhoto } from '../lib/photo.js'
 import { iconeKPI } from './iconesGalerie.jsx'
 
@@ -105,13 +105,14 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
         </div>
       )}
 
-      {/* ENTITÉ NOMMÉE : nom + photo locale (bornée) + couleur de la palette. */}
-      {p.type === 'entite' && (
+      {/* ENTITÉ NOMMÉE : nom + photo locale (re-bornée AU RENDU : data:image/
+          seulement — jamais une URL réseau d'un silo importé) + couleur. */}
+      {p.type === 'entite' && (() => { const photo = photoBornee(p.photo); return (
         <div className="persona-bande persona-entite" role="note" style={{ '--pacc': accentValide(p.couleur) }}>
-          {p.photo ? (
-            <span className="persona-photo" style={{ backgroundImage: `url(${p.photo})` }} aria-hidden="true" />
+          {photo ? (
+            <span className="persona-photo" style={{ backgroundImage: `url(${photo})` }} aria-hidden="true" />
           ) : (
-            <span className="persona-bulle persona-init" aria-hidden="true">{(p.nom || 'E').trim().charAt(0).toUpperCase() || 'E'}</span>
+            <span className="persona-bulle persona-init" aria-hidden="true">{String(p.nom || 'E').trim().charAt(0).toUpperCase() || 'E'}</span>
           )}
           <div className="persona-corps">
             <p className="persona-texte">
@@ -136,7 +137,13 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
                 type="file"
                 accept="image/*"
                 hidden
-                onChange={(e) => { const fich = e.target.files && e.target.files[0]; lirePhoto(fich, (ph) => poser({ photo: ph })); e.target.value = '' }}
+                onChange={(e) => {
+                  const fich = e.target.files && e.target.files[0]
+                  // mise à jour FONCTIONNELLE : le décodage est asynchrone — le nom ou
+                  // la couleur tapés entre-temps ne sont jamais écrasés.
+                  lirePhoto(fich, (ph) => onChange((prev) => ({ ...(prev && prev.type ? prev : p), type: 'entite', photo: ph })))
+                  e.target.value = ''
+                }}
               />
               <div className="gal-accents" role="group" aria-label="Couleur de l’entité">
                 {PALETTE_ACCENTS.map((a) => (
@@ -153,7 +160,7 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
             </div>
           </div>
         </div>
-      )}
+      ) })()}
     </div>
   )
 }

@@ -67,9 +67,14 @@ const eAccent = construireEntite({ reponses: { cout: 6000, couleur: 'turquoise_f
 ok(eAccent.couleurAccent === 'cyan', 'accent hors palette → repli « cyan »')
 ok(accentValide('turquoise_fluo') === accentValide('cyan'), 'accentValide : hex de repli pour un id inconnu')
 ok(accentValide('lavande') === '#7a6fe6', 'accentValide : hex correct pour un id valide')
-const eBig = construireEntite({ reponses: { cout: 6000, photo: 'x'.repeat(MAX_PHOTO_CARS + 1) }, scenarioChoisi: {} }, snap, 'e_big')
+const eBig = construireEntite({ reponses: { cout: 6000, photo: 'data:image/jpeg;base64,' + 'x'.repeat(MAX_PHOTO_CARS + 1) }, scenarioChoisi: {} }, snap, 'e_big')
 ok(eBig.photo === null, `photo > seuil (~200 Ko) → refusée (jamais un blob qui gonfle le silo)`)
-ok(photoBornee('x'.repeat(MAX_PHOTO_CARS)) !== null && photoBornee('x'.repeat(MAX_PHOTO_CARS + 1)) === null, 'photoBornee : borne nette au seuil')
+const prefixe = 'data:image/jpeg;base64,'
+ok(photoBornee(prefixe + 'x'.repeat(MAX_PHOTO_CARS - prefixe.length)) !== null && photoBornee(prefixe + 'x'.repeat(MAX_PHOTO_CARS - prefixe.length + 1)) === null, 'photoBornee : borne nette au seuil')
+// PRIVACY : seul data:image/ passe — une URL réseau (silo importé trafiqué)
+// déclencherait une requête au rendu. Rien ne quitte l'appareil, même là.
+ok(photoBornee('https://tracker.example/px.png') === null, 'photoBornee : URL http refusée (aucune requête réseau possible)')
+ok(photoBornee('javascript:alert(1)') === null && photoBornee('x'.repeat(500)) === null, 'photoBornee : schémas non-image refusés')
 
 console.log('\n— Conformité : scenarioLabel via filtrerFait ; palette curée sans ambre —')
 const eJuge = construireEntite({ reponses: { cout: 6000 }, scenarioChoisi: { contributionMensuelle: 750, horizonMois: 6, label: 'Tu devrais épargner plus.' } }, snap, 'e_j')

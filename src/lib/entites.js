@@ -45,9 +45,11 @@ export function accentValide(id) {
   return a.hex
 }
 
-/** Photo bornée : string base64 ≤ seuil, sinon null (refusée — ne gonfle jamais le silo). */
+/** Photo bornée ET sûre : data:image/… seulement (une URL http déclencherait une
+ *  REQUÊTE RÉSEAU au rendu — rien ne quitte l'appareil, même via un silo importé
+ *  trafiqué), ≤ seuil, sinon null. À appliquer aussi AU RENDU. */
 export function photoBornee(photo) {
-  return typeof photo === 'string' && photo.length > 0 && photo.length <= MAX_PHOTO_CARS ? photo : null
+  return typeof photo === 'string' && photo.startsWith('data:image/') && photo.length <= MAX_PHOTO_CARS ? photo : null
 }
 
 /**

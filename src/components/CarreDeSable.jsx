@@ -45,7 +45,7 @@ function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function CarreDeSable({ widget, snapshot, origine = null, onFermer }) {
+export default function CarreDeSable({ widget, snapshot, origine = null, onFermer, onEpingler }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const panneauRef = useRef(null)
@@ -195,7 +195,11 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // snapshot restent les seules sources de chiffres.
   const formes = formesPourKPI(kb.KPI, snapshot, kb.params)
   const rangee = [...TYPES_SABLE, ...formes.filter((f) => !TYPES_SABLE.includes(f))]
-  const formeDefaut = formes.includes('prisme3d') ? 'prisme3d' : formes.includes(kb.forme) ? kb.forme : formes[0] || null
+  // Une tuile ÉPINGLÉE rouvre sur TON choix ; jamais épinglée → le défaut
+  // spectaculaire (prisme 3D quand la série l'offre).
+  const formeDefaut = widget.epingle && formes.includes(kb.forme)
+    ? kb.forme
+    : formes.includes('prisme3d') ? 'prisme3d' : formes.includes(kb.forme) ? kb.forme : formes[0] || null
   const formeActive = formeChoisie && formes.includes(formeChoisie) ? formeChoisie : formeDefaut
 
   // « AJOUTER À COMPARER » : tes comparaisons du moment (celles de la recette tant
@@ -272,6 +276,26 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // Le fait qu'elle énonce = la résolution du KPI avec les params du moment.
   const personaActive = persona || (widget.persona && widget.persona.type ? widget.persona : { type: 'neutre' })
   const kpiResolu = resolveKPI(kb.KPI, snapshot, paramsScene)
+
+  // ÉPINGLER À MA TOUR : la vue fabriquée devient LA tuile (mise à jour en
+  // place — jamais un doublon) : forme + comparaisons + cible + personnalité.
+  // Le « bam » = la fermeture FLIP : la vue rétrécit vers sa tuile.
+  const epingler = () => {
+    if (!onEpingler || !formeActive) { fermer(); return }
+    const params = { ...(kb.params || {}) }
+    if (comparable) {
+      if (compActives.length > 0) params.comparaisons = compActives
+      else delete params.comparaisons
+    }
+    if (reglage && cibleActive > 0) params.cible = cibleActive
+    else delete params.cible
+    onEpingler({
+      forme: formeActive,
+      params,
+      persona: personaActive && personaActive.type !== 'neutre' ? personaActive : null,
+    })
+    fermer()
+  }
   const recetteScene = formeActive
     ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: paramsScene }] }
     : recette
@@ -394,7 +418,16 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
         <div className="sable-scene">
           <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
-        <p className="sable-note">Dernière pièce à venir : « Épingler à ma tour ».</p>
+
+        {/* ÉPINGLER : la boucle se referme — la vue fabriquée devient la tuile. */}
+        {formeActive && (
+          <div className="sable-pied">
+            <button type="button" className="sable-epingler" onClick={epingler}>
+              Épingler à ma tour
+            </button>
+            <p className="sable-note">Tout reste retouchable — tape la tuile pour rouvrir son carré de sable.</p>
+          </div>
+        )}
       </div>
       </div>
     </div>

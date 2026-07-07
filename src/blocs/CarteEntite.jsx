@@ -5,7 +5,7 @@
    VOIX verrouillée. Faits seulement. Photo absente → état propre, pas de trou.
    props : params { id } · data = l'entité (resolve depuis snapshot.entites)
    ========================================================================== */
-import { accentValide } from '../lib/entites.js'
+import { accentValide, photoBornee } from '../lib/entites.js'
 import { formatCAD } from '../lib/format.js'
 import { filtrerFait } from '../recettes/schema.js'
 
@@ -39,11 +39,14 @@ export default function CarteEntite({ params = {}, data = {} }) {
   const fScen = filtrerFait(String(e.scenarioLabel || '')) // re-filtre défensif (jamais de texte brut)
   const scenario = fScen.ok && fScen.texte ? fScen.texte : ''
   const ic = ICONES[e.icon] || ICONES.target
+  // Re-borne AU RENDU : un silo importé/trafiqué avec une URL http déclencherait
+  // une requête réseau — data:image/ seulement.
+  const photo = photoBornee(e.photo)
 
   return (
     <section className="card carte-entite" style={{ '--ce-accent': accent }}>
-      <div className={`ce-photo${e.photo ? '' : ' ce-photo-vide'}`} style={e.photo ? { backgroundImage: `url(${e.photo})` } : undefined} aria-hidden="true">
-        {!e.photo && (
+      <div className={`ce-photo${photo ? '' : ' ce-photo-vide'}`} style={photo ? { backgroundImage: `url(${photo})` } : undefined} aria-hidden="true">
+        {!photo && (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{ic}</svg>
         )}
       </div>

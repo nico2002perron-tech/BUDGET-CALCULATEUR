@@ -31,9 +31,10 @@ import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
 import { routerMessage } from './recettes/routeur.js'
 import { tailleWidget } from './recettes/schema.js'
-import { construireEntite, PALETTE_ACCENTS } from './lib/entites.js'
+import { construireEntite, PALETTE_ACCENTS, photoBornee } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
+import { VOIX_MENTOR } from './components/PersonaStrip.jsx'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -340,8 +341,11 @@ function App() {
     })
   }, [ordreCle]) // eslint-disable-line react-hooks/exhaustive-deps -- rejoue au changement d'ORDRE seulement
 
+  // La persistance peut ÉCHOUER (quota localStorage plein — photos base64…) :
+  // jamais en silence. saveStore retourne false → alerte visible.
+  const [sauvegardeKO, setSauvegardeKO] = useState(false)
   useEffect(() => {
-    const id = setTimeout(() => saveStore(store), 250)
+    const id = setTimeout(() => setSauvegardeKO(!saveStore(store)), 250)
     return () => clearTimeout(id)
   }, [store])
 
@@ -432,11 +436,40 @@ function App() {
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
 
+  // ÉPINGLER depuis le carré de sable : la vue fabriquée (forme, comparaisons,
+  // cible, personnalité) devient LA tuile — mise à jour EN PLACE (même id,
+  // jamais un doublon), persistée par le debounce existant.
+  const epinglerSable = (maj) => {
+    if (!sable) return
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => {
+        if (w.id !== sable.id || !w.recette || !Array.isArray(w.recette.blocs)) return w
+        const params = { ...(maj.params || {}) }
+        Object.keys(params).forEach((k) => { if (params[k] === undefined) delete params[k] })
+        const blocs = w.recette.blocs.map((b) => (b && b.KPI ? { ...b, forme: maj.forme || b.forme, params } : b))
+        const w2 = { ...w, recette: { ...w.recette, blocs }, epingle: true }
+        if (maj.persona) w2.persona = maj.persona
+        else delete w2.persona
+        return w2
+      }),
+    }))
+  }
+
   // Le héros KPI d'une recette (s'il y en a un) → ce qui peut « se voir autrement ».
   const heroKPI = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
-  // L'icône d'un widget : TON choix d'abord, sinon celle de son KPI héros, sinon
-  // celle de sa situation, sinon l'étincelle.
+  // L'icône d'un widget : la PERSONNALITÉ épinglée d'abord (photo d'entité,
+  // initiale, initiales du mentor), puis TON choix, puis celle de son KPI
+  // héros, puis celle de sa situation, sinon l'étincelle.
   const iconeWidget = (w) => {
+    const p = w && w.persona
+    const photo = p && p.type === 'entite' ? photoBornee(p.photo) : null // re-borné au rendu (jamais d'URL réseau)
+    if (photo) return <span className="twic-photo" style={{ backgroundImage: `url(${photo})` }} />
+    if (p && p.type === 'entite') return <span className="twic-init">{String(p.nom || 'E').trim().charAt(0).toUpperCase() || 'E'}</span>
+    if (p && p.type === 'mentor') {
+      const voix = VOIX_MENTOR.find((v) => v.id === p.voix) || VOIX_MENTOR[0]
+      return <span className="twic-init">{voix.nom.split(' ').map((m) => m[0]).slice(0, 2).join('').toUpperCase()}</span>
+    }
     const choisie = w && w.icone ? iconeChoisie(w.icone) : null
     if (choisie) return choisie
     const recette = w && w.recette
@@ -623,6 +656,14 @@ function App() {
       {menuDonneesOuvert && <div className="dd-fond" onClick={() => setMenuDonneesOuvert(false)} aria-hidden="true" />}
 
       <main className="main">
+        {/* L'exception (ambre légitime) : la sauvegarde locale a échoué. */}
+        {sauvegardeKO && (
+          <div className="alerte-silo" role="alert">
+            Tes derniers changements n’ont pas pu être sauvegardés — l’espace local de ton navigateur est plein.
+            Exporte tes données (menu Données) ou retire une photo d’entité.
+          </div>
+        )}
+
         {section === 'tour' && (
           <div className="tour">
             <div className="tour-hero">
@@ -912,7 +953,7 @@ function App() {
           qu'il est ouvert → se referme seul. */}
       {(() => {
         const w = sable ? widgets.find((x) => x.id === sable.id) : null
-        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} /> : null
+        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} /> : null
       })()}
     </div>
   )
