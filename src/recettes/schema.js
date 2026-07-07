@@ -379,6 +379,26 @@ export function estConnu(type) {
   return Object.prototype.hasOwnProperty.call(BLOCS, type)
 }
 
+/* ── LA TAILLE d'une tuile du board (grille libre) ────────────────────────────
+   `taille` persistée sur le widget (∈ TAILLES_WIDGET) ; absente/invalide →
+   DÉRIVÉE de la recette : plusieurs blocs → xl (vue complète) ; un bloc →
+   stat/fait/solde → s (1×1), autre compacte → m (1×2), large → l (2×2). PUR. */
+export const TAILLES_WIDGET = ['s', 'm', 'l', 'xl']
+const TYPES_TUILE_S = new Set(['stat', 'fait', 'solde'])
+export function tailleWidget(widget) {
+  const w = widget || {}
+  if (TAILLES_WIDGET.includes(w.taille)) return w.taille
+  const blocs = w.recette && Array.isArray(w.recette.blocs) ? w.recette.blocs.filter(Boolean) : []
+  if (blocs.length > 1) return 'xl'
+  const b = blocs[0]
+  if (!b) return 'm'
+  const type = b.KPI ? b.forme : b.slot === 'graphique' ? b.recommande : b.type
+  if (!type) return 'm'
+  if (TYPES_TUILE_S.has(type)) return 's'
+  const cfg = estConnu(type) ? BLOCS[type] : null
+  return cfg && cfg.taille === 'large' ? 'l' : 'm'
+}
+
 /**
  * Valide + assainit une recette. Ne LÈVE JAMAIS d'erreur.
  *  - type connu  → params bornés (hors borne → défaut sûr).

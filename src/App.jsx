@@ -30,6 +30,7 @@ import SousSectionBientot from './components/SousSectionBientot.jsx'
 import { totalDepensesVie } from './lib/depenses.js'
 import { formatCAD } from './lib/format.js'
 import { routerMessage } from './recettes/routeur.js'
+import { tailleWidget } from './recettes/schema.js'
 import { construireEntite, PALETTE_ACCENTS } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
@@ -531,12 +532,15 @@ function App() {
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
                 en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
             {widgets.length > 0 && (
-              <div className="tour-board">
+              <div className="tour-tableau">
                 <div className="tour-board-tete">
                   <span className="tb-voyant" aria-hidden="true" />
                   <span className="tb-label">Tes indicateurs</span>
                   <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
                 </div>
+                {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
+                    ou dérivée de sa recette) ; `dense` remplit les trous. */}
+                <div className="tour-board">
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
@@ -548,7 +552,7 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}`}
                       key={w.id}
                       style={w.accent ? { '--wacc': w.accent } : undefined}
                     >
@@ -659,6 +663,7 @@ function App() {
                     </section>
                   )
                 })}
+                </div>
               </div>
             )}
           </div>
