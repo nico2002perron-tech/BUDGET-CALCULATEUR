@@ -9,9 +9,14 @@
    remplacer la scène sans toucher au contrat recette→registre→snapshot.
 
    props :
-     params : {} (réservé — cible/comparaisons arrivent aux étapes suivantes)
-     data   : { serie:[12], seuil:number }  ← du snapshot (schema.resolve)
+     params : { comparaisons?: [{contexte, label?}] } — de la STRUCTURE (schema.js
+              résout chaque contexte en série ; jamais un chiffre dans la recette)
+     data   : { serie:[12], seuil:number, comparaisons:[{label, valeurs:[12]}] }
      kpi    : la résolution du KPI héros (texteFactuel en sous-titre)
+
+   COMPARAISON : pour chaque mois, les prismes s'accolent — « cette année » dans
+   l'accent vif, les séries comparées en gris (#5A6480, puis gris dégradés).
+   La légende suit. L'ambre du seuil ne marque QUE ta série (l'exception, §12).
 
    Canvas SOMBRE autoportant (near-black, coins très arrondis) : le bloc emporte
    sa surface, dans le sable comme sur la tour. Étiquettes/valeurs en mono.
@@ -35,13 +40,20 @@ function reduceMotion() {
   )
 }
 
+/* Les gris des séries comparées (la 1re = le gris de la capture). */
+const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
+
 /* Un prisme à base rectangulaire : 5 faces dans un wrapper preserve-3d. Le
    dessus est plus clair, les côtés plus foncés, l'avant à mi-ton (ombrage par
    calques translucides sur la couleur d'accent — voir index.css). `sous` =
-   mois sous le seuil → ambre (l'exception négative, jamais décoratif). */
-function Prisme({ hauteur, delai, sous }) {
+   mois sous le seuil → ambre (l'exception négative, jamais décoratif) ;
+   `couleur` = série comparée (gris) — elle prime sur l'accent, jamais sur l'ambre. */
+function Prisme({ hauteur, delai, sous, couleur }) {
   return (
-    <div className={`p3d-prisme${sous ? ' est-sous' : ''}`} style={{ height: hauteur, '--delai': delai }}>
+    <div
+      className={`p3d-prisme${sous ? ' est-sous' : ''}`}
+      style={{ height: hauteur, '--delai': delai, ...(couleur && !sous ? { '--pc': couleur } : {}) }}
+    >
       <span className="p3d-face p3d-avant" />
       <span className="p3d-face p3d-arriere" />
       <span className="p3d-face p3d-gauche" />
@@ -68,9 +80,18 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     )
   }
 
-  const max = Math.max(...serie)
-  const iMax = serie.indexOf(max)
+  // Les séries comparées (déjà résolues par schema.js — ici on ne fait qu'afficher).
+  const comparaisons = (Array.isArray(data.comparaisons) ? data.comparaisons : [])
+    .filter((c) => c && Array.isArray(c.valeurs))
+    .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, 12).map((v) => Math.max(0, Number(v) || 0)) }))
+  const enComparaison = comparaisons.length > 0
+
+  // L'échelle englobe TOUTES les séries — deux prismes du même mois se comparent à l'œil.
+  const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), 1)
+  const maxA = Math.max(...serie)
+  const iMax = serie.indexOf(maxA)
   const H_MAX = 168 // hauteur (px) du plus haut prisme
+  const hauteurDe = (v) => Math.max(2, Math.round((v / max) * H_MAX))
   // Le seuil (coût de vie mensuel, du snapshot) : un mois en dessous puise dans le
   // coussin → il passe en ambre, la même lecture que flux_annuel. Aucun seuil → tout accent.
   const seuil = Number(data.seuil) || 0
@@ -84,17 +105,27 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       <div
         className={`p3d-scene${reduce ? ' est-fixe' : ''}`}
         role="img"
-        aria-label={`Tes 12 mois en prismes 3D.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
+        aria-label={`Tes 12 mois en prismes 3D${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
       >
         <div className="p3d-stage">
           <div className="p3d-sol" aria-hidden="true" />
-          <div className="p3d-rangee">
+          <div
+            className={`p3d-rangee${enComparaison ? ' p3d-rangee--multi' : ''}`}
+            style={enComparaison ? { '--n': 1 + comparaisons.length, '--nc': comparaisons.length } : undefined}
+          >
             {serie.map((v, i) => {
               const sous = seuil > 0 && v < seuil
+              const infos = [`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? ' (sous ton coût de vie)' : ''}`]
+              comparaisons.forEach((c) => infos.push(`${c.label} ${formatCAD(c.valeurs[i] || 0)}`))
               return (
-                <div className="p3d-col" key={i} title={`${MOIS_COURTS[i]} · ${formatCAD(v)}${sous ? ' · sous ton coût de vie' : ''}`}>
+                <div className="p3d-col" key={i} title={infos.join(' · ')}>
                   {i === iMax && <span className="p3d-val">{formatCAD(v)}</span>}
-                  <Prisme hauteur={Math.max(2, Math.round((v / max) * H_MAX))} delai={`${i * 70}ms`} sous={sous} />
+                  <div className="p3d-duo">
+                    <Prisme hauteur={hauteurDe(v)} delai={`${i * 70}ms`} sous={sous} />
+                    {comparaisons.map((c, k) => (
+                      <Prisme key={k} hauteur={hauteurDe(c.valeurs[i] || 0)} delai={`${i * 70 + 35}ms`} couleur={c.couleur} />
+                    ))}
+                  </div>
                   <span className="p3d-etiq">{MOIS_COURTS[i]}</span>
                 </div>
               )
@@ -104,7 +135,10 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       </div>
 
       <div className="legend p3d-legende">
-        <span className="it"><span className="sw p3d-sw-a" />Revenus</span>
+        <span className="it"><span className="sw p3d-sw-a" />{enComparaison ? 'cette année' : 'Revenus'}</span>
+        {comparaisons.map((c, k) => (
+          <span className="it" key={k}><span className="sw" style={{ background: c.couleur }} />{c.label}</span>
+        ))}
         {aDesSous && <span className="it"><span className="sw p3d-sw-sous" />Sous ton coût de vie</span>}
       </div>
     </section>

@@ -259,13 +259,16 @@ export const BLOCS = {
 
   // La SCÈNE 3D du carré de sable : la série des 12 mois en prismes extrudés
   // (CSS 3D pur). La série et le seuil viennent du snapshot, jamais de la recette.
+  // `params.comparaisons` = [{ contexte, label? }] : de la STRUCTURE (jamais des
+  // chiffres) — chaque contexte est résolu ci-dessous depuis le snapshot.
   prisme3d: {
     taille: 'large',
     bornes: {},
     defauts: {},
-    resolve: (snap) => ({
+    resolve: (snap, params) => ({
       serie: (snap && snap.saison && snap.saison.revenusMensuels) || [],
       seuil: snap && snap.saison ? snap.saison.depensesMensuelles || 0 : 0,
+      comparaisons: resoudreComparaisons(snap, params && params.comparaisons),
     }),
   },
 
@@ -310,6 +313,55 @@ export const BLOCS = {
       return { texte: '' }
     },
   },
+}
+
+/* ── Les CONTEXTES de comparaison d'une série (prisme3d & co.) ────────────────
+   La recette (chips « Ajouter à comparer » ou IA) nomme un CONTEXTE ; chaque id
+   résout une série de 12 mois depuis le SNAPSHOT — jamais depuis la recette.
+   Irrésoluble (donnée absente) → null : la série est ÉCARTÉE, jamais inventée
+   (« l'an passé » s'allumera quand l'historique existera dans le silo). PUR. */
+const SERIES_COMPARAISON = {
+  // Ta moyenne : la même métrique, lissée — une ligne de repère plate et vraie.
+  moyenne: (s) => {
+    const r = s && s.saison && s.saison.revenusMensuels
+    if (!Array.isArray(r) || !r.some((x) => Number(x) > 0)) return null
+    const moy = Math.round(r.reduce((a, x) => a + (Number(x) || 0), 0) / 12)
+    return { label: 'ta moyenne', valeurs: Array.from({ length: 12 }, () => moy) }
+  },
+  // Ton coût de vie : le seuil mensuel, mois par mois.
+  cout_vie: (s) => {
+    const d = s && s.saison ? Number(s.saison.depensesMensuelles) || 0 : 0
+    return d > 0 ? { label: 'ton coût de vie', valeurs: Array.from({ length: 12 }, () => d) } : null
+  },
+  // L'an passé : la même métrique, période précédente — dès que l'historique existera.
+  an_passe: (s) => {
+    const r = s && s.saison && s.saison.revenusMensuelsAnPasse
+    return Array.isArray(r) && r.some((x) => Number(x) > 0)
+      ? { label: 'l’an passé', valeurs: r.slice(0, 12).map((x) => Number(x) || 0) }
+      : null
+  },
+}
+export const CONTEXTES_COMPARAISON = Object.keys(SERIES_COMPARAISON)
+
+/** Résout les comparaisons demandées (max 3) : contexte inconnu ou donnée absente
+ *  → écarté proprement. Un label posé par la recette passe filtrerFait (rejeté →
+ *  celui du résolveur). PUR, lecture seule. */
+export function resoudreComparaisons(snapshot, demandes) {
+  if (!Array.isArray(demandes)) return []
+  return demandes
+    .slice(0, 3)
+    .map((c) => {
+      // hasOwnProperty.call (comme estConnu) : un contexte nommé comme une clé de
+      // la chaîne de prototype (__proto__, valueOf…) est écarté, jamais une exception.
+      const resoudre = c && Object.prototype.hasOwnProperty.call(SERIES_COMPARAISON, c.contexte)
+        ? SERIES_COMPARAISON[c.contexte]
+        : null
+      const out = resoudre ? resoudre(snapshot || {}) : null
+      if (!out) return null
+      const f = filtrerFait(typeof c.label === 'string' ? c.label : '')
+      return { contexte: c.contexte, label: (f.ok && f.texte) || out.label, valeurs: out.valeurs }
+    })
+    .filter(Boolean)
 }
 
 /** Un type est « connu » s'il a une config de bloc (donc un composant attendu). */

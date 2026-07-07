@@ -2520,6 +2520,9 @@ svg { display: block; }
   border-radius: 8px; padding: 3px 8px;
 }
 
+/* COMPARAISON : les prismes d'un même mois s'accolent (cette année + repères). */
+.p3d-duo { display: flex; align-items: flex-end; gap: 2px; transform-style: preserve-3d; }
+
 /* Les 12 mois tiennent TOUJOURS dans le conteneur réel (grille de la tour,
    aperçu d'essayage, sable étroit) — jamais un mois tronqué en silence. */
 @container (max-width: 640px) {
@@ -2531,6 +2534,18 @@ svg { display: block; }
 }
 @container (max-width: 330px) {
   .p3d-rangee { --p3w: 11px; --p3d: 8px; gap: 3px; }
+}
+/* En comparaison, chaque mois porte N prismes (--n, posé par le bloc). La largeur
+   se CALCULE sur le conteneur réel (cqw) : 12 duos + 11 gaps (110px) + les gaps
+   internes des duos (24px × (N−1)) tiennent TOUJOURS — l'invariant « jamais un
+   mois tronqué en silence » vaut aussi à 2 ou 3 séries. (Après les règles de
+   base : même spécificité, l'ordre tranche.) */
+.p3d-rangee--multi {
+  gap: 8px;
+  /* Budget 90cqw (et non 94) : la projection 3D (rotateY) élargit un côté de
+     quelques px — on lui laisse cette marge pour que rien ne sorte du hublot. */
+  --p3w: clamp(2px, calc((90cqw - 88px - (var(--nc, 1) * 24px)) / (12 * var(--n, 2))), 18px);
+  --p3d: calc(var(--p3w) * 0.8);
 }
 @media (max-width: 560px) {
   .p3d-scene { height: 250px; }
