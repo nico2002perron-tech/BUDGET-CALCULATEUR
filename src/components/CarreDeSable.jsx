@@ -29,6 +29,11 @@ const SUJETS_COMPARER = [
   { contexte: 'an_passe', label: 'l’an passé', condition: 's’allume avec ton historique' },
 ]
 
+// L'objectif du sable pour les KPIs à SÉRIE : un réglage LOCAL au sable (les
+// formes-séries tracent le plan ambre). Il ne s'ajoute pas au registre du KPI —
+// l'essayage de la Galerie n'a pas à montrer un stepper que ses formes ignorent.
+const REGLAGE_SERIE = { label: 'Ton plancher de revenu', unite: '$/mois', defaut: 3000, min: 500, max: 15000, pas: 250 }
+
 const I_RETOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M15 6l-6 6 6 6" />
@@ -40,6 +45,7 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
   const retourRef = useRef(null)
   const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
   const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
+  const [cible, setCible] = useState(null) // null = celle de la recette, sinon le défaut du KPI
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -148,7 +154,26 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
     }
   }
 
-  const paramsScene = comparable ? { ...(kb.params || {}), comparaisons: compActives } : kb.params || {}
+  // L'OBJECTIF : quand le KPI supporte une cible (son reglage, ou le réglage
+  // série du sable), le stepper la pose dans params.cible — une INTENTION.
+  // OPT-IN : rien n'est posé tant que TU ne le poses pas (ouvrir le sable ne
+  // change jamais la lecture de ta tuile) ; une cible déjà portée par la
+  // recette reste honorée (clampée aux bornes). cible=0 → objectif retiré.
+  const reglage = def.reglage || (formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage') ? REGLAGE_SERIE : null)
+  const clampCible = (v) => (reglage ? Math.min(reglage.max, Math.max(reglage.min, v)) : v)
+  const cibleRecette = kb.params && isFinite(Number(kb.params.cible)) && Number(kb.params.cible) > 0 ? clampCible(Number(kb.params.cible)) : 0
+  const cibleActive = reglage ? (cible != null ? cible : cibleRecette) : 0
+  const bougeCible = (delta) => {
+    if (!reglage || !(cibleActive > 0)) return
+    setCible(clampCible(cibleActive + delta))
+  }
+
+  const paramsScene = {
+    ...(kb.params || {}),
+    ...(comparable ? { comparaisons: compActives } : {}),
+    // cible posée → transmise ; objectif retiré (0) → on l'enlève même si la recette en portait une.
+    ...(reglage ? (cibleActive > 0 ? { cible: cibleActive } : { cible: undefined }) : {}),
+  }
   const recetteScene = formeActive
     ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: paramsScene }] }
     : recette
@@ -237,8 +262,29 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
           </div>
         )}
 
+        {/* L'OBJECTIF (opt-in) : rien tant que tu ne le poses pas ; posé → stepper
+            −/+ borné aux min/max du KPI, recalcul en direct, retirable. */}
+        {formeActive && reglage && (
+          <div className="sable-objectif" role="group" aria-label={`${reglage.label} (${reglage.unite})`}>
+            <span className="sable-types-l">Objectif</span>
+            {cibleActive > 0 ? (
+              <>
+                <span className="sable-obj-l">{reglage.label}</span>
+                <button type="button" className="sable-obj-pas" onClick={() => bougeCible(-reglage.pas)} aria-label={`Moins ${reglage.pas}`}>−</button>
+                <span className="sable-obj-val">{cibleActive}<small>{reglage.unite}</small></span>
+                <button type="button" className="sable-obj-pas" onClick={() => bougeCible(reglage.pas)} aria-label={`Plus ${reglage.pas}`}>+</button>
+                <button type="button" className="sable-obj-retirer" onClick={() => setCible(0)}>Retirer</button>
+              </>
+            ) : (
+              <button type="button" className="sable-type" onClick={() => setCible(cibleRecette || reglage.defaut)}>
+                Poser un objectif
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="sable-scene">
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}`} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
         <p className="sable-note">Les commandes du sable (objectif, personnalité) s’assemblent ici, étape par étape.</p>
       </div>

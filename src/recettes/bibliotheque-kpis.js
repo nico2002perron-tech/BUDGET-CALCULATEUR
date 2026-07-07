@@ -222,7 +222,14 @@ export const REGISTRE_KPIS = [
   {
     id: 'mois_sous_seuil', domaine: 'saisonnier', question: 'Combien de mois dans le rouge ?',
     requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage', 'fait'],
-    resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const n = s.saison.revenusMensuels.filter((x) => num(x) < dep).length; return { valeur: n, unite: 'mois', texteFactuel: `${n} mois passent sous ton coût de vie.` } },
+    // ctx.cible (TON plancher, posé dans le sable) → le compte ET le texte suivent
+    // la même lecture que le visuel (jamais deux chiffres contradictoires côte à côte).
+    resolve: (s, ctx) => {
+      const cible = num(ctx && ctx.cible)
+      const seuil = cible > 0 ? cible : num(s.saison.depensesMensuelles)
+      const n = s.saison.revenusMensuels.filter((x) => num(x) < seuil).length
+      return { valeur: n, unite: 'mois', texteFactuel: cible > 0 ? `${n} mois passent sous ton plancher visé (${formatCAD(cible)}/mois).` : `${n} mois passent sous ton coût de vie.` }
+    },
   },
   {
     id: 'manque_saison_creuse', domaine: 'saisonnier', question: 'Combien mettre de côté pour l’hiver ?',

@@ -2436,6 +2436,31 @@ svg { display: block; }
 .sable-ia-go:disabled { opacity: 0.4; cursor: default; }
 .sable-ia-note { width: 100%; font-size: 12.5px; color: rgba(238, 242, 255, 0.55); }
 @media (max-width: 767px) { .sable-ia { min-width: 100%; } }
+
+/* L'OBJECTIF : stepper −/+ borné (min/max du KPI) — recalcul en direct. */
+.sable-objectif { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.sable-obj-l { font-size: 13px; font-weight: 700; color: rgba(238, 242, 255, 0.75); }
+.sable-obj-pas {
+  width: 44px; height: 44px; flex: none; border-radius: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff; font-size: 20px; font-weight: 800; font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sable-obj-pas:hover { background: rgba(255, 255, 255, 0.12); }
+.sable-obj-pas:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sable-obj-val {
+  min-width: 110px; text-align: center; font-size: 18px; font-weight: 800; color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sable-obj-val small { margin-left: 5px; font-size: 11px; font-weight: 700; color: var(--amber-2); }
+.sable-obj-retirer {
+  min-height: 44px; padding: 10px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.2); background: none;
+  color: rgba(238, 242, 255, 0.6); font-family: inherit; font-size: 12.5px; font-weight: 700;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sable-obj-retirer:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
 @media (max-width: 767px) {
   .sable-types { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .sable-type { flex: none; }
@@ -2510,6 +2535,25 @@ svg { display: block; }
     repeating-linear-gradient(90deg, rgba(127, 233, 255, 0.14) 0 1px, transparent 1px 36px);
   -webkit-mask-image: radial-gradient(closest-side, #000 32%, transparent 82%);
   mask-image: radial-gradient(closest-side, #000 32%, transparent 82%);
+}
+
+/* LE PLAN CIBLE : une nappe ambre couchée à la hauteur de l'objectif (l'ambre
+   de l'exception — les mois dessous le portent aussi). L'étiquette reste
+   verticale, dans le plan des mois. */
+.p3d-cible {
+  position: absolute; left: 50%; width: 150%; height: 260px;
+  transform: translate(-50%, 50%) rotateX(90deg);
+  background: color-mix(in srgb, var(--amber-2) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber-2) 40%, transparent);
+  -webkit-mask-image: radial-gradient(closest-side, #000 36%, transparent 84%);
+  mask-image: radial-gradient(closest-side, #000 36%, transparent 84%);
+  pointer-events: none;
+}
+.p3d-cible-etiq {
+  position: absolute; right: 7%; /* la rotation 3D projette le bord vers l'extérieur — on rentre l'étiquette */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px; font-weight: 700; color: var(--amber-2); white-space: nowrap;
+  pointer-events: none;
 }
 
 .p3d-rangee {

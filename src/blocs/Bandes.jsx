@@ -28,7 +28,6 @@ const I_BANDES = (
 )
 
 export default function Bandes({ params = {}, data = {}, kpi = null }) {
-  void params
   const serie = (Array.isArray(data.serie) ? data.serie : [])
     .slice(0, 12)
     .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
@@ -48,15 +47,18 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
   }
 
   const seuil = Number(data.seuil) || 0
+  const cible = Math.max(0, Number(params.cible) || 0) // TON objectif (intention du stepper)
+  const plancher = cible > 0 ? cible : seuil // posé → l'ambre marque l'objectif, sinon le coût de vie
   const enComparaison = comparaisons.length > 0
-  const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), seuil, 1) * 1.06
+  const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), seuil, cible, 1) * 1.06
   const W = 640, H = 250, padL = 10, padR = 10, top = 16, baseY = 205
   const slot = (W - padL - padR) / 12
   const nBarres = 1 + comparaisons.length
   const groupeW = slot * 0.66
   const barW = Math.max(2, groupeW / nBarres - (nBarres > 1 ? 1.5 : 0))
   const yDe = (v) => baseY - (v / max) * (baseY - top)
-  const aDesSous = seuil > 0 && serie.some((v) => v < seuil)
+  const aDesSous = plancher > 0 && serie.some((v) => v < plancher)
+  const aAtteint = cible > 0 && serie.some((v) => v >= cible)
 
   // `style` et non l'attribut fill : var() n'est pas résolu dans les attributs de
   // présentation SVG hors Chromium (barres noires en Firefox/Safari sinon).
@@ -88,11 +90,11 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
         {serie.map((v, i) => {
-          const sous = seuil > 0 && v < seuil
+          const sous = plancher > 0 && v < plancher
           const x0 = padL + i * slot + (slot - groupeW) / 2
           return (
             <g key={i}>
-              <title>{`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? ' (sous ton coût de vie)' : ''}${comparaisons.map((c) => ` · ${c.label} ${formatCAD(c.valeurs[i] || 0)}`).join('')}`}</title>
+              <title>{`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ' (sous ton coût de vie)') : ''}${comparaisons.map((c) => ` · ${c.label} ${formatCAD(c.valeurs[i] || 0)}`).join('')}`}</title>
               {barre(v, x0, sous ? AMBER : 'var(--wacc, #00b4d8)', `a-${i}`, i * 35)}
               {comparaisons.map((c, k) => barre(c.valeurs[i] || 0, x0 + (k + 1) * (barW + 1.5), c.couleur, `c-${i}-${k}`, i * 35 + 20))}
             </g>
@@ -107,6 +109,14 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
             </text>
           </>
         )}
+        {cible > 0 && (
+          <>
+            <line x1={padL} y1={yDe(cible)} x2={W - padR} y2={yDe(cible)} stroke={AMBER} strokeWidth="2" strokeDasharray="6 4" />
+            <text x={W - padR - 2} y={yDe(cible) - 6} textAnchor="end" fontSize="11" fontWeight="700" fill="#b8740a" fontFamily="Montserrat">
+              objectif {formatCAD(cible)}/mois
+            </text>
+          </>
+        )}
 
         {MOIS_COURTS.map((m, i) => (
           <text key={m + i} x={padL + i * slot + slot / 2} y={baseY + 18} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={MUTED} fontFamily="Montserrat">
@@ -116,11 +126,11 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
       </svg>
 
       <div className="legend">
-        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : 'Revenus'}</span>
+        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : 'Revenus'}</span>
         {comparaisons.map((c, k) => (
           <span className="it" key={k}><span className="sw" style={{ background: c.couleur }} />{c.label}</span>
         ))}
-        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />Sous ton coût de vie</span>}
+        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />{cible > 0 ? 'Sous ton objectif' : 'Sous ton coût de vie'}</span>}
       </div>
     </section>
   )

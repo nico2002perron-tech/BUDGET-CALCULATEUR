@@ -64,7 +64,6 @@ function Prisme({ hauteur, delai, sous, couleur }) {
 }
 
 export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
-  void params
   const serie = (Array.isArray(data.serie) ? data.serie : [])
     .slice(0, 12)
     .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
@@ -86,16 +85,21 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, 12).map((v) => Math.max(0, Number(v) || 0)) }))
   const enComparaison = comparaisons.length > 0
 
-  // L'échelle englobe TOUTES les séries — deux prismes du même mois se comparent à l'œil.
-  const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), 1)
+  // TON OBJECTIF (params.cible, intention posée par le stepper du sable) : le plan
+  // ambre en travers de la scène. Posé → c'est LUI que l'ambre marque ; sinon
+  // l'ambre garde sa lecture coût de vie (seuil du snapshot), comme flux_annuel.
+  const cible = Math.max(0, Number(params.cible) || 0)
+  const seuil = Number(data.seuil) || 0
+  const plancher = cible > 0 ? cible : seuil
+  // L'échelle englobe TOUTES les séries (et la cible) — tout se compare à l'œil.
+  const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), cible, 1)
   const maxA = Math.max(...serie)
   const iMax = serie.indexOf(maxA)
   const H_MAX = 168 // hauteur (px) du plus haut prisme
   const hauteurDe = (v) => Math.max(2, Math.round((v / max) * H_MAX))
-  // Le seuil (coût de vie mensuel, du snapshot) : un mois en dessous puise dans le
-  // coussin → il passe en ambre, la même lecture que flux_annuel. Aucun seuil → tout accent.
-  const seuil = Number(data.seuil) || 0
-  const aDesSous = seuil > 0 && serie.some((v) => v < seuil)
+  const hCible = Math.round((cible / max) * H_MAX)
+  const aDesSous = plancher > 0 && serie.some((v) => v < plancher)
+  const aAtteint = cible > 0 && serie.some((v) => v >= cible) // la légende ne décrit jamais un état absent
 
   return (
     <section className="card p3d">
@@ -109,13 +113,22 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       >
         <div className="p3d-stage">
           <div className="p3d-sol" aria-hidden="true" />
+          {/* LE PLAN CIBLE : une nappe ambre couchée à la hauteur de ton objectif. */}
+          {cible > 0 && (
+            <>
+              <div className="p3d-cible" style={{ bottom: `${hCible}px` }} aria-hidden="true" />
+              <span className="p3d-cible-etiq" style={{ bottom: `${hCible + 8}px` }} aria-hidden="true">
+                objectif {formatCAD(cible)}/mois
+              </span>
+            </>
+          )}
           <div
             className={`p3d-rangee${enComparaison ? ' p3d-rangee--multi' : ''}`}
             style={enComparaison ? { '--n': 1 + comparaisons.length, '--nc': comparaisons.length } : undefined}
           >
             {serie.map((v, i) => {
-              const sous = seuil > 0 && v < seuil
-              const infos = [`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? ' (sous ton coût de vie)' : ''}`]
+              const sous = plancher > 0 && v < plancher
+              const infos = [`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ' (sous ton coût de vie)') : ''}`]
               comparaisons.forEach((c) => infos.push(`${c.label} ${formatCAD(c.valeurs[i] || 0)}`))
               return (
                 <div className="p3d-col" key={i} title={infos.join(' · ')}>
@@ -135,11 +148,11 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       </div>
 
       <div className="legend p3d-legende">
-        <span className="it"><span className="sw p3d-sw-a" />{enComparaison ? 'cette année' : 'Revenus'}</span>
+        <span className="it"><span className="sw p3d-sw-a" />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : 'Revenus'}</span>
         {comparaisons.map((c, k) => (
           <span className="it" key={k}><span className="sw" style={{ background: c.couleur }} />{c.label}</span>
         ))}
-        {aDesSous && <span className="it"><span className="sw p3d-sw-sous" />Sous ton coût de vie</span>}
+        {aDesSous && <span className="it"><span className="sw p3d-sw-sous" />{cible > 0 ? 'Sous ton objectif' : 'Sous ton coût de vie'}</span>}
       </div>
     </section>
   )

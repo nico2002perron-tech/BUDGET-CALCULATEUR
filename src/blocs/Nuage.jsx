@@ -20,7 +20,6 @@ const I_NUAGE = (
 )
 
 export default function Nuage({ params = {}, data = {}, kpi = null }) {
-  void params
   const serie = (Array.isArray(data.serie) ? data.serie : [])
     .slice(0, 12)
     .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
@@ -36,12 +35,15 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
   }
 
   const seuil = Number(data.seuil) || 0
-  const max = Math.max(...serie, seuil, 1) * 1.1
+  const cible = Math.max(0, Number(params.cible) || 0) // TON objectif (intention du stepper)
+  const plancher = cible > 0 ? cible : seuil
+  const max = Math.max(...serie, seuil, cible, 1) * 1.1
   const W = 640, H = 250, padL = 14, padR = 14, top = 24, baseY = 205
   const xDe = (i) => padL + (i + 0.5) * ((W - padL - padR) / 12)
   const yDe = (v) => baseY - (v / max) * (baseY - top)
   const rDe = (v) => (v > 0 ? 4 + Math.sqrt(v / max) * 13 : 2.5)
-  const aDesSous = seuil > 0 && serie.some((v) => v < seuil)
+  const aDesSous = plancher > 0 && serie.some((v) => v < plancher)
+  const aAtteint = cible > 0 && serie.some((v) => v >= cible)
 
   return (
     <section className="card bloc-nuage">
@@ -63,9 +65,17 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
             </text>
           </>
         )}
+        {cible > 0 && (
+          <>
+            <line x1={padL} y1={yDe(cible)} x2={W - padR} y2={yDe(cible)} stroke={AMBER} strokeWidth="2" strokeDasharray="6 4" />
+            <text x={W - padR - 2} y={yDe(cible) - 6} textAnchor="end" fontSize="11" fontWeight="700" fill="#b8740a" fontFamily="Montserrat">
+              objectif {formatCAD(cible)}/mois
+            </text>
+          </>
+        )}
 
         {serie.map((v, i) => {
-          const sous = seuil > 0 && v < seuil
+          const sous = plancher > 0 && v < plancher
           return (
             <circle
               key={i}
@@ -77,7 +87,7 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
                 : { fill: 'color-mix(in srgb, var(--wacc, #00b4d8) 45%, transparent)', stroke: 'var(--wacc, #00b4d8)' }}
               strokeWidth="1.6"
             >
-              <title>{`${MOIS_COURTS[i]} · ${formatCAD(v)}${sous ? ' (sous ton coût de vie)' : ''}`}</title>
+              <title>{`${MOIS_COURTS[i]} · ${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ' (sous ton coût de vie)') : ''}`}</title>
             </circle>
           )
         })}
@@ -90,8 +100,8 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
       </svg>
 
       <div className="legend">
-        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />Revenus (taille = poids du mois)</span>
-        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />Sous ton coût de vie</span>}
+        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{aAtteint ? 'Objectif atteint (taille = poids du mois)' : 'Revenus (taille = poids du mois)'}</span>
+        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />{cible > 0 ? 'Sous ton objectif' : 'Sous ton coût de vie'}</span>}
       </div>
     </section>
   )
