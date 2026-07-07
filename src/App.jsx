@@ -753,7 +753,7 @@ function App() {
                     type="button"
                     className="tb-sons"
                     aria-pressed={store.sons !== false}
-                    aria-label={store.sons !== false ? 'Couper les sons' : 'Activer les sons'}
+                    aria-label="Sons"
                     title={store.sons !== false ? 'Sons : activés' : 'Sons : coupés'}
                     onClick={() => setStore((s) => ({ ...s, sons: s.sons === false }))}
                   >

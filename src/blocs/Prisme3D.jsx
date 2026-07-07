@@ -75,6 +75,18 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
   const aTourneRef = useRef(false) // un vrai glisser → le clic qui suit est avalé
   const surPrisePointer = (e) => {
     if (e.button > 0 || e.target.closest('button, input, a, select, textarea')) return
+    // un NOUVEAU geste repart propre : un swipe tactile ne laisse jamais un
+    // drapeau levé qui avalerait le prochain tap (tuile qui n'ouvre plus).
+    aTourneRef.current = false
+    // reprendre l'angle COURANT de l'oscillation — jamais de décrochage au grab.
+    if (stageRef.current && sceneRef.current && !sceneRef.current.classList.contains('est-manuel')) {
+      try {
+        const m = new DOMMatrixReadOnly(getComputedStyle(stageRef.current).transform)
+        // transform = rotateX(10°)·rotateY(a) → m11 = cos a ; m13 = −cos(10°)·sin a
+        const a = Math.atan2(-m.m13 / Math.cos((10 * Math.PI) / 180), m.m11) * (180 / Math.PI)
+        if (isFinite(a)) angleRef.current = a
+      } catch { /* on garde l'angle mémorisé */ }
+    }
     tourneRef.current = { pointerId: e.pointerId, x: e.clientX, angle: angleRef.current }
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
   }
