@@ -142,7 +142,7 @@ function App() {
   const [erreur, setErreur] = useState(null)
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
-  const [sable, setSable] = useState(null) // id du widget ouvert dans le carré de sable (null = fermé)
+  const [sable, setSable] = useState(null) // { id, rect } du widget ouvert dans le carré de sable (null = fermé)
   const [reorganise, setReorganise] = useState(false) // mode « Réorganiser » du board
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
@@ -805,7 +805,13 @@ function App() {
                         key={kbAff ? `${kbAff.KPI}:${kbAff.forme}` : 'fixe'}
                         onClick={
                           kpiSable && !reorganise
-                            ? (e) => { if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return; setSable(w.id) }
+                            ? (e) => {
+                                if (e.target.closest('button, input, a, select, textarea, [role="slider"]')) return
+                                // le rect de la tuile = point de départ du FLIP (le sable grandit sur place)
+                                const el = tuilesRef.current.get(w.id)
+                                const r = el ? el.getBoundingClientRect() : null
+                                setSable({ id: w.id, rect: r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null })
+                              }
                             : undefined
                         }
                       >
@@ -901,11 +907,12 @@ function App() {
         </footer>
       </main>
 
-      {/* LE CARRÉ DE SABLE : l'atelier immersif d'UN KPI, PAR-DESSUS l'app (le thème
-          clair dessous reste intact). Widget retiré pendant qu'il est ouvert → se referme seul. */}
+      {/* LE CARRÉ DE SABLE : la MÊME tuile, agrandie sur place (FLIP depuis son rect),
+          au-dessus d'un scrim qui laisse le board visible. Widget retiré pendant
+          qu'il est ouvert → se referme seul. */}
       {(() => {
-        const w = sable ? widgets.find((x) => x.id === sable) : null
-        return w ? <CarreDeSable widget={w} snapshot={snapshot} onFermer={() => setSable(null)} /> : null
+        const w = sable ? widgets.find((x) => x.id === sable.id) : null
+        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} /> : null
       })()}
     </div>
   )

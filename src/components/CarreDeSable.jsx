@@ -9,7 +9,7 @@
    recalculé ici. Les commandes (type, comparer, objectif, persona, épingler)
    s'ajouteront par étapes ; ce fichier est leur socle d'orchestration.
    ========================================================================== */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import { kpiPourId, formesPourKPI, nomForme, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
@@ -40,9 +40,16 @@ const I_RETOUR = (
   </svg>
 )
 
-export default function CarreDeSable({ widget, snapshot, onFermer }) {
+function reduitMouvement() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+export default function CarreDeSable({ widget, snapshot, origine = null, onFermer }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
+  const panneauRef = useRef(null)
+  const scrimRef = useRef(null)
+  const fermetureRef = useRef(false)
   const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
   const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
   const [cible, setCible] = useState(null) // null = celle de la recette, sinon le défaut du KPI
@@ -63,13 +70,58 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
   const onFermerRef = useRef(onFermer)
   useEffect(() => { onFermerRef.current = onFermer }, [onFermer])
 
+  // FERMETURE = l'inverse de l'ouverture : le panneau RÉTRÉCIT vers la tuile
+  // d'origine, le scrim s'éteint, puis on démonte. Ré-entrance gardée.
+  const fermer = () => {
+    if (fermetureRef.current) return
+    fermetureRef.current = true
+    const p = panneauRef.current
+    if (!p || !origine || reduitMouvement()) { onFermerRef.current(); return }
+    try {
+      const f = p.getBoundingClientRect()
+      const sx = Math.max(0.04, origine.width / Math.max(1, f.width))
+      const sy = Math.max(0.04, origine.height / Math.max(1, f.height))
+      const cible = `translate(${origine.left - f.left}px, ${origine.top - f.top}px) scale(${sx}, ${sy})`
+      if (scrimRef.current) scrimRef.current.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: 'ease', fill: 'forwards' })
+      const anim = p.animate(
+        [{ transform: 'none', opacity: 1 }, { transform: cible, opacity: 0.5 }],
+        { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' },
+      )
+      anim.finished.then(() => onFermerRef.current()).catch(() => onFermerRef.current())
+    } catch {
+      onFermerRef.current()
+    }
+  }
+  const fermerRef = useRef(fermer)
+  fermerRef.current = fermer
+
+  // OUVERTURE FLIP : le panneau PART du rect de la tuile (translate + scale,
+  // origin 0 0) et grandit jusqu'à sa place ; le scrim s'allume en parallèle.
+  useLayoutEffect(() => {
+    const p = panneauRef.current
+    if (!p || !origine || reduitMouvement()) return
+    try {
+      const f = p.getBoundingClientRect()
+      const sx = Math.max(0.04, origine.width / Math.max(1, f.width))
+      const sy = Math.max(0.04, origine.height / Math.max(1, f.height))
+      p.animate(
+        [
+          { transform: `translate(${origine.left - f.left}px, ${origine.top - f.top}px) scale(${sx}, ${sy})`, opacity: 0.65 },
+          { transform: 'none', opacity: 1 },
+        ],
+        { duration: 340, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+      )
+      if (scrimRef.current) scrimRef.current.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease' })
+    } catch { /* décoratif */ }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- au montage seulement
+
   // Ouverture : focus sur « retour », Échap referme, et Tab RESTE dans le dialogue
   // (aria-modal sans piège à focus laisserait Tab activer des contrôles invisibles
   // sous l'overlay — ex. retirer un widget à l'aveugle).
   useEffect(() => {
     if (!actif) return
     const surTouche = (e) => {
-      if (e.key === 'Escape') { onFermerRef.current(); return }
+      if (e.key === 'Escape') { fermerRef.current(); return }
       if (e.key !== 'Tab' || !racineRef.current) return
       const focusables = racineRef.current.querySelectorAll(
         'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])',
@@ -187,8 +239,13 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
       aria-label={`Carré de sable — ${def.question}`}
       style={widget.accent ? { '--wacc': widget.accent } : undefined}
     >
+      {/* LE SCRIM : le board reste visible derrière (~55 %) ; taper à côté referme. */}
+      <div className="sable-scrim" ref={scrimRef} onClick={fermer} aria-hidden="true" />
+
+      {/* LE PANNEAU : la tuile agrandie — c'est LUI qui part du rect de la tuile. */}
+      <div className="sable-panneau" ref={panneauRef}>
       <div className="sable-tete">
-        <button ref={retourRef} type="button" className="sable-retour" onClick={onFermer} aria-label="Revenir à ma tour">
+        <button ref={retourRef} type="button" className="sable-retour" onClick={fermer} aria-label="Revenir à ma tour">
           {I_RETOUR}
         </button>
         <div className="sable-tete-txt">
@@ -287,6 +344,7 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
           <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
         <p className="sable-note">Les commandes du sable (objectif, personnalité) s’assemblent ici, étape par étape.</p>
+      </div>
       </div>
     </div>
   )

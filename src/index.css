@@ -2444,17 +2444,33 @@ svg { display: block; }
    ========================================================================== */
 .sable {
   position: fixed; inset: 0; z-index: 120;
-  display: flex; flex-direction: column;
+  color: #eef2ff;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+/* LE SCRIM : assombrit (~55 %) mais LAISSE le board visible derrière. */
+.sable-scrim {
+  position: fixed; inset: 0;
+  background: rgba(4, 7, 22, 0.55);
+  backdrop-filter: blur(2.5px);
+  -webkit-backdrop-filter: blur(2.5px);
+}
+/* LE PANNEAU : la tuile agrandie — porte la surface sombre du sable, part du
+   rect de la tuile (FLIP, origin 0 0) et grandit jusqu'ici. */
+.sable-panneau {
+  position: relative;
+  width: min(1072px, 100%);
+  margin: 12px auto 44px;
+  padding: 16px clamp(14px, 2.4vw, 26px) 22px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
   background:
     radial-gradient(90% 60% at 82% -12%, rgba(0, 180, 216, 0.13), transparent 60%),
     radial-gradient(70% 52% at 8% 112%, rgba(122, 111, 230, 0.11), transparent 62%),
     #070912;
-  color: #eef2ff;
-  overflow-y: auto; overscroll-behavior: contain;
-  padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
-  animation: sableEntre 0.3s ease both;
+  box-shadow: 0 60px 140px -40px rgba(0, 0, 0, 0.85), 0 20px 50px rgba(3, 4, 94, 0.35);
+  transform-origin: 0 0;
 }
-@keyframes sableEntre { from { opacity: 0; } to { opacity: 1; } }
 
 .sable-tete { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 1040px; margin: 0 auto; padding: 6px 2px 18px; }
 .sable-retour {
@@ -2573,9 +2589,7 @@ svg { display: block; }
 @media (max-width: 767px) {
   .sable-titre { font-size: 16px; }
   .sable-scene { border-radius: 20px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sable { animation: none; }
+  .sable-panneau { margin: 4px auto 24px; border-radius: 20px; }
 }
 
 /* ============================================================================
