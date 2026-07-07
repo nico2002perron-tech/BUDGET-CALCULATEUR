@@ -216,12 +216,12 @@ export const REGISTRE_KPIS = [
   // ── 4. Revenus variables (saisonnier) ─────────────────────────────────────
   {
     id: 'amplitude_revenus', domaine: 'saisonnier', question: 'Mes revenus varient de combien ?',
-    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'stat'],
+    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'stat'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const mn = Math.min(...r); const mx = Math.max(...r); return { valeur: mx - mn, unite: '$', texteFactuel: `Tes revenus varient de ${formatCAD(mn)} à ${formatCAD(mx)} selon les mois.` } },
   },
   {
     id: 'mois_sous_seuil', domaine: 'saisonnier', question: 'Combien de mois dans le rouge ?',
-    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'fait'],
+    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'fait'],
     resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const n = s.saison.revenusMensuels.filter((x) => num(x) < dep).length; return { valeur: n, unite: 'mois', texteFactuel: `${n} mois passent sous ton coût de vie.` } },
   },
   {
@@ -236,7 +236,7 @@ export const REGISTRE_KPIS = [
   },
   {
     id: 'revenu_lisse', domaine: 'saisonnier', question: 'Étalé sur l’année, ça fait combien par mois ?',
-    requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel'],
+    requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel', 'prisme3d'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const moy = Math.round(r.reduce((a, x) => a + num(x), 0) / 12); return { valeur: moy, unite: '$/mois', texteFactuel: `Lissé sur l’année, ça ferait ${formatCAD(moy)} par mois.` } },
   },
 
@@ -323,6 +323,7 @@ const POURQUOI_FORME = {
   barre_progression: 'La barre montre le chemin parcouru.',
   fait: 'Une phrase qui dit le constat en clair.',
   beignet: 'Le beignet montre la part de chaque poste.',
+  prisme3d: 'La scène 3D met tes 12 mois en relief.',
 }
 export function pourquoiForme(forme) {
   const f = filtrerFait(POURQUOI_FORME[forme] || '')
@@ -337,6 +338,7 @@ const NOM_FORME = {
   coussin_urgence: 'Cadran à zones', barre_empilee: 'Barres empilées', repartition: 'Répartition',
   solde: 'Solde', liste: 'Liste', flux_annuel: 'Année en barres', anatomie_dollar: 'Anatomie du dollar',
   impot_palier: 'Paliers d’impôt', patrimoine_vie: 'Trajectoire', composition: 'Composition',
+  prisme3d: 'Prismes 3D',
 }
 export function nomForme(forme) {
   return NOM_FORME[forme] || forme

@@ -27,6 +27,7 @@ import Chronologie from '../blocs/Chronologie.jsx'
 import Liste from '../blocs/Liste.jsx'
 import CarteEntite from '../blocs/CarteEntite.jsx'
 import Comparaison from '../blocs/Comparaison.jsx'
+import Prisme3D from '../blocs/Prisme3D.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -51,6 +52,7 @@ export const REGISTRE = {
   liste: Liste,
   carte_entite: CarteEntite,
   comparaison: Comparaison,
+  prisme3d: Prisme3D,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

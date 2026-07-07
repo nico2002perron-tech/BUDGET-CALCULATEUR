@@ -11,7 +11,7 @@
    ========================================================================== */
 import { useEffect, useRef } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
-import { kpiPourId } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI } from '../recettes/bibliotheque-kpis.js'
 
 const I_RETOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -69,6 +69,14 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
 
   if (!actif) return null
 
+  // LA SCÈNE : la forme la plus spectaculaire OFFERTE à ce KPI — le prisme 3D
+  // quand sa série existe (data-aware via formesPourKPI), sinon la vue actuelle
+  // de la tuile. La rangée de types (étape 4) rendra ce choix à l'usager.
+  const formes = formesPourKPI(kb.KPI, snapshot, kb.params)
+  const recetteScene = formes.includes('prisme3d')
+    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: 'prisme3d', params: kb.params || {} }] }
+    : recette
+
   return (
     <div className="sable" ref={racineRef} role="dialog" aria-modal="true" aria-label={`Carré de sable — ${def.question}`}>
       <div className="sable-tete">
@@ -83,12 +91,10 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
       </div>
 
       <div className="sable-corps">
-        {/* LA SCÈNE : pour l'instant la vue telle qu'elle vit sur ta tour (mêmes
-            chiffres, même moteur). La scène 3D la remplacera à l'étape suivante. */}
         <div className="sable-scene" style={widget.accent ? { '--wacc': widget.accent } : undefined}>
-          <MoteurRendu recette={recette} snapshot={snapshot} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} />
         </div>
-        <p className="sable-note">Ta vue actuelle — les commandes du sable s’assemblent ici, étape par étape.</p>
+        <p className="sable-note">Les commandes du sable (forme, comparaisons, objectif, personnalité) s’assemblent ici, étape par étape.</p>
       </div>
     </div>
   )

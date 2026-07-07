@@ -2399,3 +2399,143 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   .sable { animation: none; }
 }
+
+/* ============================================================================
+   PRISME 3D — le bloc `prisme3d` : la série des 12 mois en prismes extrudés.
+   Canvas SOMBRE autoportant (le bloc emporte sa surface — sable OU tour) ;
+   géométrie 100 % CSS 3D (preserve-3d, 5 faces), zéro dépendance.
+   ========================================================================== */
+.card.p3d,
+.tour-board .tour-widget .card.p3d {
+  --pc: var(--wacc, var(--cyan));
+  background: linear-gradient(180deg, #0a0e1a, #070912);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #eef2ff;
+}
+/* Sur la tour (cartes joufflues) : le rebord 3D reste, mais sombre. */
+.tour-board .tour-widget .card.p3d { border-width: 2px; border-bottom-width: 6px; border-color: rgba(255, 255, 255, 0.10); }
+.card.p3d .card-title { color: #fff; }
+.card.p3d .card-title svg { color: var(--pc); }
+.card.p3d .card-sub { color: rgba(238, 242, 255, 0.60); }
+.card.p3d .legend .it { color: rgba(238, 242, 255, 0.62); }
+.p3d-vide { color: rgba(238, 242, 255, 0.55); }
+.p3d-sw-a { background: var(--pc); }
+
+/* Sur la tour, un widget SANS couleur choisie rend en cyan (comme dans le sable
+   et comme la pastille « choisie » de la retouche) — jamais deux couleurs pour
+   la même donnée selon la surface. */
+.tour-board .tour-widget:not(.a-couleur) .card.p3d { --pc: var(--cyan); }
+/* Mois sous le seuil : l'ambre de l'exception (jamais décoratif). */
+.p3d-prisme.est-sous { --pc: var(--amber-2); }
+.p3d-sw-sous { background: var(--amber-2); }
+
+/* La scène : un hublot avec perspective ; le plateau (stage) porte le monde 3D.
+   Elle s'adapte à SON conteneur (tour, essayage, sable) — pas au viewport. */
+.p3d-scene { position: relative; height: 300px; perspective: 1100px; overflow: hidden; border-radius: 18px; container-type: inline-size; }
+.p3d-stage {
+  position: absolute; left: 0; right: 0; top: 10px; bottom: 46px;
+  transform-style: preserve-3d;
+  transform: rotateX(10deg) rotateY(-14deg);
+  animation: p3dOscille 12s ease-in-out infinite alternate;
+}
+@keyframes p3dOscille {
+  from { transform: rotateX(10deg) rotateY(-16deg); }
+  to { transform: rotateX(10deg) rotateY(16deg); }
+}
+.p3d-scene.est-fixe .p3d-stage { animation: none; }
+
+/* Le plancher quadrillé : un plan couché (rotateX 90°) centré sur la ligne de
+   base — la moitié file derrière les barres, l'autre vient vers toi. */
+.p3d-sol {
+  position: absolute; left: 50%; top: 100%; width: 170%; height: 560px;
+  transform: translate(-50%, -50%) rotateX(90deg);
+  background:
+    repeating-linear-gradient(0deg, rgba(127, 233, 255, 0.14) 0 1px, transparent 1px 36px),
+    repeating-linear-gradient(90deg, rgba(127, 233, 255, 0.14) 0 1px, transparent 1px 36px);
+  -webkit-mask-image: radial-gradient(closest-side, #000 32%, transparent 82%);
+  mask-image: radial-gradient(closest-side, #000 32%, transparent 82%);
+}
+
+.p3d-rangee {
+  --p3w: 26px; /* largeur d'un prisme */
+  --p3d: 18px; /* profondeur d'un prisme */
+  position: absolute; inset: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 12px; padding: 0 3%;
+  transform-style: preserve-3d;
+}
+.p3d-col { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; transform-style: preserve-3d; }
+
+/* LE PRISME : boîte extrudée à 5 faces, centrées puis poussées sur leur axe.
+   Croissance scaleY 0→1 depuis le sol, décalée barre par barre. */
+.p3d-prisme { position: relative; width: var(--p3w); transform-style: preserve-3d; transform-origin: 50% 100%; }
+.p3d-scene:not(.est-fixe) .p3d-prisme { animation: p3dPousse 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--delai, 0ms); }
+@keyframes p3dPousse { from { transform: scaleY(0.001); } to { transform: scaleY(1); } }
+
+.p3d-face { position: absolute; left: 50%; top: 50%; border-radius: 2px; }
+/* avant (mi-ton) — l'ombre portée teintée de l'accent vit ici */
+.p3d-avant {
+  width: var(--p3w); height: 100%;
+  transform: translate(-50%, -50%) translateZ(calc(var(--p3d) / 2));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.18)), var(--pc);
+  box-shadow: 0 24px 46px -14px color-mix(in srgb, var(--pc) 55%, transparent);
+}
+/* arrière (le plus sombre) */
+.p3d-arriere {
+  width: var(--p3w); height: 100%;
+  transform: translate(-50%, -50%) translateZ(calc(var(--p3d) / -2));
+  background: linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), var(--pc);
+}
+/* côtés (plus foncés) */
+.p3d-droite {
+  width: var(--p3d); height: 100%;
+  transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--p3w) / 2));
+  background: linear-gradient(rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.30)), var(--pc);
+}
+.p3d-gauche {
+  width: var(--p3d); height: 100%;
+  transform: translate(-50%, -50%) rotateY(-90deg) translateZ(calc(var(--p3w) / 2));
+  background: linear-gradient(rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.30)), var(--pc);
+}
+/* dessus (le plus clair) — posé sur l'arête haute */
+.p3d-dessus {
+  width: var(--p3w); height: var(--p3d); top: 0;
+  transform: translate(-50%, -50%) rotateX(90deg);
+  background: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), var(--pc);
+}
+
+/* Étiquettes (mois) et valeur du sommet : police mono, dans la scène. */
+.p3d-etiq {
+  position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  color: rgba(238, 242, 255, 0.55); white-space: nowrap;
+}
+.p3d-val {
+  position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap;
+  background: color-mix(in srgb, var(--pc) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pc) 45%, transparent);
+  border-radius: 8px; padding: 3px 8px;
+}
+
+/* Les 12 mois tiennent TOUJOURS dans le conteneur réel (grille de la tour,
+   aperçu d'essayage, sable étroit) — jamais un mois tronqué en silence. */
+@container (max-width: 640px) {
+  .p3d-rangee { --p3w: 20px; --p3d: 14px; gap: 8px; }
+}
+@container (max-width: 460px) {
+  .p3d-rangee { --p3w: 15px; --p3d: 11px; gap: 5px; }
+  .p3d-etiq { font-size: 8.5px; letter-spacing: 0; }
+}
+@container (max-width: 330px) {
+  .p3d-rangee { --p3w: 11px; --p3d: 8px; gap: 3px; }
+}
+@media (max-width: 560px) {
+  .p3d-scene { height: 250px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p3d-stage { animation: none; }
+  .p3d-prisme { animation: none; }
+}

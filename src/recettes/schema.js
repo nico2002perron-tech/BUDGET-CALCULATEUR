@@ -257,6 +257,18 @@ export const BLOCS = {
     },
   },
 
+  // La SCÈNE 3D du carré de sable : la série des 12 mois en prismes extrudés
+  // (CSS 3D pur). La série et le seuil viennent du snapshot, jamais de la recette.
+  prisme3d: {
+    taille: 'large',
+    bornes: {},
+    defauts: {},
+    resolve: (snap) => ({
+      serie: (snap && snap.saison && snap.saison.revenusMensuels) || [],
+      seuil: snap && snap.saison ? snap.saison.depensesMensuelles || 0 : 0,
+    }),
+  },
+
   // Une FORME de plus pour un KPI : deux valeurs du MÊME KPI + leur écart. Les deux
   // valeurs sont résolues par MoteurRendu (deux ctx) et passées via la prop `kpi` ;
   // pas de données propres au snapshot ici (resolve neutre).
