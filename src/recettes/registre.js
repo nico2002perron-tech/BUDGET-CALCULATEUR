@@ -28,6 +28,9 @@ import Liste from '../blocs/Liste.jsx'
 import CarteEntite from '../blocs/CarteEntite.jsx'
 import Comparaison from '../blocs/Comparaison.jsx'
 import Prisme3D from '../blocs/Prisme3D.jsx'
+import Bandes from '../blocs/Bandes.jsx'
+import Courbe from '../blocs/Courbe.jsx'
+import Nuage from '../blocs/Nuage.jsx'
 
 export const REGISTRE = {
   flux_annuel: FluxAnnuel,
@@ -53,6 +56,9 @@ export const REGISTRE = {
   carte_entite: CarteEntite,
   comparaison: Comparaison,
   prisme3d: Prisme3D,
+  bandes: Bandes,
+  courbe: Courbe,
+  nuage: Nuage,
 }
 
 /** Composant pour un type, ou null si inconnu (→ MoteurRendu l'ignore). */

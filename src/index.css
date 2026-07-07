@@ -2384,6 +2384,35 @@ svg { display: block; }
 }
 
 .sable-corps { width: 100%; max-width: 1040px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+/* LA RANGÉE DE TYPES : chips tappables (≥44px) ; l'incompatible reste visible,
+   grisé — on voit ce que le sable sait faire sans jamais pouvoir se tromper. */
+.sable-types { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sable-types-l {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  color: rgba(238, 242, 255, 0.5); margin-right: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sable-type {
+  min-height: 44px; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 700; color: #eef2ff;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.06);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sable-type:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.24); }
+.sable-type:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sable-type.est-actif,
+.sable-type.est-actif:hover:not(:disabled) {
+  color: #06121a;
+  background: var(--wacc, var(--cyan));
+  border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 60%, #fff);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 80%, transparent);
+}
+.sable-type:disabled { opacity: 0.32; cursor: not-allowed; border-style: dashed; }
+@media (max-width: 767px) {
+  .sable-types { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .sable-type { flex: none; }
+}
 .sable-scene {
   position: relative; border-radius: 26px; padding: clamp(14px, 3vw, 28px);
   border: 1px solid rgba(255, 255, 255, 0.08);

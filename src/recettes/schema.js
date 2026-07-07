@@ -50,6 +50,15 @@ export function filtrerFait(texte) {
   return { ok: true, texte: String(texte), motif: [] }
 }
 
+// Série 12 mois + seuil + comparaisons — le MÊME résolveur pour toutes les
+// formes-séries du sable (prisme3d, bandes, courbe, nuage) : changer de forme
+// ne change jamais la donnée (présentation pure).
+const resolveSerie = (snap, params) => ({
+  serie: (snap && snap.saison && snap.saison.revenusMensuels) || [],
+  seuil: snap && snap.saison ? snap.saison.depensesMensuelles || 0 : 0,
+  comparaisons: resoudreComparaisons(snap, params && params.comparaisons),
+})
+
 // ── Config par bloc : bornes des params + résolveur de données (depuis le snapshot)
 // Pour cette fondation, seul `flux_annuel` est implémenté (l'étalon).
 export const BLOCS = {
@@ -265,12 +274,13 @@ export const BLOCS = {
     taille: 'large',
     bornes: {},
     defauts: {},
-    resolve: (snap, params) => ({
-      serie: (snap && snap.saison && snap.saison.revenusMensuels) || [],
-      seuil: snap && snap.saison ? snap.saison.depensesMensuelles || 0 : 0,
-      comparaisons: resoudreComparaisons(snap, params && params.comparaisons),
-    }),
+    resolve: resolveSerie,
   },
+
+  // Les autres formes-séries du sable : mêmes données (resolveSerie), autre œil.
+  bandes: { taille: 'large', bornes: {}, defauts: {}, resolve: resolveSerie },
+  courbe: { taille: 'large', bornes: {}, defauts: {}, resolve: resolveSerie },
+  nuage: { taille: 'large', bornes: {}, defauts: {}, resolve: resolveSerie },
 
   // Une FORME de plus pour un KPI : deux valeurs du MÊME KPI + leur écart. Les deux
   // valeurs sont résolues par MoteurRendu (deux ctx) et passées via la prop `kpi` ;

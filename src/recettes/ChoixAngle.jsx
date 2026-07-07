@@ -26,6 +26,10 @@ const GLYPHE = {
   comparaison: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M8 20V8M16 20V4" strokeLinecap="round" /></svg>,
   barre_progression: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="10" width="18" height="5" rx="2.5" /><rect x="3" y="10" width="11" height="5" rx="2.5" fill="currentColor" stroke="none" /></svg>,
   prisme3d: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>,
+  bandes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 20v-8M12 20V5M18 20v-5" strokeLinecap="round" /></svg>,
+  courbe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 16c3 0 3-7 6-7s3 5 6 5 2-6 4-8" strokeLinecap="round" /></svg>,
+  nuage: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="7" cy="15" r="2.2" /><circle cx="13" cy="8" r="3" /><circle cx="18" cy="15.5" r="1.6" /></svg>,
+  beignet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg>,
 }
 
 export default function ChoixAngle({ kpiId, snapshot, recommande, formeActuelle, onChoisir, formes, ctx }) {

@@ -9,9 +9,13 @@
    recalculé ici. Les commandes (type, comparer, objectif, persona, épingler)
    s'ajouteront par étapes ; ce fichier est leur socle d'orchestration.
    ========================================================================== */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
-import { kpiPourId, formesPourKPI } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI, nomForme } from '../recettes/bibliotheque-kpis.js'
+
+// Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
+// avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
+const TYPES_SABLE = ['prisme3d', 'bandes', 'beignet', 'courbe', 'nuage']
 
 const I_RETOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -22,6 +26,7 @@ const I_RETOUR = (
 export default function CarreDeSable({ widget, snapshot, onFermer }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
+  const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
   const recette = widget && widget.recette
   const kb = recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null
   const def = kb ? kpiPourId(kb.KPI) : null
@@ -69,16 +74,28 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
 
   if (!actif) return null
 
-  // LA SCÈNE : la forme la plus spectaculaire OFFERTE à ce KPI — le prisme 3D
-  // quand sa série existe (data-aware via formesPourKPI), sinon la vue actuelle
-  // de la tuile. La rangée de types (étape 4) rendra ce choix à l'usager.
+  // LA RANGÉE DE TYPES : seules les formes compatibles avec CE KPI s'offrent
+  // (formesPourKPI, data-aware) ; un type canonique sans donnée/sens est grisé.
+  // Changer de type = changer la FORME (présentation pure) — resolveKPI et le
+  // snapshot restent les seules sources de chiffres.
   const formes = formesPourKPI(kb.KPI, snapshot, kb.params)
-  const recetteScene = formes.includes('prisme3d')
-    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: 'prisme3d', params: kb.params || {} }] }
+  const rangee = [...TYPES_SABLE, ...formes.filter((f) => !TYPES_SABLE.includes(f))]
+  const formeDefaut = formes.includes('prisme3d') ? 'prisme3d' : formes.includes(kb.forme) ? kb.forme : formes[0] || null
+  const formeActive = formeChoisie && formes.includes(formeChoisie) ? formeChoisie : formeDefaut
+
+  const recetteScene = formeActive
+    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: kb.params || {} }] }
     : recette
 
   return (
-    <div className="sable" ref={racineRef} role="dialog" aria-modal="true" aria-label={`Carré de sable — ${def.question}`}>
+    <div
+      className="sable"
+      ref={racineRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Carré de sable — ${def.question}`}
+      style={widget.accent ? { '--wacc': widget.accent } : undefined}
+    >
       <div className="sable-tete">
         <button ref={retourRef} type="button" className="sable-retour" onClick={onFermer} aria-label="Revenir à ma tour">
           {I_RETOUR}
@@ -91,10 +108,33 @@ export default function CarreDeSable({ widget, snapshot, onFermer }) {
       </div>
 
       <div className="sable-corps">
-        <div className="sable-scene" style={widget.accent ? { '--wacc': widget.accent } : undefined}>
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} />
+        {/* LA RANGÉE DE TYPES : choisis l'œil qui regarde ton chiffre. */}
+        {formeActive && (
+          <div className="sable-types" role="group" aria-label="Type de graphique">
+            <span className="sable-types-l">La forme</span>
+            {rangee.map((t) => {
+              const offert = formes.includes(t)
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  className={`sable-type${t === formeActive ? ' est-actif' : ''}`}
+                  disabled={!offert}
+                  aria-pressed={t === formeActive}
+                  title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
+                  onClick={() => setFormeChoisie(t)}
+                >
+                  {nomForme(t)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="sable-scene">
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={formeActive || 'tuile'} />
         </div>
-        <p className="sable-note">Les commandes du sable (forme, comparaisons, objectif, personnalité) s’assemblent ici, étape par étape.</p>
+        <p className="sable-note">Les commandes du sable (comparaisons, objectif, personnalité) s’assemblent ici, étape par étape.</p>
       </div>
     </div>
   )

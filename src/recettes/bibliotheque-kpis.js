@@ -216,12 +216,12 @@ export const REGISTRE_KPIS = [
   // ── 4. Revenus variables (saisonnier) ─────────────────────────────────────
   {
     id: 'amplitude_revenus', domaine: 'saisonnier', question: 'Mes revenus varient de combien ?',
-    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'stat'],
+    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage', 'stat'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const mn = Math.min(...r); const mx = Math.max(...r); return { valeur: mx - mn, unite: '$', texteFactuel: `Tes revenus varient de ${formatCAD(mn)} à ${formatCAD(mx)} selon les mois.` } },
   },
   {
     id: 'mois_sous_seuil', domaine: 'saisonnier', question: 'Combien de mois dans le rouge ?',
-    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'fait'],
+    requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage', 'fait'],
     resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const n = s.saison.revenusMensuels.filter((x) => num(x) < dep).length; return { valeur: n, unite: 'mois', texteFactuel: `${n} mois passent sous ton coût de vie.` } },
   },
   {
@@ -236,7 +236,7 @@ export const REGISTRE_KPIS = [
   },
   {
     id: 'revenu_lisse', domaine: 'saisonnier', question: 'Étalé sur l’année, ça fait combien par mois ?',
-    requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel', 'prisme3d'],
+    requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage'],
     resolve: (s) => { const r = s.saison.revenusMensuels; const moy = Math.round(r.reduce((a, x) => a + num(x), 0) / 12); return { valeur: moy, unite: '$/mois', texteFactuel: `Lissé sur l’année, ça ferait ${formatCAD(moy)} par mois.` } },
   },
 
@@ -322,8 +322,11 @@ const POURQUOI_FORME = {
   comparaison: 'La comparaison met deux scénarios côte à côte.',
   barre_progression: 'La barre montre le chemin parcouru.',
   fait: 'Une phrase qui dit le constat en clair.',
-  beignet: 'Le beignet montre la part de chaque poste.',
+  beignet: 'Le circulaire montre la part de chaque poste.',
   prisme3d: 'La scène 3D met tes 12 mois en relief.',
+  bandes: 'Des barres nettes, mois par mois.',
+  courbe: 'La courbe montre le mouvement de l’année.',
+  nuage: 'Chaque mois devient une bulle — son poids saute aux yeux.',
 }
 export function pourquoiForme(forme) {
   const f = filtrerFait(POURQUOI_FORME[forme] || '')
@@ -333,12 +336,12 @@ export function pourquoiForme(forme) {
 /** Nom court et lisible d'une forme (pour les cartes du sélecteur). */
 const NOM_FORME = {
   stat: 'Chiffre', jauge: 'Jauge', chronologie: 'Compte à rebours', chaine: 'Chaîne',
-  comparaison: 'Comparaison', barre_progression: 'Barre', fait: 'Constat', beignet: 'Beignet',
+  comparaison: 'Comparaison', barre_progression: 'Barre', fait: 'Constat', beignet: 'Circulaire',
+  prisme3d: '3D prisme', bandes: 'Bandes', courbe: 'Courbe', nuage: 'Nuage',
   // les formes-blocs restantes (l'essayage de la Galerie les nomme en clair)
   coussin_urgence: 'Cadran à zones', barre_empilee: 'Barres empilées', repartition: 'Répartition',
   solde: 'Solde', liste: 'Liste', flux_annuel: 'Année en barres', anatomie_dollar: 'Anatomie du dollar',
   impot_palier: 'Paliers d’impôt', patrimoine_vie: 'Trajectoire', composition: 'Composition',
-  prisme3d: 'Prismes 3D',
 }
 export function nomForme(forme) {
   return NOM_FORME[forme] || forme
