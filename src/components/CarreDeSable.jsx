@@ -70,21 +70,55 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const onFermerRef = useRef(onFermer)
   useEffect(() => { onFermerRef.current = onFermer }, [onFermer])
 
+  // La tuile d'origine devient PÉRIMÉE si la fenêtre change (rotation, resize)
+  // pendant que le sable est ouvert → la fermeture dégrade en fondu simple.
+  const origineInvalideRef = useRef(false)
+  useEffect(() => {
+    const invalide = () => { origineInvalideRef.current = true }
+    window.addEventListener('resize', invalide)
+    return () => window.removeEventListener('resize', invalide)
+  }, [])
+
   // FERMETURE = l'inverse de l'ouverture : le panneau RÉTRÉCIT vers la tuile
-  // d'origine, le scrim s'éteint, puis on démonte. Ré-entrance gardée.
+  // d'origine, le scrim s'éteint, puis on démonte. Ré-entrance gardée ; le
+  // panneau devient inerte (rien ne se clique/tape pendant qu'il rétrécit).
   const fermer = () => {
     if (fermetureRef.current) return
     fermetureRef.current = true
     const p = panneauRef.current
-    if (!p || !origine || reduitMouvement()) { onFermerRef.current(); return }
+    if (!p || !origine || origineInvalideRef.current || reduitMouvement()) {
+      // repli : fondu court (ou rien sous reduced-motion / sans origine valide)
+      if (p && !reduitMouvement()) {
+        try {
+          p.setAttribute('inert', '')
+          const a = p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease', fill: 'forwards' })
+          if (scrimRef.current) scrimRef.current.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease', fill: 'forwards' })
+          a.finished.then(() => onFermerRef.current()).catch(() => onFermerRef.current())
+          return
+        } catch { /* démontage direct */ }
+      }
+      onFermerRef.current()
+      return
+    }
     try {
+      p.setAttribute('inert', '')
+      p.style.pointerEvents = 'none'
+      // Fermé PENDANT l'ouverture : on repart de la matrice COURANTE (jamais un
+      // saut plein écran) et on mesure le rect NON transformé (anims annulées).
+      const depart = getComputedStyle(p).transform
+      const opDepart = getComputedStyle(p).opacity
+      p.getAnimations().forEach((a) => { try { a.cancel() } catch { /* no-op */ } })
       const f = p.getBoundingClientRect()
       const sx = Math.max(0.04, origine.width / Math.max(1, f.width))
       const sy = Math.max(0.04, origine.height / Math.max(1, f.height))
       const cible = `translate(${origine.left - f.left}px, ${origine.top - f.top}px) scale(${sx}, ${sy})`
-      if (scrimRef.current) scrimRef.current.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: 'ease', fill: 'forwards' })
+      if (scrimRef.current) {
+        const opScrim = getComputedStyle(scrimRef.current).opacity
+        scrimRef.current.getAnimations().forEach((a) => { try { a.cancel() } catch { /* no-op */ } })
+        scrimRef.current.animate([{ opacity: opScrim }, { opacity: 0 }], { duration: 280, easing: 'ease', fill: 'forwards' })
+      }
       const anim = p.animate(
-        [{ transform: 'none', opacity: 1 }, { transform: cible, opacity: 0.5 }],
+        [{ transform: depart === 'none' ? 'none' : depart, opacity: opDepart }, { transform: cible, opacity: 0.5 }],
         { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' },
       )
       anim.finished.then(() => onFermerRef.current()).catch(() => onFermerRef.current())
@@ -138,12 +172,17 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     return () => window.removeEventListener('keydown', surTouche)
   }, [actif])
 
-  // La page dessous ne défile pas pendant que le sable est ouvert.
-  useEffect(() => {
+  // La page dessous ne défile pas pendant que le sable est ouvert. Verrou posé
+  // en LAYOUT effect (avant le FLIP) + gouttière compensée : cacher la barre de
+  // défilement ne décale ni le board visible derrière le scrim, ni la géométrie.
+  useLayoutEffect(() => {
     if (!actif) return
+    const gouttiere = window.innerWidth - document.documentElement.clientWidth
     const avant = document.body.style.overflow
+    const avantPad = document.body.style.paddingRight
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = avant }
+    if (gouttiere > 0) document.body.style.paddingRight = `${gouttiere}px`
+    return () => { document.body.style.overflow = avant; document.body.style.paddingRight = avantPad }
   }, [actif])
 
   if (!actif) return null
