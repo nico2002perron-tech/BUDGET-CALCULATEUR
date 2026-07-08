@@ -10,6 +10,8 @@
    ========================================================================== */
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
 const AMBER = '#e0a23c'
@@ -30,6 +32,7 @@ const I_BANDES = (
 )
 
 export default function Bandes({ params = {}, data = {}, kpi = null }) {
+  const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -84,6 +87,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
       <div className="card-title">{I_BANDES}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
+      <div className="graf-zone">
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         {/* grille : 4 niveaux discrets + baseline */}
         {[1, 2, 3, 4].map((i) => {
@@ -92,12 +96,16 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
         })}
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
+        {/* la ligne-guide de la valeur regardée (sous les barres) */}
+        {sel.actif != null && (
+          <line className="graf-guide" x1={padL + sel.actif * slot + slot / 2} y1={top} x2={padL + sel.actif * slot + slot / 2} y2={baseY} />
+        )}
+
         {serie.map((v, i) => {
           const sous = plancher > 0 && v < plancher
           const x0 = padL + i * slot + (slot - groupeW) / 2
           return (
-            <g key={i}>
-              <title>{`${labels[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}${comparaisons.map((c) => ` · ${c.label} ${formatCAD(c.valeurs[i] || 0)}`).join('')}`}</title>
+            <g key={i} className={`bnd-g${sel.actif === i ? ' est-vise' : ''}${sel.actif != null && sel.actif !== i ? ' est-eteint' : ''}`}>
               {barre(v, x0, sous ? AMBER : 'var(--wacc, #00b4d8)', `a-${i}`, i * 35)}
               {comparaisons.map((c, k) => barre(c.valeurs[i] || 0, x0 + (k + 1) * (barW + 1.5), c.couleur, `c-${i}-${k}`, i * 35 + 20))}
             </g>
@@ -126,7 +134,35 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
             {etiquetteCourte(m, maxChars)}
           </text>
         ))}
+
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {serie.map((v, i) => (
+          <rect
+            key={`h-${i}`}
+            className="graf-hit"
+            x={padL + i * slot}
+            y={top - 8}
+            width={slot}
+            height={baseY - top + 12}
+            fill="transparent"
+            onMouseEnter={() => sel.survole(i)}
+            onMouseLeave={sel.quitte}
+            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+          />
+        ))}
       </svg>
+
+      {sel.actif != null && (
+        <InfoBulle
+          x={(padL + sel.actif * slot + slot / 2) / W}
+          y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
+          titre={labels[sel.actif]}
+          valeur={serie[sel.actif]}
+          lignes={lignesComparees(serie[sel.actif], comparaisons, sel.actif)}
+          sous={plancher > 0 && serie[sel.actif] < plancher ? (cible > 0 ? 'sous ton objectif' : S.sousTexte) : ''}
+        />
+      )}
+      </div>
 
       <div className="legend">
         <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : S.legende}</span>

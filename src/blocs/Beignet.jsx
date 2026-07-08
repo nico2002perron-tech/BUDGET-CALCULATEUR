@@ -7,6 +7,9 @@
    ========================================================================== */
 import { couleurClasse } from '../lib/depenses.js'
 import { formatCAD } from '../lib/format.js'
+import { etiquetteCourte } from '../lib/serie.js'
+import { useSelection } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 // `large` (large-arc-flag) est passé par l'appelant et calculé sur l'angle RÉEL
 // du segment — pas sur l'angle réduit par le jeu visuel — sinon un secteur juste
@@ -20,6 +23,9 @@ function arcPath(cx, cy, r, a0, a1, large) {
 }
 
 export default function Beignet({ params = {}, data = {} }) {
+  // LE SURVOL VIVANT : la portion regardée s'avance, le CENTRE devient sa
+  // fiche (nom · montant · part du tout) ; la légende répond dans les 2 sens.
+  const sel = useSelection() // clé = index de cat, ou 'autres'
   const cats = (Array.isArray(data.parCategorie) ? data.parCategorie : []).filter((c) => Number(c.montant) > 0)
   const total = cats.reduce((s, c) => s + (Number(c.montant) || 0), 0)
   const centre = typeof params.centre === 'string' ? params.centre : typeof data.centre === 'string' && data.centre ? data.centre : 'par mois'
@@ -36,12 +42,28 @@ export default function Beignet({ params = {}, data = {} }) {
         const a1 = a + frac * Math.PI * 2
         a = a1
         const large = a1 - a0 > Math.PI ? 1 : 0 // sur l'angle RÉEL du segment
-        return { id: c.id, couleur: couleurClasse(c.classe), full: seul, d: arcPath(cx, cy, r, a0, Math.max(a0 + 0.001, a1 - 0.02), large) }
+        const mi = (a0 + a1) / 2 // l'angle du milieu → la direction de l'avancée
+        return { id: c.id, couleur: couleurClasse(c.classe), full: seul, d: arcPath(cx, cy, r, a0, Math.max(a0 + 0.001, a1 - 0.02), large), dx: Math.cos(mi) * 5, dy: Math.sin(mi) * 5 }
       })
     : []
 
   const top = cats.slice(0, 6)
   const resteMontant = cats.slice(6).reduce((s, c) => s + c.montant, 0)
+
+  const estVise = (i) => sel.actif === i || (sel.actif === 'autres' && i >= 6)
+  const auRepos = sel.actif == null
+  const surSeg = {
+    entre: (i) => () => sel.survole(i),
+    quitte: () => sel.quitte(),
+    tap: (i) => () => { if (sel.bascule(i)) sons.tap() },
+  }
+  // la fiche du centre : la part regardée, sinon le tout
+  const partVisee = sel.actif === 'autres'
+    ? { label: 'Autres', montant: resteMontant }
+    : sel.actif != null && cats[sel.actif]
+      ? { label: cats[sel.actif].label || 'Dépense', montant: cats[sel.actif].montant }
+      : null
+  const pctVise = partVisee && total > 0 ? Math.round((partVisee.montant / total) * 100) : 0
 
   return (
     <section className="card">
@@ -56,27 +78,59 @@ export default function Beignet({ params = {}, data = {} }) {
       <div className="bgt-corps">
         <svg className="bgt-svg" viewBox="0 0 180 180" role="img" aria-label={sous}>
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="#eef2f8" strokeWidth={sw} />
-          {segs.map((s) =>
+          {segs.map((s, i) =>
             s.full ? (
               <circle key={s.id} cx={cx} cy={cy} r={r} fill="none" stroke={s.couleur} strokeWidth={sw} />
             ) : (
-              <path key={s.id} d={s.d} fill="none" stroke={s.couleur} strokeWidth={sw} strokeLinecap="butt" />
+              <path
+                key={s.id}
+                className={`bgt-seg${!auRepos && !estVise(i) ? ' est-eteint' : ''}`}
+                d={s.d}
+                fill="none"
+                stroke={s.couleur}
+                strokeWidth={estVise(i) ? sw + 3 : sw}
+                strokeLinecap="butt"
+                style={estVise(i) ? { transform: `translate(${s.dx}px, ${s.dy}px)` } : undefined}
+                onMouseEnter={surSeg.entre(i)}
+                onMouseLeave={surSeg.quitte}
+                onClick={surSeg.tap(i)}
+              />
             ),
           )}
-          <text x={cx} y={cy - 3} textAnchor="middle" className="bgt-centre-n">{formatCAD(total)}</text>
-          <text x={cx} y={cy + 15} textAnchor="middle" className="bgt-centre-l">{centre}</text>
+          {partVisee ? (
+            <>
+              <text x={cx} y={cy - 3} textAnchor="middle" className="bgt-centre-n">{formatCAD(partVisee.montant)}</text>
+              <text x={cx} y={cy + 15} textAnchor="middle" className="bgt-centre-l">{`${etiquetteCourte(partVisee.label, 13)} · ${pctVise} %`}</text>
+            </>
+          ) : (
+            <>
+              <text x={cx} y={cy - 3} textAnchor="middle" className="bgt-centre-n">{formatCAD(total)}</text>
+              <text x={cx} y={cy + 15} textAnchor="middle" className="bgt-centre-l">{centre}</text>
+            </>
+          )}
         </svg>
 
         <ul className="bgt-legende">
-          {top.map((c) => (
-            <li key={c.id}>
+          {top.map((c, i) => (
+            <li
+              key={c.id}
+              className={estVise(i) ? 'est-vise' : undefined}
+              onMouseEnter={surSeg.entre(i)}
+              onMouseLeave={surSeg.quitte}
+              onClick={surSeg.tap(i)}
+            >
               <span className="bgt-pt" style={{ background: couleurClasse(c.classe) }} />
               <span className="bgt-lbl">{c.label}</span>
               <b>{formatCAD(c.montant)}</b>
             </li>
           ))}
           {resteMontant > 0 ? (
-            <li>
+            <li
+              className={sel.actif === 'autres' ? 'est-vise' : undefined}
+              onMouseEnter={surSeg.entre('autres')}
+              onMouseLeave={surSeg.quitte}
+              onClick={surSeg.tap('autres')}
+            >
               <span className="bgt-pt" style={{ background: '#cbd5e1' }} />
               <span className="bgt-lbl">Autres</span>
               <b>{formatCAD(resteMontant)}</b>

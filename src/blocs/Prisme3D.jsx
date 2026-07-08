@@ -26,9 +26,11 @@
    Data-aware : série vide → état honnête. prefers-reduced-motion : aucune
    rotation ni croissance, tout s'affiche d'un coup.
    ========================================================================== */
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 const I_CUBE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -91,14 +93,19 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
         if (isFinite(a)) angleRef.current = a
       } catch { /* on garde l'angle mémorisé */ }
     }
+    // ⚠️ pas de capture ICI : capturer au pointerdown détournerait le CLICK des
+    // colonnes (le survol vivant) vers la scène — elle se pose au 1er VRAI
+    // mouvement de rotation seulement.
     tourneRef.current = { pointerId: e.pointerId, x: e.clientX, angle: angleRef.current }
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
   }
   const surTournePointer = (e) => {
     const t = tourneRef.current
     if (!t || e.pointerId !== t.pointerId) return
     const delta = e.clientX - t.x
-    if (Math.abs(delta) > 5) aTourneRef.current = true
+    if (Math.abs(delta) > 5 && !aTourneRef.current) {
+      aTourneRef.current = true
+      try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
+    }
     angleRef.current = t.angle + delta * 0.45
     if (sceneRef.current) sceneRef.current.classList.add('est-manuel')
     if (stageRef.current) stageRef.current.style.transform = `rotateX(10deg) rotateY(${angleRef.current}deg)`
@@ -109,6 +116,30 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
   }
   const avaleClicApresGlisser = (e) => {
     if (aTourneRef.current) { e.stopPropagation(); e.preventDefault(); aTourneRef.current = false }
+  }
+
+  // LE SURVOL VIVANT : la colonne regardée s'allume, la fiche suit ; un tap la
+  // FIGE (mode projecteur). La position vient du rect PROJETÉ de la colonne
+  // (la scène tourne) relatif à la scène — jamais pendant un glisser-rotation.
+  const sel = useSelection()
+  const [vise, setVise] = useState(null) // { i, x, y } fractions de la scène
+  const viser = (i, el) => {
+    const sc = sceneRef.current
+    if (!sc || tourneRef.current) return false
+    const r = el.getBoundingClientRect()
+    const s = sc.getBoundingClientRect()
+    if (!s.width || !s.height) return false
+    setVise({ i, x: (r.left + r.width / 2 - s.left) / s.width, y: Math.max(0.26, (r.top - s.top) / s.height) })
+    return true
+  }
+  const surEntreCol = (i) => (e) => {
+    if (e.pointerType !== 'mouse' || sel.fige) return
+    if (viser(i, e.currentTarget)) sel.survole(i)
+  }
+  const surQuitteCol = () => { sel.quitte() }
+  const surTapCol = (i) => (e) => {
+    if (aTourneRef.current) return // un vrai glisser n'est pas un tap
+    if (sel.bascule(i)) { viser(i, e.currentTarget); sons.tap() }
   }
 
   const S = normaliserSerie(data)
@@ -154,7 +185,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       {kpi && kpi.texteFactuel ? <p className="card-sub p3d-sub">{kpi.texteFactuel}</p> : null}
 
       <div
-        className={`p3d-scene${reduce ? ' est-fixe' : ''}`}
+        className={`p3d-scene${reduce ? ' est-fixe' : ''}${sel.actif != null ? ' a-vise' : ''}`}
         ref={sceneRef}
         role="img"
         aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en prismes 3D${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
@@ -177,15 +208,19 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
             </>
           )}
           <div
-            className={`p3d-rangee${enComparaison ? ' p3d-rangee--multi' : ''}`}
+            className={`p3d-rangee${enComparaison ? ' p3d-rangee--multi' : ''}${sel.actif != null ? ' a-vise' : ''}`}
             style={{ '--cols': serie.length, ...(enComparaison ? { '--n': 1 + comparaisons.length, '--nc': comparaisons.length } : {}) }}
           >
             {serie.map((v, i) => {
               const sous = plancher > 0 && v < plancher
-              const infos = [`${labels[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}`]
-              comparaisons.forEach((c) => infos.push(`${c.label} ${formatCAD(c.valeurs[i] || 0)}`))
               return (
-                <div className="p3d-col" key={i} title={infos.join(' · ')}>
+                <div
+                  className={`p3d-col${sel.actif === i ? ' est-vise' : ''}`}
+                  key={i}
+                  onPointerEnter={surEntreCol(i)}
+                  onPointerLeave={surQuitteCol}
+                  onClick={surTapCol(i)}
+                >
                   {i === iMax && <span className="p3d-val">{formatCAD(v)}</span>}
                   <div className="p3d-duo">
                     <Prisme hauteur={hauteurDe(v)} delai={`${i * 70}ms`} sous={sous} />
@@ -199,6 +234,16 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
             })}
           </div>
         </div>
+        {sel.actif != null && vise && vise.i === sel.actif && (
+          <InfoBulle
+            x={vise.x}
+            y={vise.y}
+            titre={labels[sel.actif]}
+            valeur={serie[sel.actif]}
+            lignes={lignesComparees(serie[sel.actif], comparaisons, sel.actif)}
+            sous={plancher > 0 && serie[sel.actif] < plancher ? (cible > 0 ? 'sous ton objectif' : S.sousTexte) : ''}
+          />
+        )}
       </div>
 
       <div className="legend p3d-legende">

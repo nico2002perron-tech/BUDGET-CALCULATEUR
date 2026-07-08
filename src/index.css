@@ -1368,8 +1368,10 @@ svg { display: block; }
 /* ---- Bloc beignet ---- */
 .bgt-corps { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
 .bgt-svg { width: 168px; height: 168px; flex: 0 0 auto; }
-.bgt-centre-n { font-size: 20px; font-weight: 900; fill: var(--navy); }
-.bgt-centre-l { font-size: 9.5px; font-weight: 700; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+/* le centre est une LECTURE (jamais une cible de pointeur : il recouvrirait
+   les portions au survol) */
+.bgt-centre-n { font-size: 20px; font-weight: 900; fill: var(--navy); pointer-events: none; }
+.bgt-centre-l { font-size: 9.5px; font-weight: 700; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; pointer-events: none; }
 .bgt-legende { list-style: none; margin: 0; padding: 0; flex: 1 1 170px; display: flex; flex-direction: column; gap: 8px; min-width: 160px; }
 .bgt-legende li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .bgt-legende li b { margin-left: auto; font-weight: 800; color: var(--navy); }
@@ -2897,4 +2899,64 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   .p3d-stage { animation: none; }
   .p3d-prisme { animation: none; }
+}
+
+/* ── LE SURVOL VIVANT : la valeur qu'on regarde s'allume, les autres
+   s'estompent, la fiche (InfoBulle) suit — tap = mode projecteur (elle reste).
+   Une seule grammaire pour toutes les formes : est-vise / est-eteint. ── */
+.ibulle {
+  position: absolute; z-index: 6; pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: rgba(9, 13, 32, 0.94); color: #eef2ff;
+  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px;
+  padding: 8px 12px; min-width: 122px;
+  display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 0 14px 32px -14px rgba(3, 4, 94, 0.6);
+  animation: ibullePop 0.15s ease-out;
+}
+.ibulle-t {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: rgba(238, 242, 255, 0.62); white-space: nowrap;
+}
+.ibulle-v {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap;
+}
+.ibulle-l { font-size: 11px; font-weight: 600; color: rgba(238, 242, 255, 0.78); white-space: nowrap; }
+.ibulle-sous { font-size: 10.5px; font-weight: 700; color: var(--amber-2, #e0a23c); white-space: nowrap; }
+@keyframes ibullePop { from { opacity: 0; transform: translate(-50%, calc(-100% - 5px)); } }
+@media (prefers-reduced-motion: reduce) { .ibulle { animation: none; } }
+
+.graf-zone { position: relative; }
+.graf-hit { cursor: pointer; }
+.graf-guide { stroke: #b6c2d6; stroke-width: 1.2; stroke-dasharray: 3 4; }
+
+.bnd-g, .crb-pt, .nug-b, .bgt-seg, .a3dseg { transition: opacity 0.16s ease, filter 0.16s ease, transform 0.16s ease; }
+.bnd-g.est-eteint, .crb-pt.est-eteint, .nug-b.est-eteint { opacity: 0.35; }
+.bnd-g.est-vise rect { filter: brightness(1.1); }
+.crb-pt.est-vise, .nug-b.est-vise { filter: brightness(1.08); }
+
+/* beignet : la portion regardée S'AVANCE (translate le long de son angle,
+   posé inline par le bloc), les autres s'effacent ; la légende répond. */
+.bgt-seg { cursor: pointer; }
+.bgt-seg.est-eteint { opacity: 0.4; }
+.bgt-legende li { cursor: pointer; border-radius: 8px; transition: background 0.16s ease; }
+.bgt-legende li.est-vise { background: color-mix(in srgb, var(--cyan) 12%, transparent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--cyan) 12%, transparent); }
+
+/* anneau 3D : le segment regardé s'illumine sur TOUTE son épaisseur ; le HUD
+   plat devient la fiche de la part (le bloc échange total ↔ part). */
+.a3dseg.est-eteint { opacity: 0.45; }
+.a3dseg.est-vise { filter: brightness(1.32); }
+.a3d-it { cursor: pointer; border-radius: 8px; transition: background 0.16s ease; }
+.a3d-it.est-vise { background: rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.12); }
+
+/* prisme : la colonne regardée se soulève et s'éclaire, les autres reculent.
+   Pendant qu'on regarde, la scène SE TIENT TRANQUILLE (l'oscillation ferait
+   dériver la colonne sous la souris → fiche qui papillote). */
+.p3d-scene.a-vise .p3d-stage { animation-play-state: paused; }
+.p3d-col { cursor: pointer; transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease; }
+.p3d-rangee.a-vise .p3d-col:not(.est-vise) { opacity: 0.5; filter: brightness(0.72); }
+.p3d-col.est-vise { transform: translateY(-5px); }
+@media (prefers-reduced-motion: reduce) {
+  .p3d-col, .bnd-g, .crb-pt, .nug-b, .bgt-seg, .a3dseg, .bgt-legende li { transition: none; }
 }

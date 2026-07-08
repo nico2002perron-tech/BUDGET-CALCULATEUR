@@ -11,6 +11,8 @@
    ========================================================================== */
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { useSelection, InfoBulle } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 const AMBER = '#e0a23c'
 const MUTED = '#5a6b8c'
@@ -22,6 +24,7 @@ const I_NUAGE = (
 )
 
 export default function Nuage({ params = {}, data = {}, kpi = null }) {
+  const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -53,7 +56,12 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
       <div className="card-title">{I_NUAGE}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
+      <div className="graf-zone">
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en bulles — plus la valeur pèse, plus la bulle est grosse.`}>
+        {/* la ligne-guide de la valeur regardée */}
+        {sel.actif != null && (
+          <line className="graf-guide" x1={xDe(sel.actif)} y1={top} x2={xDe(sel.actif)} y2={baseY} />
+        )}
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
           return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
@@ -82,25 +90,63 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
           return (
             <circle
               key={i}
+              className={`nug-b${sel.actif === i ? ' est-vise' : ''}${sel.actif != null && sel.actif !== i ? ' est-eteint' : ''}`}
               cx={xDe(i)}
               cy={yDe(v)}
-              r={rDe(v)}
+              r={sel.actif === i ? rDe(v) * 1.15 : rDe(v)}
               style={sous
                 ? { fill: 'rgba(224, 162, 60, 0.45)', stroke: AMBER }
                 : { fill: 'color-mix(in srgb, var(--wacc, #00b4d8) 45%, transparent)', stroke: 'var(--wacc, #00b4d8)' }}
               strokeWidth="1.6"
-            >
-              <title>{`${labels[i]} · ${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}`}</title>
-            </circle>
+            />
           )
         })}
+        {/* l'anneau de la bulle regardée */}
+        {sel.actif != null && (
+          <circle
+            cx={xDe(sel.actif)}
+            cy={yDe(serie[sel.actif])}
+            r={rDe(serie[sel.actif]) * 1.15 + 5}
+            fill="none"
+            style={{ stroke: serie[sel.actif] < plancher && plancher > 0 ? AMBER : 'var(--wacc, #00b4d8)' }}
+            strokeWidth="1.4"
+            strokeDasharray="3 4"
+          />
+        )}
 
         {labels.map((m, i) => (
           <text key={m + i} x={xDe(i)} y={baseY + 18} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={MUTED} fontFamily="Montserrat">
             {etiquetteCourte(m, maxChars)}
           </text>
         ))}
+
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {serie.map((v, i) => (
+          <rect
+            key={`h-${i}`}
+            className="graf-hit"
+            x={padL + i * ((W - padL - padR) / serie.length)}
+            y={top - 8}
+            width={(W - padL - padR) / serie.length}
+            height={baseY - top + 12}
+            fill="transparent"
+            onMouseEnter={() => sel.survole(i)}
+            onMouseLeave={sel.quitte}
+            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+          />
+        ))}
       </svg>
+
+      {sel.actif != null && (
+        <InfoBulle
+          x={xDe(sel.actif) / W}
+          y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
+          titre={labels[sel.actif]}
+          valeur={serie[sel.actif]}
+          sous={plancher > 0 && serie[sel.actif] < plancher ? (cible > 0 ? 'sous ton objectif' : S.sousTexte) : ''}
+        />
+      )}
+      </div>
 
       <div className="legend">
         <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{aAtteint ? 'Objectif atteint (taille = poids du mois)' : S.titreBase ? `${S.legende} (taille = poids)` : 'Revenus (taille = poids du mois)'}</span>

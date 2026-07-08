@@ -12,6 +12,8 @@
 import { useEffect, useRef } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
 const AMBER = '#e0a23c'
@@ -33,6 +35,7 @@ const I_COURBE = (
 
 export default function Courbe({ params = {}, data = {}, kpi = null }) {
   const ligneRef = useRef(null)
+  const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -84,12 +87,18 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
       <div className="card-title">{I_COURBE}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
+      <div className="graf-zone">
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en courbe${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
           return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
         })}
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
+
+        {/* la ligne-guide de la valeur regardée (sous la courbe) */}
+        {sel.actif != null && (
+          <line className="graf-guide" x1={xDe(sel.actif)} y1={top} x2={xDe(sel.actif)} y2={baseY} />
+        )}
 
         {/* l'aire sous TA courbe (teintée de l'accent) */}
         <path
@@ -104,12 +113,22 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
 
         {/* TA ligne (tracée à l'apparition) + les points */}
         <path ref={ligneRef} d={chemin(serie)} fill="none" style={{ stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        {sel.actif != null && (
+          <circle cx={xDe(sel.actif)} cy={yDe(serie[sel.actif])} r="9" style={{ fill: 'color-mix(in srgb, var(--wacc, #00b4d8) 18%, transparent)', stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="1" />
+        )}
         {serie.map((v, i) => {
           const sous = plancher > 0 && v < plancher
           return (
-            <circle key={i} cx={xDe(i)} cy={yDe(v)} r="3.4" style={{ fill: sous ? AMBER : 'var(--wacc, #00b4d8)' }} stroke="#fff" strokeWidth="1.4">
-              <title>{`${labels[i]} · ${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}`}</title>
-            </circle>
+            <circle
+              key={i}
+              className={`crb-pt${sel.actif === i ? ' est-vise' : ''}${sel.actif != null && sel.actif !== i ? ' est-eteint' : ''}`}
+              cx={xDe(i)}
+              cy={yDe(v)}
+              r={sel.actif === i ? 5.2 : 3.4}
+              style={{ fill: sous ? AMBER : 'var(--wacc, #00b4d8)' }}
+              stroke="#fff"
+              strokeWidth="1.4"
+            />
           )
         })}
 
@@ -135,7 +154,35 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
             {etiquetteCourte(m, maxChars)}
           </text>
         ))}
+
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {serie.map((v, i) => (
+          <rect
+            key={`h-${i}`}
+            className="graf-hit"
+            x={padL + i * ((W - padL - padR) / serie.length)}
+            y={top - 8}
+            width={(W - padL - padR) / serie.length}
+            height={baseY - top + 12}
+            fill="transparent"
+            onMouseEnter={() => sel.survole(i)}
+            onMouseLeave={sel.quitte}
+            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+          />
+        ))}
       </svg>
+
+      {sel.actif != null && (
+        <InfoBulle
+          x={xDe(sel.actif) / W}
+          y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
+          titre={labels[sel.actif]}
+          valeur={serie[sel.actif]}
+          lignes={lignesComparees(serie[sel.actif], comparaisons, sel.actif)}
+          sous={plancher > 0 && serie[sel.actif] < plancher ? (cible > 0 ? 'sous ton objectif' : S.sousTexte) : ''}
+        />
+      )}
+      </div>
 
       <div className="legend">
         <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : S.legende}</span>

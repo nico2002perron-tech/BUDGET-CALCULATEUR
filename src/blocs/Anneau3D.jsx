@@ -16,6 +16,9 @@
    ========================================================================== */
 import { couleurClasse } from '../lib/depenses.js'
 import { formatCAD } from '../lib/format.js'
+import { etiquetteCourte } from '../lib/serie.js'
+import { useSelection } from './_interaction.jsx'
+import { sons } from '../lib/sons.js'
 
 const I_ANNEAU = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -44,6 +47,9 @@ const COUCHES = 8 // l'épaisseur de l'anneau (translateZ par couche)
 
 export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
   void params
+  // LE SURVOL VIVANT : le segment regardé s'illumine sur TOUTE son épaisseur
+  // et le HUD plat devient sa fiche (nom · montant · part du tout).
+  const sel = useSelection()
   const cats = (Array.isArray(data.parCategorie) ? data.parCategorie : []).filter((c) => Number(c.montant) > 0)
   const total = cats.reduce((s, c) => s + (Number(c.montant) || 0), 0)
   const titre = typeof data.titre === 'string' && data.titre ? `${data.titre}, en anneau` : 'Ton anneau des dépenses'
@@ -73,25 +79,40 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
   const top = cats.slice(0, 5)
 
   // Une couche = le même anneau, plus bas et plus sombre → l'épaisseur.
+  // Les événements ne vivent que sur la couche du DESSUS (i=0) ; les couches
+  // basses laissent passer le pointeur — mais TOUTES illuminent le segment visé.
   const couche = (i) => (
     <svg
       key={i}
       className="a3d-couche"
       viewBox="0 0 180 180"
-      style={{ transform: `translateZ(${(-i * 1.8).toFixed(1)}px)`, filter: i > 0 ? `brightness(${(0.72 - i * 0.05).toFixed(2)})` : undefined }}
+      style={{ transform: `translateZ(${(-i * 1.8).toFixed(1)}px)`, filter: i > 0 ? `brightness(${(0.72 - i * 0.05).toFixed(2)})` : undefined, pointerEvents: i > 0 ? 'none' : undefined }}
       aria-hidden={i > 0 ? 'true' : undefined}
     >
-      {segs.map((s) =>
+      {segs.map((s, k) =>
         s.full ? (
           <circle key={s.id} cx={cx} cy={cy} r={r} fill="none" stroke={s.couleur} strokeWidth={sw} />
         ) : (
-          <path key={s.id} d={s.d} fill="none" stroke={s.couleur} strokeWidth={sw} strokeLinecap="butt">
-            {i === 0 ? <title>{`${s.label} · ${formatCAD(s.montant)}`}</title> : null}
-          </path>
+          <path
+            key={s.id}
+            className={`a3dseg${sel.actif === k ? ' est-vise' : ''}${sel.actif != null && sel.actif !== k ? ' est-eteint' : ''}`}
+            d={s.d}
+            fill="none"
+            stroke={s.couleur}
+            strokeWidth={sel.actif === k ? sw + 3 : sw}
+            strokeLinecap="butt"
+            onMouseEnter={i === 0 ? () => sel.survole(k) : undefined}
+            onMouseLeave={i === 0 ? () => sel.quitte() : undefined}
+            onClick={i === 0 ? () => { if (sel.bascule(k)) sons.tap() } : undefined}
+            style={i === 0 ? { cursor: 'pointer' } : undefined}
+          />
         ),
       )}
     </svg>
   )
+
+  const partVisee = sel.actif != null && segs[sel.actif] ? segs[sel.actif] : null
+  const pctVise = partVisee && total > 0 ? Math.round((partVisee.montant / total) * 100) : 0
 
   return (
     <section className="card p3d a3d">
@@ -102,16 +123,32 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
         <div className="a3d-stage">
           {Array.from({ length: COUCHES }, (_, i) => couche(COUCHES - 1 - i))}
         </div>
-        {/* Le HUD reste PLAT : le total se lit toujours, jamais déformé. */}
+        {/* Le HUD reste PLAT : le total se lit toujours — et devient la fiche
+            de la part regardée quand on en vise une. */}
         <div className="a3d-hud" aria-hidden="true">
-          <span className="a3d-total">{formatCAD(total)}</span>
-          <span className="a3d-sous">{centre}</span>
+          {partVisee ? (
+            <>
+              <span className="a3d-total">{formatCAD(partVisee.montant)}</span>
+              <span className="a3d-sous">{`${etiquetteCourte(partVisee.label, 16)} · ${pctVise} %`}</span>
+            </>
+          ) : (
+            <>
+              <span className="a3d-total">{formatCAD(total)}</span>
+              <span className="a3d-sous">{centre}</span>
+            </>
+          )}
         </div>
       </div>
 
       <div className="legend p3d-legende">
-        {top.map((c) => (
-          <span className="it" key={c.id}><span className="sw" style={{ background: couleurClasse(c.classe) }} />{c.label} · {formatCAD(c.montant)}</span>
+        {top.map((c, i) => (
+          <span
+            className={`it a3d-it${sel.actif === i ? ' est-vise' : ''}`}
+            key={c.id}
+            onMouseEnter={() => sel.survole(i)}
+            onMouseLeave={() => sel.quitte()}
+            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+          ><span className="sw" style={{ background: couleurClasse(c.classe) }} />{c.label} · {formatCAD(c.montant)}</span>
         ))}
       </div>
     </section>
