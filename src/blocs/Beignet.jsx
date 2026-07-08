@@ -121,6 +121,7 @@ export default function Beignet({ params = {}, data = {} }) {
             >
               <span className="bgt-pt" style={{ background: couleurClasse(c.classe) }} />
               <span className="bgt-lbl">{c.label}</span>
+              {total > 0 && <span className="bgt-pct">{Math.round((c.montant / total) * 100)} %</span>}
               <b>{formatCAD(c.montant)}</b>
             </li>
           ))}
@@ -133,6 +134,7 @@ export default function Beignet({ params = {}, data = {} }) {
             >
               <span className="bgt-pt" style={{ background: '#cbd5e1' }} />
               <span className="bgt-lbl">Autres</span>
+              {total > 0 && <span className="bgt-pct">{Math.round((resteMontant / total) * 100)} %</span>}
               <b>{formatCAD(resteMontant)}</b>
             </li>
           ) : null}

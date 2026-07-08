@@ -8,8 +8,9 @@
    props : params { comparaisons? (structure) } · data (contrat normaliserSerie)
            kpi (texteFactuel en sous-titre)
    ========================================================================== */
+import { useId } from 'react'
 import { formatCAD } from '../lib/format.js'
-import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { normaliserSerie, majuscule, etiquetteCourte, abregerMontant } from '../lib/serie.js'
 import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
@@ -33,6 +34,7 @@ const I_BANDES = (
 
 export default function Bandes({ params = {}, data = {}, kpi = null }) {
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
+  const gid = useId().replace(/:/g, '') // les deux-points cassent url(#…)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -89,10 +91,28 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
 
       <div className="graf-zone">
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
-        {/* grille : 4 niveaux discrets + baseline */}
+        <defs>
+          {/* dégradé vertical de TA série (les repères gris et l'ambre restent pleins) */}
+          <linearGradient id={`bnd-${gid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style={{ stopColor: 'var(--wacc, #00b4d8)' }} />
+            <stop offset="1" style={{ stopColor: 'var(--wacc, #00b4d8)', stopOpacity: 0.55 }} />
+          </linearGradient>
+        </defs>
+        {/* grille : 4 niveaux discrets, CHIFFRÉS (l'échelle se lit) + baseline */}
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
-          return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
+          const v = max * (i / 4)
+          const colle = (seuil > 0 && Math.abs(y - yDe(seuil)) < 13) || (cible > 0 && Math.abs(y - yDe(cible)) < 13)
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
+              {!colle && (
+                <text x={padL + 2} y={y - 4} textAnchor="start" fontSize="9" fontWeight="600" fill="#9aa8c0" fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+                  {abregerMontant(v)}
+                </text>
+              )}
+            </g>
+          )
         })}
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
@@ -106,7 +126,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
           const x0 = padL + i * slot + (slot - groupeW) / 2
           return (
             <g key={i} className={`bnd-g${sel.actif === i ? ' est-vise' : ''}${sel.actif != null && sel.actif !== i ? ' est-eteint' : ''}`}>
-              {barre(v, x0, sous ? AMBER : 'var(--wacc, #00b4d8)', `a-${i}`, i * 35)}
+              {barre(v, x0, sous ? AMBER : `url(#bnd-${gid})`, `a-${i}`, i * 35)}
               {comparaisons.map((c, k) => barre(c.valeurs[i] || 0, x0 + (k + 1) * (barW + 1.5), c.couleur, `c-${i}-${k}`, i * 35 + 20))}
             </g>
           )

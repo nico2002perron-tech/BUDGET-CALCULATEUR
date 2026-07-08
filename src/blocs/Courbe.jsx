@@ -11,7 +11,7 @@
    ========================================================================== */
 import { useEffect, useRef } from 'react'
 import { formatCAD } from '../lib/format.js'
-import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
+import { normaliserSerie, majuscule, etiquetteCourte, abregerMontant } from '../lib/serie.js'
 import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
@@ -91,7 +91,17 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en courbe${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
-          return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
+          const colle = (seuil > 0 && Math.abs(y - yDe(seuil)) < 13) || (cible > 0 && Math.abs(y - yDe(cible)) < 13)
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
+              {!colle && (
+                <text x={padL + 2} y={y - 4} textAnchor="start" fontSize="9" fontWeight="600" fill="#9aa8c0" fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+                  {abregerMontant(max * (i / 4))}
+                </text>
+              )}
+            </g>
+          )
         })}
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
@@ -111,8 +121,23 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
           <path key={k} d={chemin(c.valeurs)} fill="none" stroke={c.couleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         ))}
 
-        {/* TA ligne (tracée à l'apparition) + les points */}
-        <path ref={ligneRef} d={chemin(serie)} fill="none" style={{ stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        {/* TA ligne (tracée à l'apparition, halo doux via CSS) + les points */}
+        <path ref={ligneRef} className="crb-ligne" d={chemin(serie)} fill="none" style={{ stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        {/* la valeur du POINT FINAL (là où la trajectoire aboutit) — retirée si
+            elle entrerait en collision avec l'étiquette de la cible */}
+        {(cible <= 0 || Math.abs(yDe(serie[serie.length - 1]) - yDe(cible)) > 18) && (
+          <text
+            x={Math.min(xDe(serie.length - 1) + 4, W - padR - 2)}
+            y={Math.max(12, yDe(serie[serie.length - 1]) - 12)}
+            textAnchor="end"
+            fontSize="11"
+            fontWeight="800"
+            style={{ fill: 'var(--wacc, #00b4d8)' }}
+            fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          >
+            {formatCAD(serie[serie.length - 1])}
+          </text>
+        )}
         {sel.actif != null && (
           <circle cx={xDe(sel.actif)} cy={yDe(serie[sel.actif])} r="9" style={{ fill: 'color-mix(in srgb, var(--wacc, #00b4d8) 18%, transparent)', stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="1" />
         )}

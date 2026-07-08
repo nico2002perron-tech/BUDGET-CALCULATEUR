@@ -55,10 +55,10 @@ const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
    calques translucides sur la couleur d'accent — voir index.css). `sous` =
    mois sous le seuil → ambre (l'exception négative, jamais décoratif) ;
    `couleur` = série comparée (gris) — elle prime sur l'accent, jamais sur l'ambre. */
-function Prisme({ hauteur, delai, sous, couleur }) {
+function Prisme({ hauteur, delai, sous, couleur, fort }) {
   return (
     <div
-      className={`p3d-prisme${sous ? ' est-sous' : ''}`}
+      className={`p3d-prisme${sous ? ' est-sous' : ''}${fort ? ' est-fort' : ''}`}
       style={{ height: hauteur, '--delai': delai, ...(couleur && !sous ? { '--pc': couleur } : {}) }}
     >
       <span className="p3d-face p3d-avant" />
@@ -66,6 +66,9 @@ function Prisme({ hauteur, delai, sous, couleur }) {
       <span className="p3d-face p3d-gauche" />
       <span className="p3d-face p3d-droite" />
       <span className="p3d-face p3d-dessus" />
+      {/* le reflet dans le plancher (salle d'exposition) — suit --pc, donc
+          l'ambre d'une exception et le gris d'un repère se reflètent juste */}
+      <span className="p3d-reflet" aria-hidden="true" />
     </div>
   )
 }
@@ -223,7 +226,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
                 >
                   {i === iMax && <span className="p3d-val">{formatCAD(v)}</span>}
                   <div className="p3d-duo">
-                    <Prisme hauteur={hauteurDe(v)} delai={`${i * 70}ms`} sous={sous} />
+                    <Prisme hauteur={hauteurDe(v)} delai={`${i * 70}ms`} sous={sous} fort={i === iMax} />
                     {comparaisons.map((c, k) => (
                       <Prisme key={k} hauteur={hauteurDe(c.valeurs[i] || 0)} delai={`${i * 70 + 35}ms`} couleur={c.couleur} />
                     ))}

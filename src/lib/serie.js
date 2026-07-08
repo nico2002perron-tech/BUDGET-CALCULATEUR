@@ -43,6 +43,23 @@ export function majuscule(t) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t
 }
 
+/** Montant ABRÉGÉ pour un axe (« 2,1 k$ », « 850 $ », « 1,2 M$ ») — l'échelle
+ *  se lit d'un coup d'œil sans encombrer la grille. PUR. */
+export function abregerMontant(v) {
+  const n = Math.round(Number(v) || 0)
+  const abs = Math.abs(n)
+  const signe = n < 0 ? '−' : ''
+  if (abs >= 1_000_000) {
+    const m = abs / 1_000_000
+    return `${signe}${(m >= 10 ? Math.round(m) : Math.round(m * 10) / 10).toLocaleString('fr-CA')} M$`
+  }
+  if (abs >= 1000) {
+    const k = abs / 1000
+    return `${signe}${(k >= 10 ? Math.round(k) : Math.round(k * 10) / 10).toLocaleString('fr-CA')} k$`
+  }
+  return `${signe}${abs} $`
+}
+
 /** Étiquette d'axe bornée à `max` caractères (le libellé complet vit dans le
  *  tooltip) — les postes du budget ne débordent pas sous les barres. La coupe
  *  se fait au MOT quand c'est possible (« 34 ans » → « 34… », pas « 34 a… »). */

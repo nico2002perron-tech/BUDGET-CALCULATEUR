@@ -10,7 +10,7 @@ import { snapshotFromStore } from '../src/lib/canonical.js'
 import { DEMO_SAISONNIER, exempleStore } from '../src/lib/storage.js'
 import { BLOCS, resoudreComparaisons, tailleWidget, filtrerFait, estConnu } from '../src/recettes/schema.js'
 import { formesPourKPI, formeAdaptee, resolveKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from '../src/recettes/bibliotheque-kpis.js'
-import { normaliserSerie, etiquetteCourte } from '../src/lib/serie.js'
+import { normaliserSerie, etiquetteCourte, abregerMontant } from '../src/lib/serie.js'
 import { MASCOTTES, MASCOTTE_REPLI, VOIX_MENTOR } from '../src/lib/personas.js'
 
 let echecs = 0
@@ -82,6 +82,7 @@ ok(nH.labels.length === 12 && nH.valeurs.length === 12 && nH.titreBase === null,
 const nCap = normaliserSerie({ labels: Array.from({ length: 30 }, (_, i) => String(i)), valeurs: Array.from({ length: 30 }, () => 1) })
 ok(nCap.labels.length === 12 && nCap.valeurs.length === 12, 'jamais plus de 12 points (bornage dur)')
 ok(etiquetteCourte('34 ans', 5) === '34…' && etiquetteCourte('Logement', 6) === 'Logem…' && etiquetteCourte('Juil', 6) === 'Juil', 'étiquettes coupées AU MOT, jamais au milieu d’un chiffre')
+ok(abregerMontant(850) === '850 $' && abregerMontant(2140) === '2,1 k$' && abregerMontant(12600) === '13 k$' && abregerMontant(1_240_000) === '1,2 M$' && abregerMontant(-2100) === '−2,1 k$', 'axe chiffré : montants abrégés justes (850 $ / 2,1 k$ / 13 k$ / 1,2 M$ / −2,1 k$)', [850, 2140, 12600, 1240000, -2100].map(abregerMontant).join(' | '))
 
 console.log('\n— Les séries de comparaison : résolues du snapshot, JAMAIS inventées —')
 const serie = BLOCS.prisme3d.resolve(snap, { comparaisons: [{ contexte: 'moyenne' }, { contexte: 'cout_vie' }, { contexte: 'an_passe' }] })

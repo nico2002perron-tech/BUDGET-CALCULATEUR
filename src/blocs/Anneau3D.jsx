@@ -148,7 +148,7 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
             onMouseEnter={() => sel.survole(i)}
             onMouseLeave={() => sel.quitte()}
             onClick={() => { if (sel.bascule(i)) sons.tap() }}
-          ><span className="sw" style={{ background: couleurClasse(c.classe) }} />{c.label} · {formatCAD(c.montant)}</span>
+          ><span className="sw" style={{ background: couleurClasse(c.classe) }} />{c.label} · {formatCAD(c.montant)}{total > 0 ? ` · ${Math.round((c.montant / total) * 100)} %` : ''}</span>
         ))}
       </div>
     </section>
