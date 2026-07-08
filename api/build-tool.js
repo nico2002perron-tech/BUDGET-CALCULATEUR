@@ -104,6 +104,80 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 - "label" : court et factuel (ex. « ta moyenne », « ton coût de vie »), SANS emoji, sans conseil ni jugement.
 - La phrase demande un contexte hors liste → omets-le (série vide permise : {"series":[]}).`;
 
+// ── Mode PILOTER : « phrase → ACTIONS » (barre-copilote « Demande à ta tour »).
+// L'IA ne fait que CHOISIR des actions dans un vocabulaire FERMÉ, parmi les
+// options OFFERTES envoyées par le client (formes/contextes/couleurs = forme des
+// données seulement, jamais un montant du silo). Le client VALIDE + applique
+// chaque action (actions.js) : une action impossible est refusée honnêtement.
+const SYSTEM_PILOTER = `Tu es le COPILOTE de « la tour de contrôle », une plateforme québécoise de finances personnelles. L'usager regarde UN indicateur dans son « carré de sable » et te parle en français.
+Ton rôle : traduire sa phrase en une LISTE d'ACTIONS, dans l'ordre. Tu NE calcules RIEN, tu NE mets AUCUN montant venant des données (les chiffres vivent sur l'appareil de l'usager). Le SEUL nombre que tu peux écrire est celui que l'usager PRONONCE lui-même (ex. « une cible de 4000 »).
+
+On te donne : l'indicateur (id + question), sa forme actuelle, les FORMES OFFERTES (ids), les CONTEXTES de comparaison OFFERTS (ids), les COULEURS offertes (ids), si une cible est réglable (+ son unité).
+
+VERBES (n'utilise QUE ceux-ci ; ne choisis QUE parmi les options offertes) :
+- {"verbe":"changer_forme","forme":"<id parmi les FORMES OFFERTES>"}
+- {"verbe":"ajouter_comparateur","contexte":"<id parmi les CONTEXTES OFFERTS>"}
+- {"verbe":"retirer_comparateur","contexte":"<id>"}
+- {"verbe":"poser_cible","valeur":<nombre prononcé par l'usager>}
+- {"verbe":"retirer_cible"}
+- {"verbe":"changer_couleur","couleur":"<id parmi les COULEURS offertes>"}
+- {"verbe":"renommer","titre":"<court, tutoiement, factuel, sans emoji>"}
+
+Sens des formes courantes : prisme3d=3D en relief, bandes=barres, courbe=ligne, nuage=bulles, beignet=circulaire, anneau3d=anneau, stat=un chiffre, jauge=arc, fait=une phrase.
+Sens des contextes : moyenne=sa moyenne, cout_vie=son coût de vie, an_passe=l'an passé.
+Une phrase peut donner PLUSIEURS actions (« en courbe avec une cible de 4000 » → changer_forme + poser_cible). Une demande impossible/hors options → ne l'inclus pas (liste vide permise).
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"actions":[ ... ]}`;
+
+// Maquette déterministe du mode piloter (clé absente) : mots-clés → actions.
+// Couvre les commandes courantes → le copilote marche HORS LIGNE pour tous.
+function mockPiloter(message, p) {
+  const t = String(message || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const ctx = p || {};
+  const formes = Array.isArray(ctx.formesOffertes) ? ctx.formesOffertes : [];
+  const contextes = Array.isArray(ctx.contextesOfferts) ? ctx.contextesOfferts : [];
+  const couleurs = Array.isArray(ctx.couleurs) ? ctx.couleurs : [];
+  const actions = [];
+  const retrait = /\b(enleve|retire|efface|sans|plus de|enleves)\b/.test(t);
+
+  // FORME (synonymes → id) ; on ne propose que si elle est offerte
+  const FORME_MOTS = [
+    ['prisme3d', /(prisme|relief|\b3d\b|trois? ?d)/], ['courbe', /(courbe|ligne|lineaire)/],
+    ['bandes', /(bande|barre|histogramme)/], ['nuage', /(nuage|bulle|point)/],
+    ['beignet', /(beignet|circulaire|camembert|secteur|donut)/], ['anneau3d', /(anneau|couronne)/],
+    ['stat', /(chiffre|nombre|gros chiffre|un seul)/], ['jauge', /(jauge|arc|cadran)/], ['fait', /(constat|une phrase|en mots)/],
+  ];
+  for (const [id, re] of FORME_MOTS) { if (re.test(t) && formes.includes(id)) { actions.push({ verbe: 'changer_forme', forme: id }); break; } }
+
+  // CIBLE : « cible/objectif de 4000 », « 4 000 par mois » ; ou retrait
+  if (ctx.cible && ctx.cible.present) {
+    if (retrait && /(cible|objectif)/.test(t)) actions.push({ verbe: 'retirer_cible' });
+    else {
+      const m = t.match(/(?:cible|objectif|vise|a)\D{0,12}?(\d[\d\s]{1,9})/) || t.match(/(\d[\d\s]{2,9})\s*(?:\$|par mois|\/mois|mois|%)/);
+      if (m) { const v = parseInt(m[1].replace(/\s/g, ''), 10); if (isFinite(v)) actions.push({ verbe: 'poser_cible', valeur: v }); }
+    }
+  }
+
+  // COMPARATEURS (saisonnier) : ajoute/retire selon les sujets nommés
+  const CTX_MOTS = [['moyenne', /(moyenne|lissee?)/], ['cout_vie', /(cout|couts|vie|depense|seuil)/], ['an_passe', /(an passe|l an dernier|annee derniere|historique|passee?)/]];
+  for (const [id, re] of CTX_MOTS) {
+    if (re.test(t) && contextes.includes(id)) actions.push({ verbe: retrait ? 'retirer_comparateur' : 'ajouter_comparateur', contexte: id });
+  }
+
+  // COULEUR (mot → id de palette)
+  const COUL_MOTS = [['vert', /vert/], ['cyan', /(cyan|turquoise)/], ['ocean', /(ocean|bleu fonce|bleu marine)/], ['indigo', /indigo/], ['lavande', /(lavande|mauve|violet|lilas)/], ['magenta', /(magenta|rose|fuchsia)/]];
+  for (const [id, re] of COUL_MOTS) { if (re.test(t) && couleurs.includes(id)) { actions.push({ verbe: 'changer_couleur', couleur: id }); break; } }
+
+  // RENOMMER : « appelle/renomme/nomme … "X" » ou « … : X »
+  const ren = message.match(/(?:appelle[- ]?la|appelle|renomme[- ]?la|renomme|nomme[- ]?la|nomme|titre)\s*[:«"]?\s*([^"»]{2,40})/i);
+  if (ren && /appelle|renomme|nomme|titre/i.test(message)) {
+    const titre = ren[1].replace(/["»].*$/, '').trim();
+    if (titre) actions.push({ verbe: 'renommer', titre });
+  }
+
+  return { actions };
+}
+
 // Maquette déterministe du mode comparer (clé absente) : mots-clés → contextes.
 function mockComparer(message, disponibles) {
   const dispo = Array.isArray(disponibles) ? disponibles : [];
@@ -187,8 +261,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET') return res.status(200).json({ service: 'build-tool', version: VERSION, ok: true });
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
-  // Lecture du corps : message + mode (entite | recette | comparer)
-  let message = '', mode = 'entite', comparer = null;
+  // Lecture du corps : message + mode (entite | recette | comparer | piloter)
+  let message = '', mode = 'entite', comparer = null, piloter = null;
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b || '{}');
@@ -205,16 +279,35 @@ export default async function handler(req, res) {
         contextesDisponibles: Array.isArray(b.contextesDisponibles) ? b.contextesDisponibles.slice(0, 10).map((x) => String(x).slice(0, 40)) : [],
       };
     }
+    if (mode === 'piloter') {
+      // FORME seulement (privacy) : ids d'options offertes + booléens + unité.
+      // AUCUN montant du silo — seul le nombre PRONONCÉ par l'usager (dans la phrase) circule.
+      const cible = b.cible && typeof b.cible === 'object' ? b.cible : {};
+      piloter = {
+        surface: String(b.surface || 'sable').slice(0, 20),
+        kpi: String(b.kpi || '').slice(0, 60),
+        question: String(b.question || '').slice(0, 200),
+        formeActive: String(b.formeActive || '').slice(0, 30),
+        formesOffertes: Array.isArray(b.formesOffertes) ? b.formesOffertes.slice(0, 16).map((x) => String(x).slice(0, 30)) : [],
+        contextesOfferts: Array.isArray(b.contextesOfferts) ? b.contextesOfferts.slice(0, 10).map((x) => String(x).slice(0, 30)) : [],
+        couleurs: Array.isArray(b.couleurs) ? b.couleurs.slice(0, 10).map((x) => String(x).slice(0, 20)) : [],
+        cible: { present: !!cible.present, unite: String(cible.unite || '').slice(0, 12), posee: !!cible.posee },
+      };
+    }
   } catch { /* ignore */ }
   if (!message) return res.status(400).json({ error: 'empty_message' });
   if (message.length > 600) message = message.slice(0, 600);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const system = (mode === 'comparer') ? SYSTEM_COMPARER : (mode === 'recette') ? SYSTEM_RECETTE : SYSTEM;
+  const system = (mode === 'comparer') ? SYSTEM_COMPARER : (mode === 'recette') ? SYSTEM_RECETTE : (mode === 'piloter') ? SYSTEM_PILOTER : SYSTEM;
   const texteUsager = message; // la phrase BRUTE (le mock lit celle-ci, jamais le gabarit)
   if (mode === 'comparer') {
     const c = comparer || { kpi: '', question: '', saisonnier: false, donneesDisponibles: [], contextesDisponibles: [] };
     message = `KPI : ${c.kpi} — « ${c.question} »\nRevenus saisonniers : ${c.saisonnier ? 'oui' : 'non'}\nDonnées présentes : ${c.donneesDisponibles.join(', ') || '(aucune)'}\nContextes disponibles : ${c.contextesDisponibles.join(', ') || '(aucun)'}\nDemande de l'usager : ${message}`;
+  }
+  if (mode === 'piloter') {
+    const p = piloter || { kpi: '', question: '', formeActive: '', formesOffertes: [], contextesOfferts: [], couleurs: [], cible: { present: false, unite: '', posee: false } };
+    message = `Indicateur : ${p.kpi} — « ${p.question} »\nForme actuelle : ${p.formeActive || '(aucune)'}\nFormes offertes : ${p.formesOffertes.join(', ') || '(aucune)'}\nContextes de comparaison offerts : ${p.contextesOfferts.join(', ') || '(aucun)'}\nCouleurs offertes : ${p.couleurs.join(', ') || '(aucune)'}\nCible réglable : ${p.cible.present ? `oui (unité ${p.cible.unite || '?'}, ${p.cible.posee ? 'déjà posée' : 'non posée'})` : 'non'}\nDemande de l'usager : ${message}`;
   }
 
   // Sans clé : en modes recette/comparer on renvoie une MAQUETTE locale (le flux
@@ -223,6 +316,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     if (mode === 'recette') return res.status(200).json(Object.assign({ _mock: true }, mockRecette(message)));
     if (mode === 'comparer') return res.status(200).json(Object.assign({ _mock: true }, mockComparer(texteUsager, comparer && comparer.contextesDisponibles)));
+    if (mode === 'piloter') return res.status(200).json(Object.assign({ _mock: true }, mockPiloter(texteUsager, piloter)));
     return res.status(503).json({ error: 'no_key' });
   }
 
@@ -233,6 +327,7 @@ export default async function handler(req, res) {
     if (data.type === 'error') return res.status(502).json({ error: 'api_error', status: out.status, anthropic_type: data.error && data.error.type, message: data.error && data.error.message, request_id: data.request_id });
     if (data.stop_reason === 'refusal') {
       if (mode === 'comparer') return res.status(200).json(mockComparer(texteUsager, comparer && comparer.contextesDisponibles));
+      if (mode === 'piloter') return res.status(200).json(mockPiloter(texteUsager, piloter));
       if (mode === 'recette') return res.status(200).json(mockRecette(message));
       return res.status(200).json({ kind: 'unknown', name: '', icon: 'target', target: null, monthly: null, date: null, note: 'Je ne peux pas traiter cette demande. Décris-moi plutôt un objectif d\'épargne à suivre.' });
     }

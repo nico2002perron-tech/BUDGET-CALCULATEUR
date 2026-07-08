@@ -462,7 +462,10 @@ function App() {
         const params = { ...(maj.params || {}) }
         Object.keys(params).forEach((k) => { if (params[k] === undefined) delete params[k] })
         const blocs = w.recette.blocs.map((b) => (b && b.KPI ? { ...b, forme: maj.forme || b.forme, params } : b))
-        const w2 = { ...w, recette: { ...w.recette, blocs }, epingle: true }
+        // titre/couleur changés dans le sable (par le copilote) → repliés ici aussi.
+        const recette = typeof maj.titre === 'string' && maj.titre.trim() ? { ...w.recette, titre: maj.titre, blocs } : { ...w.recette, blocs }
+        const w2 = { ...w, recette, epingle: true }
+        if (maj.couleur) w2.accent = maj.couleur
         if (maj.persona) w2.persona = maj.persona
         else delete w2.persona
         return w2

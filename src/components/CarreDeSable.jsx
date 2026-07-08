@@ -12,9 +12,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
-import { kpiPourId, formesPourKPI, nomForme, resolveKPI, DONNEE_DISPO, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
+import { executerActions, resumeActions } from '../recettes/actions.js'
+import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { sons } from '../lib/sons.js'
+
+// Les verbes que la barre-copilote pilote DANS le sable (forme/comparateurs/
+// cible/couleur/titre — tout a un aperçu vivant ici). Les verbes du board
+// (créer/retirer/redimensionner) vivent sur la barre du tableau (A3).
+const VERBES_SABLE = ['changer_forme', 'ajouter_comparateur', 'retirer_comparateur', 'poser_cible', 'retirer_cible', 'changer_couleur', 'renommer']
 
 // Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
 // avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
@@ -51,9 +58,17 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
   const [cible, setCible] = useState(null) // null = celle de la recette, sinon le défaut du KPI
   const [persona, setPersona] = useState(null) // null = celle du widget (épinglée), sinon ton choix du moment
+  const [couleurScene, setCouleurScene] = useState(null) // null = l'accent du widget ; sinon la couleur du copilote (repliée à l'épinglage)
+  const [titreScene, setTitreScene] = useState(null) // null = le titre du widget ; sinon le renommage du copilote
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
+  const [fait, setFait] = useState(null) // { resume, refus, avant } — la chip « Fait · Annuler »
+  const faitTimerRef = useRef(0)
+  // L'état de scène le PLUS RÉCENT (mis à jour à chaque rendu) : le copilote lit
+  // CETTE ref au moment d'APPLIQUER (après le fetch), jamais la closure du submit
+  // — une retouche faite pendant la requête n'est donc jamais écrasée.
+  const sceneEtatRef = useRef(null)
   const recette = widget && widget.recette
   const kb = recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null
   const def = kb ? kpiPourId(kb.KPI) : null
@@ -67,6 +82,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // contrôle que l'usager manipule dans la scène).
   const onFermerRef = useRef(onFermer)
   useEffect(() => { onFermerRef.current = onFermer }, [onFermer])
+
+  // Nettoyage du timer de la chip « Fait » au démontage (hook inconditionnel,
+  // avant tout return — jamais après le garde `if (!actif)`).
+  useEffect(() => () => clearTimeout(faitTimerRef.current), [])
 
   // La tuile d'origine devient PÉRIMÉE si la fenêtre change (rotation, resize)
   // pendant que le sable est ouvert → la fermeture dégrade en fondu simple.
@@ -210,45 +229,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const basculerSujet = (s) => {
     sons.tap()
     setIaNote(null)
+    setFait(null) // une retouche manuelle ferme la chip « Annuler » (plus d'instantané périmé)
     setComparaisons(estAjoute(s.contexte)
       ? compActives.filter((c) => c.contexte !== s.contexte)
       : [...compActives, { contexte: s.contexte, label: s.label }].slice(0, 3))
-  }
-  // L'IA choisit QUELS contextes ajouter — le payload est la FORME des données
-  // (ids, question, clés, booléen) : AUCUN montant ne quitte l'appareil.
-  const demanderIA = async (e) => {
-    e.preventDefault()
-    const texte = iaTexte.trim()
-    if (!texte || iaCharge) return
-    setIaCharge(true)
-    setIaNote(null)
-    try {
-      const offerts = SUJETS_COMPARER.filter((s) => sujetOffert(s.contexte)).map((s) => s.contexte)
-      const res = await fetch('/api/build-tool', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        signal: AbortSignal.timeout(15000), // jamais une barre IA verrouillée sans issue
-        body: JSON.stringify({
-          mode: 'comparer',
-          texte,
-          kpi: kb.KPI,
-          question: def.question,
-          saisonnier: !!DONNEE_DISPO.saison(snapshot || {}),
-          donneesDisponibles: Object.keys(DONNEE_DISPO).filter((k) => DONNEE_DISPO[k](snapshot || {})),
-          contextesDisponibles: offerts,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data || !Array.isArray(data.series)) throw new Error('réponse invalide')
-      const valides = data.series.filter((s) => s && offerts.includes(s.contexte) && !estAjoute(s.contexte))
-      if (valides.length === 0) setIaNote('Rien à ajouter pour cette demande — les sujets offerts sont ci-dessus.')
-      else setComparaisons([...compActives, ...valides.map((s) => ({ contexte: s.contexte, label: typeof s.label === 'string' ? s.label : undefined }))].slice(0, 3))
-      setIaTexte('')
-    } catch {
-      setIaNote('Ta tour n’a pas pu traiter la demande. Réessaie, ou tape un sujet ci-dessus.')
-    } finally {
-      setIaCharge(false)
-    }
   }
 
   // L'OBJECTIF : quand le KPI supporte une cible (son reglage, ou le réglage
@@ -266,7 +250,101 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const bougeCible = (delta) => {
     if (!reglage || !(cibleActive > 0)) return
     sons.tap()
+    setFait(null)
     setCible(clampCible(cibleActive + delta))
+  }
+
+  // La couleur / le titre du moment (le copilote peut les changer ; repliés à
+  // l'épinglage, comme la forme). Aperçu vivant : la scène se teinte en direct.
+  const couleurActive = couleurScene || widget.accent || null
+  const titreActif = titreScene != null ? titreScene : (recette && recette.titre) || def.question
+
+  // On PUBLIE l'état de scène courant dans la ref à CHAQUE rendu → le copilote
+  // (qui applique APRÈS le fetch) lit toujours l'état le plus frais.
+  sceneEtatRef.current = {
+    formeActive, compActives, cibleActive, couleurActive, titreActif,
+    formeChoisie, comparaisons, cible, couleurScene, titreScene,
+  }
+
+  // ── LA BARRE-COPILOTE « Demande à ta tour » : ta phrase → des ACTIONS. L'IA ne
+  //    fait que CHOISIR dans le vocabulaire fermé (actions.js) parmi les options
+  //    OFFERTES (payload = forme des données seulement, AUCUN montant du silo) ;
+  //    ici on VALIDE + applique chaque action, et « Annuler » restaure l'avant.
+  const appliquerActions = (actions) => {
+    const S = sceneEtatRef.current // l'état FRAIS au moment d'appliquer (pas la closure du submit)
+    // seul le vocabulaire du sable ; un verbe du board renvoyé par l'IA est écarté.
+    const filtrees = (Array.isArray(actions) ? actions : []).filter((a) => a && VERBES_SABLE.includes(a.verbe))
+    const widgetCourant = { ...widget, accent: S.couleurActive, recette: { ...recette, titre: S.titreActif } }
+    const objectif = kb.params && kb.params.objectif ? kb.params.objectif : undefined
+    const etatCourant = {
+      widgets: [widgetCourant],
+      sable: { widgetId: widget.id, kpiId: kb.KPI, forme: S.formeActive, comparaisons: S.compActives, cible: S.cibleActive > 0 ? S.cibleActive : null, objectif },
+    }
+    const avant = { formeChoisie: S.formeChoisie, comparaisons: S.comparaisons, cible: S.cible, couleurScene: S.couleurScene, titreScene: S.titreScene }
+    const { etat, faites, refusees } = executerActions(filtrees, { snapshot }, etatCourant)
+    // Mapper l'état-scène résultant vers l'état local (seulement ce qui a changé).
+    const s2 = etat.sable
+    if (s2.forme !== S.formeActive) setFormeChoisie(s2.forme)
+    if (s2.comparaisons !== S.compActives) setComparaisons(s2.comparaisons)
+    if (s2.cible !== (S.cibleActive > 0 ? S.cibleActive : null)) setCible(s2.cible == null ? 0 : s2.cible)
+    const w2 = etat.widgets.find((w) => w.id === widget.id) || widgetCourant
+    if ((w2.accent || null) !== S.couleurActive) setCouleurScene(w2.accent || null)
+    const t2 = w2.recette ? w2.recette.titre : S.titreActif
+    if (t2 !== S.titreActif) setTitreScene(t2)
+    // La chip « Fait · Annuler » (les refus sont énoncés honnêtement).
+    if (faites.length) sons.pose()
+    const resume = resumeActions(faites)
+    const refus = refusees.length ? refusees[0].raison : null
+    clearTimeout(faitTimerRef.current)
+    setFait(faites.length || refus ? { resume, refus, avant } : null)
+    if (faites.length || refus) faitTimerRef.current = setTimeout(() => setFait(null), 8000)
+    return { faites: faites.length, refusees: refusees.length }
+  }
+  const annuler = () => {
+    if (!fait) return
+    sons.tap()
+    const a = fait.avant
+    setFormeChoisie(a.formeChoisie); setComparaisons(a.comparaisons); setCible(a.cible)
+    setCouleurScene(a.couleurScene); setTitreScene(a.titreScene)
+    clearTimeout(faitTimerRef.current)
+    setFait(null)
+  }
+  const piloter = async (e) => {
+    e.preventDefault()
+    const texte = iaTexte.trim()
+    if (!texte || iaCharge) return
+    setIaCharge(true)
+    setIaNote(null)
+    try {
+      const offerts = SUJETS_COMPARER.filter((s) => sujetOffert(s.contexte)).map((s) => s.contexte)
+      const res = await fetch('/api/build-tool', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(15000), // jamais une barre verrouillée sans issue
+        body: JSON.stringify({
+          mode: 'piloter',
+          texte,
+          surface: 'sable',
+          kpi: kb.KPI,
+          question: def.question,
+          formeActive,
+          formesOffertes: formes,
+          contextesOfferts: offerts,
+          couleurs: PALETTE_ACCENTS.map((c) => c.id),
+          cible: { present: !!reglage, unite: reglage ? reglage.unite : '', posee: cibleActive > 0 },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data || !Array.isArray(data.actions)) throw new Error('réponse invalide')
+      const { faites, refusees } = appliquerActions(data.actions)
+      // Rien surfacé (ni fait ni refusé — salve vide OU entièrement hors sable) → on le DIT.
+      if (!faites && !refusees) setIaNote('Je n’ai pas trouvé d’action pour cette demande — essaie « en courbe », « cible 4 000 », « en vert ».')
+      setIaTexte('')
+    } catch {
+      setIaNote('Ta tour n’a pas pu traiter la demande. Réessaie.')
+    } finally {
+      setIaCharge(false)
+    }
   }
 
   const paramsScene = {
@@ -297,6 +375,9 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
       forme: formeActive,
       params,
       persona: personaActive && personaActive.type !== 'neutre' ? personaActive : null,
+      // couleur/titre changés par le copilote → repliés sur la tuile (comme la forme).
+      ...(couleurScene ? { couleur: couleurScene } : {}),
+      ...(titreScene != null && titreScene !== ((recette && recette.titre) || '') ? { titre: titreScene } : {}),
     })
     fermer()
   }
@@ -311,7 +392,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
       role="dialog"
       aria-modal="true"
       aria-label={`Carré de sable — ${def.question}`}
-      style={widget.accent ? { '--wacc': widget.accent } : undefined}
+      style={couleurActive ? { '--wacc': couleurActive } : undefined}
     >
       {/* LE SCRIM : le board reste visible derrière (~55 %) ; taper à côté referme. */}
       <div className="sable-scrim" ref={scrimRef} onClick={fermer} aria-hidden="true" />
@@ -323,7 +404,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           {I_RETOUR}
         </button>
         <div className="sable-tete-txt">
-          <span className="sable-titre">{(recette && recette.titre) || def.question}</span>
+          <span className="sable-titre">{titreActif}</span>
           <span className="sable-sous">carré de sable · fabrique ta vue</span>
         </div>
         <span className="sable-badge">IA</span>
@@ -344,7 +425,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                   disabled={!offert}
                   aria-pressed={t === formeActive}
                   title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
-                  onClick={() => { sons.tap(); setFormeChoisie(t) }}
+                  onClick={() => { sons.tap(); setFait(null); setFormeChoisie(t) }}
                 >
                   {nomForme(t)}
                 </button>
@@ -353,8 +434,37 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           </div>
         )}
 
-        {/* AJOUTER À COMPARER : chips tappables (ajouté = pastille retirable ×) +
-            la barre « demande à l'IA ». Le nuage lit une seule série → pas de bloc. */}
+        {/* LA BARRE-COPILOTE : une phrase → des actions (forme, comparaison,
+            cible, couleur, renommage). Toujours là ; l'IA choisit dans le
+            vocabulaire offert, on applique, « Annuler » défait la salve. */}
+        {formeActive && (
+          <div className="sable-copilote">
+            <form className="sable-ia" onSubmit={piloter}>
+              <input
+                type="text"
+                className="sable-ia-input"
+                placeholder="demande à ta tour — ex. « en courbe, cible 4 000, en vert »"
+                value={iaTexte}
+                onChange={(e) => setIaTexte(e.target.value)}
+                aria-label="Demander une action à ta tour"
+              />
+              <button type="submit" className="sable-ia-go" disabled={iaCharge || !iaTexte.trim()}>
+                {iaCharge ? '…' : 'IA'}
+              </button>
+            </form>
+            {fait && (
+              <div className="sable-fait" role="status">
+                {fait.resume ? <span className="sable-fait-t">{fait.resume}</span> : null}
+                {fait.refus ? <span className="sable-fait-r">{fait.refus}</span> : null}
+                {fait.resume ? <button type="button" className="sable-fait-annul" onClick={annuler}>Annuler</button> : null}
+              </div>
+            )}
+            {iaNote && <p className="sable-ia-note" role="status">{iaNote}</p>}
+          </div>
+        )}
+
+        {/* AJOUTER À COMPARER : chips tappables (ajouté = pastille retirable ×).
+            Le nuage lit une seule série → pas de bloc ; saisonnier seulement. */}
         {formeActive && comparable && (
           <div className="sable-comparer" role="group" aria-label="Ajouter à comparer">
             <span className="sable-types-l">Comparer</span>
@@ -376,20 +486,6 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 </button>
               )
             })}
-            <form className="sable-ia" onSubmit={demanderIA}>
-              <input
-                type="text"
-                className="sable-ia-input"
-                placeholder="demande à l’IA — ex. « compare à ma moyenne »"
-                value={iaTexte}
-                onChange={(e) => setIaTexte(e.target.value)}
-                aria-label="Demander une comparaison à l’IA"
-              />
-              <button type="submit" className="sable-ia-go" disabled={iaCharge || !iaTexte.trim()}>
-                {iaCharge ? '…' : 'IA'}
-              </button>
-            </form>
-            {iaNote && <p className="sable-ia-note" role="status">{iaNote}</p>}
           </div>
         )}
 
@@ -404,10 +500,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(-reglage.pas)} aria-label={`Moins ${reglage.pas}`}>−</button>
                 <span className="sable-obj-val">{cibleActive}<small>{reglage.unite}</small></span>
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(reglage.pas)} aria-label={`Plus ${reglage.pas}`}>+</button>
-                <button type="button" className="sable-obj-retirer" onClick={() => { sons.tap(); setCible(0) }}>Retirer</button>
+                <button type="button" className="sable-obj-retirer" onClick={() => { sons.tap(); setFait(null); setCible(0) }}>Retirer</button>
               </>
             ) : (
-              <button type="button" className="sable-type" onClick={() => { sons.tap(); setCible(cibleRecette || reglage.defaut) }}>
+              <button type="button" className="sable-type" onClick={() => { sons.tap(); setFait(null); setCible(cibleRecette || reglage.defaut) }}>
                 Poser un objectif
               </button>
             )}
@@ -416,7 +512,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
 
         {/* LA PERSONNALITÉ : identité et voix — jamais un jugement (filtrerFait). */}
         {formeActive && (
-          <PersonaStrip persona={personaActive} onChange={setPersona} kpi={kpiResolu} kpiId={kb.KPI} domaine={def.domaine} />
+          <PersonaStrip persona={personaActive} onChange={(p) => { setFait(null); setPersona(p) }} kpi={kpiResolu} kpiId={kb.KPI} domaine={def.domaine} />
         )}
 
         <div className="sable-scene">
