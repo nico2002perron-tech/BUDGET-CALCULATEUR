@@ -390,6 +390,24 @@ export function comparaisonScenarios(snapshot, ctx) {
 export const FORMES_SERIE = ['prisme3d', 'bandes', 'courbe', 'nuage']
 export const FORMES_PARTS = ['beignet', 'anneau3d']
 
+/* ── LA CIBLE d'un KPI (le stepper « objectif » du sable) — SOURCE UNIQUE.
+   Un KPI porte sa cible sur def.reglage (mois/%…) ; à défaut, un KPI saisonnier
+   dont une forme-série est offerte reçoit le réglage LOCAL au sable (un plancher
+   de revenu, $/mois). Centralisé ici pour que la barre-copilote pose EXACTEMENT
+   la même cible que la rangée « objectif » — jamais deux règles divergentes. PUR. */
+export const FORMES_COMPARABLES = ['prisme3d', 'bandes', 'courbe']
+export const REGLAGE_SERIE = { label: 'Ton plancher de revenu', unite: '$/mois', defaut: 3000, min: 500, max: 15000, pas: 250 }
+export function reglageCible(kpiId, snapshot, ctx) {
+  const def = kpiPourId(kpiId)
+  if (!def) return null
+  if (def.reglage) return def.reglage
+  if (def.domaine === 'saisonnier') {
+    const formes = formesPourKPI(kpiId, snapshot, ctx || {})
+    if (formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage')) return REGLAGE_SERIE
+  }
+  return null
+}
+
 // ≤ max points, premiers/derniers inclus (les projections longues restent
 // lisibles). `ancres` = indices à inclure COÛTE QUE COÛTE (l'année de retraite,
 // l'année de rupture) : le fait daté du héros a toujours son point sur la courbe.

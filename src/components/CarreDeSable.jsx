@@ -12,7 +12,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
-import { kpiPourId, formesPourKPI, nomForme, resolveKPI, DONNEE_DISPO } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI, nomForme, resolveKPI, DONNEE_DISPO, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { sons } from '../lib/sons.js'
 
@@ -20,8 +20,8 @@ import { sons } from '../lib/sons.js'
 // avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
 const TYPES_SABLE = ['prisme3d', 'bandes', 'beignet', 'anneau3d', 'courbe', 'nuage']
 
-// Les formes qui PORTENT des séries de comparaison (le nuage lit une seule série).
-const FORMES_COMPARABLES = ['prisme3d', 'bandes', 'courbe']
+// FORMES_COMPARABLES et le réglage de cible (reglageCible) vivent désormais dans
+// la bibliothèque — SOURCE UNIQUE partagée avec la barre-copilote (actions.js).
 
 // Les sujets « Ajouter à comparer » (déterministes, sans clé API). Un sujet dont
 // la donnée manque reste visible, grisé, avec sa condition (jamais inventé).
@@ -30,11 +30,6 @@ const SUJETS_COMPARER = [
   { contexte: 'cout_vie', label: 'ton coût de vie' },
   { contexte: 'an_passe', label: 'l’an passé', condition: 's’allume avec ton historique' },
 ]
-
-// L'objectif du sable pour les KPIs à SÉRIE : un réglage LOCAL au sable (les
-// formes-séries tracent le plan ambre). Il ne s'ajoute pas au registre du KPI —
-// l'essayage de la Galerie n'a pas à montrer un stepper que ses formes ignorent.
-const REGLAGE_SERIE = { label: 'Ton plancher de revenu', unite: '$/mois', defaut: 3000, min: 500, max: 15000, pas: 250 }
 
 const I_RETOUR = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -264,7 +259,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // Le réglage série (« plancher de revenu, $/mois ») ne parle que de la famille
   // saisonnier — un KPI patrimoine/impôt qui débloque le prisme via serieDuKPI
   // ne reçoit pas un stepper étranger à sa donnée.
-  const reglage = def.reglage || (def.domaine === 'saisonnier' && formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage') ? REGLAGE_SERIE : null)
+  const reglage = reglageCible(kb.KPI, snapshot, kb.params)
   const clampCible = (v) => (reglage ? Math.min(reglage.max, Math.max(reglage.min, v)) : v)
   const cibleRecette = kb.params && isFinite(Number(kb.params.cible)) && Number(kb.params.cible) > 0 ? clampCible(Number(kb.params.cible)) : 0
   const cibleActive = reglage ? (cible != null ? cible : cibleRecette) : 0
