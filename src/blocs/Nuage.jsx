@@ -9,10 +9,10 @@
 
    props : params {} · data (contrat normaliserSerie) · kpi (texteFactuel)
    ========================================================================== */
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte, abregerMontant } from '../lib/serie.js'
-import { useSelection, InfoBulle } from './_interaction.jsx'
+import { useSelection, InfoBulle, BoutonRejouer, reduceMotion } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
 const AMBER = '#e0a23c'
@@ -27,6 +27,8 @@ const I_NUAGE = (
 export default function Nuage({ params = {}, data = {}, kpi = null }) {
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const gid = useId().replace(/:/g, '') // les deux-points cassent url(#…)
+  const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (les billes se reposent)
+  const animer = !reduceMotion()
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -55,11 +57,11 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-nuage">
-      <div className="card-title">{I_NUAGE}{titre}</div>
+      <div className="card-title">{I_NUAGE}{titre}{animer && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en bulles — plus la valeur pèse, plus la bulle est grosse.`}>
+      <svg key={prise} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en bulles — plus la valeur pèse, plus la bulle est grosse.`}>
         <defs>
           {/* le reflet des billes : un éclat en haut-gauche, l'accent en masse */}
           <radialGradient id={`nug-${gid}`} cx="0.35" cy="0.3" r="0.8">

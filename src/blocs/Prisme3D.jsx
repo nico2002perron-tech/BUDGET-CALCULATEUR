@@ -26,10 +26,10 @@
    Data-aware : série vide → état honnête. prefers-reduced-motion : aucune
    rotation ni croissance, tout s'affiche d'un coup.
    ========================================================================== */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
-import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { useSelection, InfoBulle, lignesComparees, BoutonRejouer } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
 const I_CUBE = (
@@ -87,6 +87,8 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     // un NOUVEAU geste repart propre : un swipe tactile ne laisse jamais un
     // drapeau levé qui avalerait le prochain tap (tuile qui n'ouvre plus).
     aTourneRef.current = false
+    cancelAnimationFrame(inertieRaf.current) // reprendre en main = stopper l'élan
+    echRef.current = []
     // reprendre l'angle COURANT de l'oscillation — jamais de décrochage au grab.
     if (stageRef.current && sceneRef.current && !sceneRef.current.classList.contains('est-manuel')) {
       try {
@@ -110,12 +112,37 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
     }
     angleRef.current = t.angle + delta * 0.45
+    echRef.current.push({ t: e.timeStamp, a: angleRef.current })
+    if (echRef.current.length > 6) echRef.current.shift()
     if (sceneRef.current) sceneRef.current.classList.add('est-manuel')
     if (stageRef.current) stageRef.current.style.transform = `rotateX(10deg) rotateY(${angleRef.current}deg)`
   }
+  // L'INERTIE : au lâcher d'un vrai glisser, la scène glisse encore un instant
+  // (vitesse des derniers échantillons, décélération ×0.92/frame) puis se pose.
+  // Jamais sous prefers-reduced-motion ; une nouvelle prise l'arrête net.
+  const echRef = useRef([]) // derniers { t, a } du glisser
+  const inertieRaf = useRef(0)
+  useEffect(() => () => cancelAnimationFrame(inertieRaf.current), [])
   const surLachePointer = (e) => {
     const t = tourneRef.current
-    if (t && e.pointerId === t.pointerId) tourneRef.current = null
+    if (!t || e.pointerId !== t.pointerId) return
+    tourneRef.current = null
+    const ech = echRef.current
+    echRef.current = []
+    if (!aTourneRef.current || reduceMotion() || ech.length < 2) return
+    const fin = ech[ech.length - 1]
+    const deb = ech.find((p) => fin.t - p.t <= 120) || ech[0]
+    const dt = fin.t - deb.t
+    if (dt < 10) return
+    let v = Math.max(-1.4, Math.min(1.4, (fin.a - deb.a) / dt)) // deg/ms
+    if (Math.abs(v) < 0.05) return
+    const pas = () => {
+      angleRef.current += v * 16
+      v *= 0.92
+      if (stageRef.current) stageRef.current.style.transform = `rotateX(10deg) rotateY(${angleRef.current}deg)`
+      if (Math.abs(v) > 0.012) inertieRaf.current = requestAnimationFrame(pas)
+    }
+    inertieRaf.current = requestAnimationFrame(pas)
   }
   const avaleClicApresGlisser = (e) => {
     if (aTourneRef.current) { e.stopPropagation(); e.preventDefault(); aTourneRef.current = false }
@@ -150,6 +177,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
   const labels = S.labels
   const titre = S.titreBase ? `${S.titreBase}, en relief` : 'Ton année, en relief'
   const reduce = reduceMotion()
+  const [prise, setPrise] = useState(0) // Rejouer : remonte la scène (croissance + pose)
 
   if (!serie.some((v) => v > 0)) {
     return (
@@ -184,10 +212,11 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card p3d">
-      <div className="card-title">{I_CUBE}{titre}</div>
+      <div className="card-title">{I_CUBE}{titre}{!reduce && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub p3d-sub">{kpi.texteFactuel}</p> : null}
 
       <div
+        key={prise}
         className={`p3d-scene${reduce ? ' est-fixe' : ''}${sel.actif != null ? ' a-vise' : ''}`}
         ref={sceneRef}
         role="img"

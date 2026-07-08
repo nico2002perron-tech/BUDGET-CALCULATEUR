@@ -18,6 +18,7 @@
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
+import { sons } from '../lib/sons.js'
 
 export function reduceMotion() {
   return (
@@ -85,6 +86,26 @@ export function InfoBulle({ x, y, titre, valeur, lignes = [], sous = '' }) {
       ))}
       {sous ? <span className="ibulle-sous">{sous}</span> : null}
     </div>
+  )
+}
+
+/** Le bouton « Rejouer l'animation » (coin du titre de carte) : remonter le
+ *  conteneur animé rejoue croissance/tracé/pose — le moment satisfaisant, à
+ *  volonté. À CACHER sous prefers-reduced-motion (rien à rejouer). */
+export function BoutonRejouer({ onClick }) {
+  return (
+    <button
+      type="button"
+      className="graf-rejouer"
+      aria-label="Rejouer l’animation"
+      title="Rejouer l’animation"
+      onClick={() => { sons.tap(); onClick() }}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
   )
 }
 

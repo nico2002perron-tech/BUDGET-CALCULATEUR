@@ -8,10 +8,10 @@
    props : params { comparaisons? (structure) } · data (contrat normaliserSerie)
            kpi (texteFactuel en sous-titre)
    ========================================================================== */
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte, abregerMontant } from '../lib/serie.js'
-import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { useSelection, InfoBulle, lignesComparees, BoutonRejouer } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
 const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
@@ -35,6 +35,7 @@ const I_BANDES = (
 export default function Bandes({ params = {}, data = {}, kpi = null }) {
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const gid = useId().replace(/:/g, '') // les deux-points cassent url(#…)
+  const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (les barres repoussent)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -86,11 +87,11 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-bandes">
-      <div className="card-title">{I_BANDES}{titre}</div>
+      <div className="card-title">{I_BANDES}{titre}{animer && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
+      <svg key={prise} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         <defs>
           {/* dégradé vertical de TA série (les repères gris et l'ambre restent pleins) */}
           <linearGradient id={`bnd-${gid}`} x1="0" y1="0" x2="0" y2="1">

@@ -2982,6 +2982,20 @@ svg { display: block; }
 /* la part en % dans la légende du beignet */
 .bgt-pct { margin-left: auto; padding-left: 8px; font-size: 11.5px; font-weight: 700; color: var(--muted); flex: 0 0 auto; }
 .bgt-legende li b { margin-left: 8px; }
+
+/* « Rejouer l'animation » : bouton fantôme au coin du titre — absent sous
+   reduced-motion (rien à rejouer). */
+.graf-rejouer {
+  margin-left: auto; flex: 0 0 auto;
+  width: 30px; height: 30px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  color: inherit; opacity: 0.55; cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.2s ease;
+}
+.graf-rejouer:hover { opacity: 1; }
+.graf-rejouer:active { transform: rotate(-45deg); }
+.card-title .graf-rejouer svg { width: 15px; height: 15px; }
 .p3d-rangee.a-vise .p3d-col:not(.est-vise) { opacity: 0.5; filter: brightness(0.72); }
 .p3d-col.est-vise { transform: translateY(-5px); }
 @media (prefers-reduced-motion: reduce) {

@@ -9,10 +9,10 @@
    props : params { comparaisons? (structure) } · data (contrat normaliserSerie)
            kpi (texteFactuel en sous-titre)
    ========================================================================== */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatCAD } from '../lib/format.js'
 import { normaliserSerie, majuscule, etiquetteCourte, abregerMontant } from '../lib/serie.js'
-import { useSelection, InfoBulle, lignesComparees } from './_interaction.jsx'
+import { useSelection, InfoBulle, lignesComparees, BoutonRejouer } from './_interaction.jsx'
 import { sons } from '../lib/sons.js'
 
 const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
@@ -36,6 +36,7 @@ const I_COURBE = (
 export default function Courbe({ params = {}, data = {}, kpi = null }) {
   const ligneRef = useRef(null)
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
+  const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (la ligne se retrace)
   const S = normaliserSerie(data)
   const serie = S.valeurs
   const labels = S.labels
@@ -58,7 +59,7 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
       el.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1)'
       el.style.strokeDashoffset = '0'
     } catch { /* hors navigateur */ }
-  }, [reduce, serie.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps -- retracer quand la série change
+  }, [reduce, prise, serie.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps -- retracer quand la série change OU au Rejouer (svg re-keyé = path neuf)
 
   if (!serie.some((v) => v > 0)) {
     return (
@@ -84,11 +85,11 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-courbe">
-      <div className="card-title">{I_COURBE}{titre}</div>
+      <div className="card-title">{I_COURBE}{titre}{!reduce && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en courbe${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
+      <svg key={prise} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en courbe${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
           const colle = (seuil > 0 && Math.abs(y - yDe(seuil)) < 13) || (cible > 0 && Math.abs(y - yDe(cible)) < 13)
