@@ -7,7 +7,9 @@
    reste en HUD plat (lisible, jamais déformé). Canvas sombre AUTOPORTANT
    (même famille visuelle que le prisme). Zéro dépendance.
 
-   props : params {} · data { parCategorie, total } (le resolve du beignet)
+   props : params {} · data { parCategorie, total, titre?, centre? } (le resolve
+           du beignet, OU les parts de la famille du KPI via partsDuKPI —
+           segments du brut, actifs du patrimoine… avec leurs propres titres)
            kpi (texteFactuel en sous-titre)
    Data-aware : aucune catégorie → état honnête. prefers-reduced-motion :
    anneau immobile.
@@ -44,13 +46,15 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
   void params
   const cats = (Array.isArray(data.parCategorie) ? data.parCategorie : []).filter((c) => Number(c.montant) > 0)
   const total = cats.reduce((s, c) => s + (Number(c.montant) || 0), 0)
+  const titre = typeof data.titre === 'string' && data.titre ? `${data.titre}, en anneau` : 'Ton anneau des dépenses'
+  const centre = typeof data.centre === 'string' && data.centre ? data.centre : 'par mois'
   const reduce = reduceMotion()
 
   if (cats.length === 0 || total <= 0) {
     return (
       <section className="card p3d a3d">
-        <div className="card-title">{I_ANNEAU}Ton anneau des dépenses</div>
-        <p className="bloc-vide p3d-vide">L’anneau s’allume avec tes dépenses par catégorie.</p>
+        <div className="card-title">{I_ANNEAU}{titre}</div>
+        <p className="bloc-vide p3d-vide">L’anneau s’allume avec tes vraies données, part par part.</p>
       </section>
     )
   }
@@ -91,17 +95,17 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card p3d a3d">
-      <div className="card-title">{I_ANNEAU}Ton anneau des dépenses</div>
+      <div className="card-title">{I_ANNEAU}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub p3d-sub">{kpi.texteFactuel}</p> : null}
 
-      <div className={`a3d-scene${reduce ? ' est-fixe' : ''}`} role="img" aria-label={`La part de chaque poste dans tes dépenses (${formatCAD(total)} par mois), en anneau 3D.`}>
+      <div className={`a3d-scene${reduce ? ' est-fixe' : ''}`} role="img" aria-label={`La part de chaque poste (${formatCAD(total)} ${centre}), en anneau 3D.`}>
         <div className="a3d-stage">
           {Array.from({ length: COUCHES }, (_, i) => couche(COUCHES - 1 - i))}
         </div>
         {/* Le HUD reste PLAT : le total se lit toujours, jamais déformé. */}
         <div className="a3d-hud" aria-hidden="true">
           <span className="a3d-total">{formatCAD(total)}</span>
-          <span className="a3d-sous">par mois</span>
+          <span className="a3d-sous">{centre}</span>
         </div>
       </div>
 

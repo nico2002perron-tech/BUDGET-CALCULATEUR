@@ -2850,6 +2850,9 @@ svg { display: block; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
   color: rgba(238, 242, 255, 0.55); white-space: nowrap;
+  /* jamais deux étiquettes qui se chevauchent : bornée au pas de colonne, le
+     surplus part en ellipsis (le libellé complet vit dans le tooltip). */
+  max-width: calc(var(--p3w, 26px) + 14px); overflow: hidden; text-overflow: ellipsis;
 }
 .p3d-val {
   position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
@@ -2875,16 +2878,17 @@ svg { display: block; }
 @container (max-width: 330px) {
   .p3d-rangee { --p3w: 11px; --p3d: 8px; gap: 3px; }
 }
-/* En comparaison, chaque mois porte N prismes (--n, posé par le bloc). La largeur
-   se CALCULE sur le conteneur réel (cqw) : 12 duos + 11 gaps (110px) + les gaps
-   internes des duos (24px × (N−1)) tiennent TOUJOURS — l'invariant « jamais un
-   mois tronqué en silence » vaut aussi à 2 ou 3 séries. (Après les règles de
-   base : même spécificité, l'ordre tranche.) */
+/* En comparaison, chaque colonne porte N prismes (--n, posé par le bloc ; --cols =
+   le nombre de colonnes de la série — 12 mois, ou moins depuis serieDuKPI). La
+   largeur se CALCULE sur le conteneur réel (cqw) : cols duos + (cols−1) gaps +
+   les gaps internes des duos (24px × (N−1)) tiennent TOUJOURS — l'invariant
+   « jamais une colonne tronquée en silence » vaut aussi à 2 ou 3 séries. (Après
+   les règles de base : même spécificité, l'ordre tranche.) */
 .p3d-rangee--multi {
   gap: 8px;
   /* Budget 90cqw (et non 94) : la projection 3D (rotateY) élargit un côté de
      quelques px — on lui laisse cette marge pour que rien ne sorte du hublot. */
-  --p3w: clamp(2px, calc((90cqw - 88px - (var(--nc, 1) * 24px)) / (12 * var(--n, 2))), 18px);
+  --p3w: clamp(2px, calc((90cqw - (var(--cols, 12) - 1) * 8px - (var(--nc, 1) * 24px)) / (var(--cols, 12) * var(--n, 2))), 18px);
   --p3d: calc(var(--p3w) * 0.8);
 }
 @media (max-width: 560px) {

@@ -206,7 +206,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // « AJOUTER À COMPARER » : tes comparaisons du moment (celles de la recette tant
   // que tu n'y touches pas). Un sujet est offert si sa série se RÉSOUT vraiment.
   const compActives = comparaisons !== null ? comparaisons : (kb.params && Array.isArray(kb.params.comparaisons) ? kb.params.comparaisons : [])
-  const comparable = FORMES_COMPARABLES.includes(formeActive)
+  // Comparer = les sujets de la SAISON (moyenne, coût de vie, an passé) : ils ne
+  // se résolvent que pour la famille saisonnier. Ailleurs, le bloc entier reste
+  // absent — pas une rangée de chips toutes grises + une barre IA sans issue.
+  const comparable = FORMES_COMPARABLES.includes(formeActive) && def.domaine === 'saisonnier'
   const sujetOffert = (ctx) => resoudreComparaisons(snapshot, [{ contexte: ctx }]).length > 0
   const estAjoute = (ctx) => compActives.some((c) => c && c.contexte === ctx)
   const basculerSujet = (s) => {
@@ -258,7 +261,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // OPT-IN : rien n'est posé tant que TU ne le poses pas (ouvrir le sable ne
   // change jamais la lecture de ta tuile) ; une cible déjà portée par la
   // recette reste honorée (clampée aux bornes). cible=0 → objectif retiré.
-  const reglage = def.reglage || (formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage') ? REGLAGE_SERIE : null)
+  // Le réglage série (« plancher de revenu, $/mois ») ne parle que de la famille
+  // saisonnier — un KPI patrimoine/impôt qui débloque le prisme via serieDuKPI
+  // ne reçoit pas un stepper étranger à sa donnée.
+  const reglage = def.reglage || (def.domaine === 'saisonnier' && formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage') ? REGLAGE_SERIE : null)
   const clampCible = (v) => (reglage ? Math.min(reglage.max, Math.max(reglage.min, v)) : v)
   const cibleRecette = kb.params && isFinite(Number(kb.params.cible)) && Number(kb.params.cible) > 0 ? clampCible(Number(kb.params.cible)) : 0
   const cibleActive = reglage ? (cible != null ? cible : cibleRecette) : 0

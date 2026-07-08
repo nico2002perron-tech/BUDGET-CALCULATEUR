@@ -1,7 +1,9 @@
 /* ============================================================================
    Beignet.jsx — « où part chaque dollar » en anneau, par catégorie (couleur =
    rôle). SVG fait main, zéro lib. Légende des principaux postes + « Autres ».
-   props : params { centre } · data { parCategorie, total }  ← snapshot.depenses
+   props : params { centre } · data { parCategorie, total, titre?, sous?, centre? }
+   ← snapshot.depenses, OU les parts de la famille du KPI (partsDuKPI : segments
+   du brut, actifs du patrimoine…) qui apportent alors leurs propres titres.
    ========================================================================== */
 import { couleurClasse } from '../lib/depenses.js'
 import { formatCAD } from '../lib/format.js'
@@ -20,7 +22,9 @@ function arcPath(cx, cy, r, a0, a1, large) {
 export default function Beignet({ params = {}, data = {} }) {
   const cats = (Array.isArray(data.parCategorie) ? data.parCategorie : []).filter((c) => Number(c.montant) > 0)
   const total = cats.reduce((s, c) => s + (Number(c.montant) || 0), 0)
-  const centre = typeof params.centre === 'string' ? params.centre : 'par mois'
+  const centre = typeof params.centre === 'string' ? params.centre : typeof data.centre === 'string' && data.centre ? data.centre : 'par mois'
+  const titre = typeof data.titre === 'string' && data.titre ? data.titre : 'Où part chaque dollar'
+  const sous = typeof data.sous === 'string' && data.sous ? data.sous : 'La part de chaque poste dans tes dépenses du mois.'
 
   const cx = 90, cy = 90, r = 66, sw = 26
   const seul = cats.length === 1 // un seul poste → cercle plein (sinon arcs)
@@ -45,12 +49,12 @@ export default function Beignet({ params = {}, data = {} }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3.4" />
         </svg>
-        Où part chaque dollar
+        {titre}
       </div>
-      <p className="card-sub">La part de chaque poste dans tes dépenses du mois.</p>
+      <p className="card-sub">{sous}</p>
 
       <div className="bgt-corps">
-        <svg className="bgt-svg" viewBox="0 0 180 180" role="img" aria-label="Répartition des dépenses par poste">
+        <svg className="bgt-svg" viewBox="0 0 180 180" role="img" aria-label={sous}>
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="#eef2f8" strokeWidth={sw} />
           {segs.map((s) =>
             s.full ? (

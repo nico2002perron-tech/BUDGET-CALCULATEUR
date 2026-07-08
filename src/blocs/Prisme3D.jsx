@@ -1,17 +1,20 @@
 /* ============================================================================
    Prisme3D.jsx — LA SCÈNE 3D du carré de sable (bloc `prisme3d`).
 
-   Une série temporelle (12 mois du snapshot) en PRISMES rectangulaires extrudés :
-   CSS 3D pur (preserve-3d, 5 faces par barre), plancher quadrillé incliné pour la
-   profondeur, rotation lente qui oscille (~±16°, 12 s) et croissance des barres
-   décalée à l'apparition. Zéro dépendance — three.js reste une piste future :
-   l'architecture (données résolues ici, géométrie 100 % CSS) permettrait de
-   remplacer la scène sans toucher au contrat recette→registre→snapshot.
+   Une série (12 mois du snapshot, OU la série de la famille du KPI : postes du
+   budget, projection par âge, segments du brut — via serieDuKPI) en PRISMES
+   rectangulaires extrudés : CSS 3D pur (preserve-3d, 5 faces par barre),
+   plancher quadrillé incliné pour la profondeur, rotation lente qui oscille
+   (~±16°, 12 s) et croissance des barres décalée à l'apparition. Zéro
+   dépendance — three.js reste une piste future : l'architecture (données
+   résolues ici, géométrie 100 % CSS) permettrait de remplacer la scène sans
+   toucher au contrat recette→registre→snapshot.
 
    props :
      params : { comparaisons?: [{contexte, label?}] } — de la STRUCTURE (schema.js
               résout chaque contexte en série ; jamais un chiffre dans la recette)
-     data   : { serie:[12], seuil:number, comparaisons:[{label, valeurs:[12]}] }
+     data   : contrat normaliserSerie — { serie:[12] } historique, ou
+              { labels, valeurs, titreBase, legende, seuil, seuilTexte, sousTexte }
      kpi    : la résolution du KPI héros (texteFactuel en sous-titre)
 
    COMPARAISON : pour chaque mois, les prismes s'accolent — « cette année » dans
@@ -24,7 +27,8 @@
    rotation ni croissance, tout s'affiche d'un coup.
    ========================================================================== */
 import { useRef } from 'react'
-import { MOIS_COURTS, formatCAD } from '../lib/format.js'
+import { formatCAD } from '../lib/format.js'
+import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
 
 const I_CUBE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -107,17 +111,17 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     if (aTourneRef.current) { e.stopPropagation(); e.preventDefault(); aTourneRef.current = false }
   }
 
-  const serie = (Array.isArray(data.serie) ? data.serie : [])
-    .slice(0, 12)
-    .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
-  while (serie.length < 12) serie.push(0)
+  const S = normaliserSerie(data)
+  const serie = S.valeurs
+  const labels = S.labels
+  const titre = S.titreBase ? `${S.titreBase}, en relief` : 'Ton année, en relief'
   const reduce = reduceMotion()
 
   if (!serie.some((v) => v > 0)) {
     return (
       <section className="card p3d">
-        <div className="card-title">{I_CUBE}Ton année, en relief</div>
-        <p className="bloc-vide p3d-vide">La scène s’allume avec tes revenus de saison — 12 mois, en prismes.</p>
+        <div className="card-title">{I_CUBE}{titre}</div>
+        <p className="bloc-vide p3d-vide">{S.titreBase ? 'La scène s’allume avec tes vraies données — chaque valeur devient un prisme.' : 'La scène s’allume avec tes revenus de saison — 12 mois, en prismes.'}</p>
       </section>
     )
   }
@@ -125,7 +129,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
   // Les séries comparées (déjà résolues par schema.js — ici on ne fait qu'afficher).
   const comparaisons = (Array.isArray(data.comparaisons) ? data.comparaisons : [])
     .filter((c) => c && Array.isArray(c.valeurs))
-    .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, 12).map((v) => Math.max(0, Number(v) || 0)) }))
+    .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, serie.length).map((v) => Math.max(0, Number(v) || 0)) }))
   const enComparaison = comparaisons.length > 0
 
   // TON OBJECTIF (params.cible, intention posée par le stepper du sable) : le plan
@@ -146,14 +150,14 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card p3d">
-      <div className="card-title">{I_CUBE}Ton année, en relief</div>
+      <div className="card-title">{I_CUBE}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub p3d-sub">{kpi.texteFactuel}</p> : null}
 
       <div
         className={`p3d-scene${reduce ? ' est-fixe' : ''}`}
         ref={sceneRef}
         role="img"
-        aria-label={`Tes 12 mois en prismes 3D${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
+        aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en prismes 3D${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.${kpi && kpi.texteFactuel ? ' ' + kpi.texteFactuel : ''}`}
         title="Glisse pour faire tourner la scène"
         onPointerDown={surPrisePointer}
         onPointerMove={surTournePointer}
@@ -174,11 +178,11 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
           )}
           <div
             className={`p3d-rangee${enComparaison ? ' p3d-rangee--multi' : ''}`}
-            style={enComparaison ? { '--n': 1 + comparaisons.length, '--nc': comparaisons.length } : undefined}
+            style={{ '--cols': serie.length, ...(enComparaison ? { '--n': 1 + comparaisons.length, '--nc': comparaisons.length } : {}) }}
           >
             {serie.map((v, i) => {
               const sous = plancher > 0 && v < plancher
-              const infos = [`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ' (sous ton coût de vie)') : ''}`]
+              const infos = [`${labels[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}`]
               comparaisons.forEach((c) => infos.push(`${c.label} ${formatCAD(c.valeurs[i] || 0)}`))
               return (
                 <div className="p3d-col" key={i} title={infos.join(' · ')}>
@@ -189,7 +193,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
                       <Prisme key={k} hauteur={hauteurDe(c.valeurs[i] || 0)} delai={`${i * 70 + 35}ms`} couleur={c.couleur} />
                     ))}
                   </div>
-                  <span className="p3d-etiq">{MOIS_COURTS[i]}</span>
+                  <span className="p3d-etiq" aria-hidden="true">{etiquetteCourte(labels[i], 6)}</span>
                 </div>
               )
             })}
@@ -198,11 +202,11 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
       </div>
 
       <div className="legend p3d-legende">
-        <span className="it"><span className="sw p3d-sw-a" />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : 'Revenus'}</span>
+        <span className="it"><span className="sw p3d-sw-a" />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : S.legende}</span>
         {comparaisons.map((c, k) => (
           <span className="it" key={k}><span className="sw" style={{ background: c.couleur }} />{c.label}</span>
         ))}
-        {aDesSous && <span className="it"><span className="sw p3d-sw-sous" />{cible > 0 ? 'Sous ton objectif' : 'Sous ton coût de vie'}</span>}
+        {aDesSous && <span className="it"><span className="sw p3d-sw-sous" />{cible > 0 ? 'Sous ton objectif' : majuscule(S.sousTexte)}</span>}
       </div>
     </section>
   )

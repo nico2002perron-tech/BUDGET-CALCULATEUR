@@ -7,9 +7,10 @@
    Le parcours interactif (FLIP, épinglage, drag) vit dans les e2e navigateur.
    ========================================================================== */
 import { snapshotFromStore } from '../src/lib/canonical.js'
-import { DEMO_SAISONNIER } from '../src/lib/storage.js'
+import { DEMO_SAISONNIER, exempleStore } from '../src/lib/storage.js'
 import { BLOCS, resoudreComparaisons, tailleWidget, filtrerFait, estConnu } from '../src/recettes/schema.js'
-import { formesPourKPI, formeAdaptee, resolveKPI } from '../src/recettes/bibliotheque-kpis.js'
+import { formesPourKPI, formeAdaptee, resolveKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from '../src/recettes/bibliotheque-kpis.js'
+import { normaliserSerie, etiquetteCourte } from '../src/lib/serie.js'
 import { MASCOTTES, MASCOTTE_REPLI, VOIX_MENTOR } from '../src/lib/personas.js'
 
 let echecs = 0
@@ -19,13 +20,68 @@ function ok(cond, label, detail) {
 }
 
 const snap = snapshotFromStore(DEMO_SAISONNIER)
+// L'exemple complet (patrimoine, coussin+épargne, catégories) + un brut saisi :
+// le terrain de jeu du déblocage générique. DEMO_SAISONNIER n'a NI coussin NI
+// fiscalité dans son snapshot — parfait pour prouver la rétraction (null).
+const ex = exempleStore()
+const snapEx = snapshotFromStore({ ...ex, revenus: { ...ex.revenus, brutAnnuel: 52000 } })
 
 console.log('— Les formes du sable : offertes DATA-AWARE, connues du registre —')
 const formesSaison = formesPourKPI('amplitude_revenus', snap, {})
 ok(['prisme3d', 'bandes', 'courbe', 'nuage'].every((f) => formesSaison.includes(f)), 'KPI saisonnier : les 4 formes-séries offertes', formesSaison.join(','))
-const formesCoussin = formesPourKPI('mois_couverts', snap, {})
-ok(['prisme3d', 'bandes', 'courbe', 'nuage'].every((f) => !formesCoussin.includes(f)), 'KPI coussin : aucune forme-série (pas de sens)', formesCoussin.join(','))
-ok(['prisme3d', 'bandes', 'courbe', 'nuage'].every((t) => estConnu(t)), 'les 4 types du sable connus de schema (le rendu réel = check-render)')
+ok(['beignet', 'anneau3d'].every((f) => formesSaison.includes(f)), 'KPI saisonnier : les parts de l’année débloquent beignet/anneau', formesSaison.join(','))
+const formesCoussin = formesPourKPI('mois_couverts', snapEx, {})
+ok(['prisme3d', 'bandes', 'courbe', 'nuage'].every((f) => formesCoussin.includes(f)), 'KPI coussin : le coussin PROJETÉ débloque les formes-séries', formesCoussin.join(','))
+ok(['beignet', 'anneau3d'].every((f) => !formesCoussin.includes(f)), 'KPI coussin : pas un tout à découper → beignet/anneau restent fermés', formesCoussin.join(','))
+ok([...FORMES_SERIE, ...FORMES_PARTS].every((t) => estConnu(t)), 'les 6 types du sable connus de schema (le rendu réel = check-render)')
+
+console.log('\n— LE DÉBLOCAGE GÉNÉRIQUE : chaque famille expose SA vraie donnée —')
+// patrimoine → la projection par âge (échantillonnée, bornes incluses)
+const sPat = serieDuKPI('patrimoine_retraite', snapEx, {})
+ok(sPat && sPat.labels.length <= 12 && sPat.labels[0] === '34 ans', 'patrimoine : série = projection, 1er point = l’âge réel', sPat && sPat.labels.join(','))
+ok(sPat && sPat.valeurs.length === sPat.labels.length && Math.round(sPat.valeurs[0]) === Math.round(snapEx.projection.annees[0].patrimoineNet), 'patrimoine : 1re valeur = le patrimoine net d’AUJOURD’HUI (jamais inventé)')
+ok(sPat && /selon tes hypothèses/.test(sPat.legende), 'patrimoine : la légende dit l’hypothèse')
+ok(sPat && sPat.labels.includes('65 ans'), 'patrimoine : l’année de RETRAITE a toujours son point (ancre — la courbe contient le fait daté du héros)', sPat && sPat.labels.join(','))
+// net négatif quelque part → une hauteur ne sait pas le dire → rétraction (null)
+const snapDette = snapshotFromStore({ ...ex, patrimoine: { ...ex.patrimoine, reer: 3000, celi: 0, nonEnregistre: 0, maisonValeur: 0, hypotheque: 0, autresDettes: 60000 } })
+ok(serieDuKPI('patrimoine_retraite', snapDette, {}) === null, 'patrimoine : net NÉGATIF → rétraction (jamais borné à 0 = chiffre inventé)')
+// impot → les segments du brut, zéros écartés, total = somme
+const sImp = serieDuKPI('taux_effectif', snapEx, {})
+ok(sImp && sImp.labels.includes('Impôt Québec') && sImp.valeurs.every((v) => v > 0), 'impôt : série = les segments réels du brut (zéros écartés)', sImp && sImp.labels.join(','))
+const pImp = partsDuKPI('taux_effectif', snapEx)
+ok(pImp && pImp.total === pImp.parCategorie.reduce((a, x) => a + x.montant, 0) && pImp.centre === 'par an', 'impôt : parts = un TOUT cohérent (total = somme, « par an »)')
+// l'anneau BOUCLE : la dernière part ne porte jamais la couleur de la première
+const pPat = partsDuKPI('patrimoine_retraite', snapEx)
+ok(pPat && pPat.parCategorie.length === 4 && pPat.parCategorie[3].classe !== pPat.parCategorie[0].classe && pPat.parCategorie[3].classe !== pPat.parCategorie[2].classe, 'parts : jamais deux couleurs identiques ADJACENTES sur l’anneau (4 actifs)', pPat && pPat.parCategorie.map((x) => x.classe).join(','))
+// budget → les postes triés du snapshot
+const sBud = serieDuKPI('top_categorie', snapEx, {})
+ok(sBud && sBud.labels[0] === snapEx.depenses.parCategorie[0].label && sBud.valeurs[0] === snapEx.depenses.parCategorie[0].montant, 'budget : série = les postes du snapshot, même ordre')
+// coussin → départ réel + épargne réelle, l'HYPOTHÈSE d'affectation divulguée
+const sCou = serieDuKPI('mois_couverts', snapEx, {})
+ok(sCou && sCou.valeurs[0] === snapEx.coussin.montant + snapEx.depenses.parClasse.epargne && /si ton épargne/.test(sCou.legende), 'coussin : projeté = départ réel + épargne réelle, hypothèse divulguée (« si ton épargne… y allait »)')
+ok(sCou && sCou.seuil === snapEx.coussin.cible3 && /cible 3 mois/.test(sCou.seuilTexte), 'coussin : le seuil = la cible 3 mois du snapshot')
+// objectif → « selon ton plan » SEULEMENT si la contribution est posée par l'usager
+const sObjRythme = serieDuKPI('horizon_objectif', snapEx, { objectif: { cible: 20000 } })
+ok(sObjRythme && /à ton rythme/.test(sObjRythme.legende), 'objectif SANS contribution posée : « à ton rythme » (capacité calculée ≠ plan)', sObjRythme && sObjRythme.legende)
+const sObjPlan = serieDuKPI('horizon_objectif', snapEx, { objectif: { cible: 20000 }, contributionMensuelle: 300 })
+ok(sObjPlan && /selon ton plan/.test(sObjPlan.legende) && sObjPlan.valeurs[0] === Math.min(20000, snapEx.coussin.montant + 300), 'objectif AVEC contribution posée : « selon ton plan », au rythme posé')
+// saisonnier → contrat HISTORIQUE (serie/seuil) : le rendu d’aujourd’hui ne bouge pas
+const sSai = serieDuKPI('amplitude_revenus', snap, {})
+ok(sSai && Array.isArray(sSai.serie) && sSai.serie.length === 12 && !sSai.labels && !sSai.titreBase, 'saisonnier : contrat historique (serie/seuil, sans titreBase) — rendu inchangé')
+// donnée absente → null, jamais un chiffre inventé
+ok(serieDuKPI('patrimoine_retraite', snap, {}) === null, 'patrimoine SANS projection → null (la forme reste grisée)')
+ok(partsDuKPI('taux_effectif', snap) === null, 'impôt SANS brut saisi → null (jamais inventé)')
+ok(serieDuKPI('inconnu', snapEx, {}) === null && partsDuKPI('inconnu', snapEx) === null, 'KPI inconnu → null, sans exception')
+
+console.log('\n— normaliserSerie : le contrat générique des blocs-série —')
+const nG = normaliserSerie({ labels: ['A', 'B', 'C'], valeurs: [10, -5, 'x'], titreBase: 'Test', seuil: 4 })
+ok(nG.labels.length === 3 && nG.valeurs[0] === 10 && nG.valeurs[1] === 0 && nG.valeurs[2] === 0, 'mode générique : N points, négatifs/invalides bornés à 0')
+ok(/coût de vie/.test(nG.seuilTexte) === false || nG.seuilTexte.includes('4'), 'seuilTexte de repli construit sur le seuil')
+const nH = normaliserSerie({ serie: [1, 2, 3], seuil: 0 })
+ok(nH.labels.length === 12 && nH.valeurs.length === 12 && nH.titreBase === null, 'mode historique : 12 mois remplis, titreBase null (titres d’origine)')
+const nCap = normaliserSerie({ labels: Array.from({ length: 30 }, (_, i) => String(i)), valeurs: Array.from({ length: 30 }, () => 1) })
+ok(nCap.labels.length === 12 && nCap.valeurs.length === 12, 'jamais plus de 12 points (bornage dur)')
+ok(etiquetteCourte('34 ans', 5) === '34…' && etiquetteCourte('Logement', 6) === 'Logem…' && etiquetteCourte('Juil', 6) === 'Juil', 'étiquettes coupées AU MOT, jamais au milieu d’un chiffre')
 
 console.log('\n— Les séries de comparaison : résolues du snapshot, JAMAIS inventées —')
 const serie = BLOCS.prisme3d.resolve(snap, { comparaisons: [{ contexte: 'moyenne' }, { contexte: 'cout_vie' }, { contexte: 'an_passe' }] })

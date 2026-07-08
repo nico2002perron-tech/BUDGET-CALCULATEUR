@@ -1,13 +1,15 @@
 /* ============================================================================
-   Bandes.jsx — bloc `bandes` : la série des 12 mois en barres 2D NETTES.
-   Lignes de grille + baseline, seuil (coût de vie) en pointillé, mois sous le
-   seuil en ambre (l'exception), séries comparées en barres grises accolées.
-   SVG fait main, zéro lib (patron FluxAnnuel). Données : resolveSerie (snapshot).
+   Bandes.jsx — bloc `bandes` : une série en barres 2D NETTES (les 12 mois du
+   snapshot, ou la série de la famille du KPI via serieDuKPI — postes, âges…).
+   Lignes de grille + baseline, seuil en pointillé, valeurs sous le seuil en
+   ambre (l'exception), séries comparées en barres grises accolées.
+   SVG fait main, zéro lib (patron FluxAnnuel).
 
-   props : params { comparaisons? (structure) } · data { serie, seuil, comparaisons }
+   props : params { comparaisons? (structure) } · data (contrat normaliserSerie)
            kpi (texteFactuel en sous-titre)
    ========================================================================== */
-import { MOIS_COURTS, formatCAD } from '../lib/format.js'
+import { formatCAD } from '../lib/format.js'
+import { normaliserSerie, majuscule, etiquetteCourte } from '../lib/serie.js'
 
 const GRIS_SERIES = ['#5A6480', '#8a93a8', '#3e4658']
 const AMBER = '#e0a23c'
@@ -28,31 +30,32 @@ const I_BANDES = (
 )
 
 export default function Bandes({ params = {}, data = {}, kpi = null }) {
-  const serie = (Array.isArray(data.serie) ? data.serie : [])
-    .slice(0, 12)
-    .map((v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0 })
-  while (serie.length < 12) serie.push(0)
+  const S = normaliserSerie(data)
+  const serie = S.valeurs
+  const labels = S.labels
+  const titre = S.titreBase ? `${S.titreBase}, en bandes` : 'Tes mois en bandes'
   const comparaisons = (Array.isArray(data.comparaisons) ? data.comparaisons : [])
     .filter((c) => c && Array.isArray(c.valeurs))
-    .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, 12).map((v) => Math.max(0, Number(v) || 0)) }))
+    .map((c, k) => ({ label: c.label || 'repère', couleur: GRIS_SERIES[k % GRIS_SERIES.length], valeurs: c.valeurs.slice(0, serie.length).map((v) => Math.max(0, Number(v) || 0)) }))
   const animer = !reduceMotion()
 
   if (!serie.some((v) => v > 0)) {
     return (
       <section className="card bloc-bandes">
-        <div className="card-title">{I_BANDES}Tes mois en bandes</div>
-        <p className="bloc-vide">Ce graphique s’allume avec tes revenus de saison.</p>
+        <div className="card-title">{I_BANDES}{titre}</div>
+        <p className="bloc-vide">{S.titreBase ? 'Ce graphique s’allume avec tes vraies données.' : 'Ce graphique s’allume avec tes revenus de saison.'}</p>
       </section>
     )
   }
 
-  const seuil = Number(data.seuil) || 0
+  const seuil = S.seuil
   const cible = Math.max(0, Number(params.cible) || 0) // TON objectif (intention du stepper)
-  const plancher = cible > 0 ? cible : seuil // posé → l'ambre marque l'objectif, sinon le coût de vie
+  const plancher = cible > 0 ? cible : seuil // posé → l'ambre marque l'objectif, sinon le seuil de la famille
   const enComparaison = comparaisons.length > 0
   const max = Math.max(...serie, ...comparaisons.flatMap((c) => c.valeurs), seuil, cible, 1) * 1.06
   const W = 640, H = 250, padL = 10, padR = 10, top = 16, baseY = 205
-  const slot = (W - padL - padR) / 12
+  const slot = (W - padL - padR) / serie.length
+  const maxChars = Math.max(3, Math.floor(slot / 6.5)) // l'étiquette d'axe tient dans son créneau
   const nBarres = 1 + comparaisons.length
   const groupeW = slot * 0.66
   const barW = Math.max(2, groupeW / nBarres - (nBarres > 1 ? 1.5 : 0))
@@ -78,10 +81,10 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-bandes">
-      <div className="card-title">{I_BANDES}Tes mois en bandes</div>
+      <div className="card-title">{I_BANDES}{titre}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`Tes 12 mois en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${S.titreBase ? `${S.titreBase} — ${serie.length} valeurs` : 'Tes 12 mois'} en barres${enComparaison ? `, comparés à ${comparaisons.map((c) => c.label).join(' et ')}` : ''}.`}>
         {/* grille : 4 niveaux discrets + baseline */}
         {[1, 2, 3, 4].map((i) => {
           const y = baseY - (i / 4) * (baseY - top)
@@ -94,7 +97,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
           const x0 = padL + i * slot + (slot - groupeW) / 2
           return (
             <g key={i}>
-              <title>{`${MOIS_COURTS[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ' (sous ton coût de vie)') : ''}${comparaisons.map((c) => ` · ${c.label} ${formatCAD(c.valeurs[i] || 0)}`).join('')}`}</title>
+              <title>{`${labels[i]} · ${enComparaison ? 'cette année ' : ''}${formatCAD(v)}${sous ? (cible > 0 ? ' (sous ton objectif)' : ` (${S.sousTexte})`) : ''}${comparaisons.map((c) => ` · ${c.label} ${formatCAD(c.valeurs[i] || 0)}`).join('')}`}</title>
               {barre(v, x0, sous ? AMBER : 'var(--wacc, #00b4d8)', `a-${i}`, i * 35)}
               {comparaisons.map((c, k) => barre(c.valeurs[i] || 0, x0 + (k + 1) * (barW + 1.5), c.couleur, `c-${i}-${k}`, i * 35 + 20))}
             </g>
@@ -105,7 +108,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
           <>
             <line x1={padL} y1={yDe(seuil)} x2={W - padR} y2={yDe(seuil)} stroke="#0077b6" strokeWidth="2" strokeDasharray="5 5" />
             <text x={padL + 2} y={yDe(seuil) - 6} textAnchor="start" fontSize="11" fontWeight="700" fill="#0077b6" fontFamily="Montserrat">
-              coût de vie {formatCAD(seuil)}/mois
+              {S.seuilTexte}
             </text>
           </>
         )}
@@ -118,19 +121,19 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
           </>
         )}
 
-        {MOIS_COURTS.map((m, i) => (
+        {labels.map((m, i) => (
           <text key={m + i} x={padL + i * slot + slot / 2} y={baseY + 18} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={MUTED} fontFamily="Montserrat">
-            {m}
+            {etiquetteCourte(m, maxChars)}
           </text>
         ))}
       </svg>
 
       <div className="legend">
-        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : 'Revenus'}</span>
+        <span className="it"><span className="sw" style={{ background: 'var(--wacc, #00b4d8)' }} />{enComparaison ? 'cette année' : aAtteint ? 'Objectif atteint' : S.legende}</span>
         {comparaisons.map((c, k) => (
           <span className="it" key={k}><span className="sw" style={{ background: c.couleur }} />{c.label}</span>
         ))}
-        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />{cible > 0 ? 'Sous ton objectif' : 'Sous ton coût de vie'}</span>}
+        {aDesSous && <span className="it"><span className="sw" style={{ background: AMBER }} />{cible > 0 ? 'Sous ton objectif' : majuscule(S.sousTexte)}</span>}
       </div>
     </section>
   )

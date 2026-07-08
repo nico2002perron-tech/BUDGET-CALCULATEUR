@@ -18,7 +18,7 @@
    ========================================================================== */
 import { evaluerGraphe } from '../lib/graphe.js'
 import { filtrerFait, estConnu, BLOCS } from './schema.js'
-import { formatCAD, formatPct } from '../lib/format.js'
+import { formatCAD, formatPct, MOIS_COURTS } from '../lib/format.js'
 import { genererScenarios } from '../lib/scenarios.js'
 
 function num(v) {
@@ -383,16 +383,202 @@ export function comparaisonScenarios(snapshot, ctx) {
   }
 }
 
+/* ── LA SÉRIE et LES PARTS d'un KPI : la vraie donnée de sa FAMILLE — jamais
+   inventée. C'est ce qui débloque les formes du sable (prisme/bandes/courbe/
+   nuage et beignet/anneau) pour TOUS les KPIs dont la donnée existe. PUR. */
+
+export const FORMES_SERIE = ['prisme3d', 'bandes', 'courbe', 'nuage']
+export const FORMES_PARTS = ['beignet', 'anneau3d']
+
+// ≤ max points, premiers/derniers inclus (les projections longues restent
+// lisibles). `ancres` = indices à inclure COÛTE QUE COÛTE (l'année de retraite,
+// l'année de rupture) : le fait daté du héros a toujours son point sur la courbe.
+function echantillonner(liste, max, ancres = []) {
+  if (liste.length <= max) return liste
+  const pas = (liste.length - 1) / (max - 1)
+  const idx = Array.from({ length: max }, (_, i) => Math.round(i * pas))
+  for (const a of ancres) {
+    if (!(a > 0 && a < liste.length - 1) || idx.includes(a)) continue
+    let meilleur = 1
+    let dist = Infinity
+    for (let j = 1; j < idx.length - 1; j++) {
+      const d = Math.abs(idx[j] - a)
+      if (d < dist) { dist = d; meilleur = j }
+    }
+    idx[meilleur] = a
+  }
+  return [...new Set(idx)].sort((x, y) => x - y).map((i) => liste[i])
+}
+
+/** La série d'un KPI : { titreBase, labels, valeurs, legende, seuil, seuilTexte,
+ *  sousTexte } ou null (donnée absente → la forme reste grisée). PUR. */
+export function serieDuKPI(kpiId, snapshot, ctx) {
+  const def = kpiPourId(kpiId)
+  const s = snapshot
+  if (!def || !s) return null
+  switch (def.domaine) {
+    case 'saisonnier': {
+      if (!DONNEE_DISPO.saison(s)) return null
+      // Pas de titreBase : les blocs gardent leurs titres historiques (« Tes mois
+      // en bandes »…) — le rendu saisonnier d'aujourd'hui ne bouge pas d'un pixel.
+      return {
+        serie: s.saison.revenusMensuels.slice(0, 12).map(num),
+        seuil: num(s.saison.depensesMensuelles),
+      }
+    }
+    case 'budget': {
+      if (!DONNEE_DISPO.categories(s)) return null
+      const cats = s.depenses.parCategorie.filter((c) => num(c.montant) > 0).slice(0, 10)
+      if (!cats.length) return null
+      return {
+        titreBase: 'Tes postes', labels: cats.map((c) => String(c.label || 'Dépense')),
+        valeurs: cats.map((c) => num(c.montant)),
+        legende: 'Dépenses par catégorie (par mois)', seuil: 0, seuilTexte: '', sousTexte: '',
+      }
+    }
+    case 'coussin': {
+      if (!DONNEE_DISPO.coussin(s)) return null
+      const depart = num(s.coussin.montant)
+      const ajout = num(s.depenses && s.depenses.parClasse && s.depenses.parClasse.epargne)
+      if (depart <= 0 && ajout <= 0) return null
+      const cible = num(s.coussin.cible3)
+      return {
+        titreBase: 'Ton coussin',
+        labels: Array.from({ length: 12 }, (_, i) => `+${i + 1}`),
+        valeurs: Array.from({ length: 12 }, (_, i) => depart + ajout * (i + 1)),
+        // l'AFFECTATION de l'épargne au coussin n'est pas une saisie : l'hypothèse
+        // est divulguée, jamais attribuée à un « plan » qui n'existe pas.
+        legende: ajout > 0 ? `Coussin projeté (si ton épargne de ${formatCAD(ajout)}/mois y allait)` : 'Coussin (aucun ajout mensuel saisi)',
+        seuil: cible,
+        seuilTexte: cible > 0 ? `cible 3 mois ${formatCAD(cible)}` : '',
+        sousTexte: 'sous la cible 3 mois',
+      }
+    }
+    case 'impot': {
+      if (!DONNEE_DISPO.fiscalite(s)) return null
+      const segs = (s.fiscalite.segments || []).filter((x) => num(x.montant) > 0)
+      if (!segs.length) return null
+      return {
+        titreBase: 'Ton brut', labels: segs.map((x) => String(x.label)),
+        valeurs: segs.map((x) => num(x.montant)),
+        legende: 'Où va ton brut (par an)', seuil: 0, seuilTexte: '', sousTexte: '',
+      }
+    }
+    case 'patrimoine': {
+      if (!DONNEE_DISPO.projection(s)) return null
+      const annees = s.projection.annees
+      // l'année de retraite (le fait daté du KPI héros) et l'année de rupture
+      // sont TOUJOURS dans l'échantillon — la courbe contient ce que la carte dit.
+      const ancres = []
+      const iRetraite = annees.findIndex((y) => y.age >= num(s.projection.retraiteAge))
+      if (iRetraite > 0) ancres.push(iRetraite)
+      if (s.projection.ageRupture != null) {
+        const iRupture = annees.findIndex((y) => y.age === s.projection.ageRupture)
+        if (iRupture > 0) ancres.push(iRupture)
+      }
+      const pts = echantillonner(annees, 12, ancres)
+      const valeurs = pts.map((y) => num(y.patrimoineNet))
+      // une hauteur/aire ne sait pas dire un net NÉGATIF (borné à 0 = chiffre
+      // inventé) → rétraction propre : formes jamais offertes pour ce profil.
+      if (valeurs.some((v) => v < 0)) return null
+      return {
+        titreBase: 'Ta trajectoire', labels: pts.map((y) => `${y.age} ans`),
+        valeurs,
+        legende: 'Patrimoine projeté (selon tes hypothèses)', seuil: 0, seuilTexte: '', sousTexte: '',
+      }
+    }
+    case 'objectif': {
+      const cible = num(ctx && ctx.objectif && ctx.objectif.cible)
+      if (!(cible > 0)) return null
+      const g = objG(s, ctx)
+      if (!g.actif || !g.objectif) return null
+      const deja = num(g.objectif.dejaEpargne)
+      // la convention du registre : contribution POSÉE par l'usager → « selon ton
+      // plan » ; sinon capacité CALCULÉE → « à ton rythme » (jamais un plan inventé).
+      const contrib = num(ctx && ctx.contributionMensuelle)
+      const cap = contrib > 0 ? contrib : num(g.noeuds.capaciteEpargne && g.noeuds.capaciteEpargne.valeur)
+      if (cap <= 0 && deja <= 0) return null
+      return {
+        titreBase: 'Ton projet',
+        labels: Array.from({ length: 12 }, (_, i) => `+${i + 1}`),
+        valeurs: Array.from({ length: 12 }, (_, i) => Math.min(cible, deja + cap * (i + 1))),
+        legende: cap > 0 ? `Vers ta cible (${formatCAD(cap)}/mois, ${contrib > 0 ? 'selon ton plan' : 'à ton rythme'})` : 'Vers ta cible',
+        seuil: 0, seuilTexte: '', sousTexte: '',
+      }
+    }
+    default:
+      return null
+  }
+}
+
+/** Les parts d'un KPI (beignet / anneau 3D) : un TOUT réel qui se découpe —
+ *  même contrat que le beignet ({ parCategorie, total } + titres). PUR. */
+export function partsDuKPI(kpiId, snapshot) {
+  const def = kpiPourId(kpiId)
+  const s = snapshot
+  if (!def || !s) return null
+  const classes = ['besoin', 'envie', 'epargne'] // le cycle de couleurs existant
+  // Cycle de 3 sur n parts : quand n ≡ 1 (mod 3), la DERNIÈRE part hériterait de
+  // la couleur de la PREMIÈRE — adjacentes sur l'anneau (il boucle). On remplace
+  // alors la dernière par la classe qui ne touche ni la première ni l'avant-dernière.
+  const classePour = (i, n) => {
+    const c = classes[i % 3]
+    if (n > 3 && i === n - 1 && c === classes[0]) {
+      return classes.find((x) => x !== classes[0] && x !== classes[(n - 2) % 3]) || c
+    }
+    return c
+  }
+  if (def.domaine === 'budget') {
+    if (!DONNEE_DISPO.categories(s)) return null
+    return { parCategorie: s.depenses.parCategorie, total: num(s.depenses.total) }
+  }
+  if (def.domaine === 'impot') {
+    if (!DONNEE_DISPO.fiscalite(s)) return null
+    const bruts = (s.fiscalite.segments || []).filter((x) => num(x.montant) > 0)
+    const parts = bruts.map((x, i) => ({ id: `seg_${i}`, label: String(x.label), classe: classePour(i, bruts.length), montant: num(x.montant) }))
+    if (!parts.length) return null
+    return { parCategorie: parts, total: parts.reduce((a, x) => a + x.montant, 0), titre: 'Où va ton dollar brut', sous: 'La part de chaque poste dans ton brut annuel.', centre: 'par an' }
+  }
+  if (def.domaine === 'patrimoine') {
+    const c = s.patrimoine && s.patrimoine.composition
+    if (!c) return null
+    const actifs = [
+      { id: 'reer', label: 'REER', montant: num(c.reer) },
+      { id: 'celi', label: 'CELI', montant: num(c.celi) },
+      { id: 'nonenr', label: 'Non enregistré', montant: num(c.nonEnregistre) },
+      { id: 'maison', label: 'Maison', montant: num(c.maison) },
+    ].filter((x) => x.montant > 0)
+    const parts = actifs.map((x, i) => ({ ...x, classe: classePour(i, actifs.length) }))
+    if (!parts.length) return null
+    return { parCategorie: parts, total: parts.reduce((a, x) => a + x.montant, 0), titre: 'Tes actifs', sous: 'La part de chaque actif dans ton patrimoine.', centre: 'd’actifs' }
+  }
+  if (def.domaine === 'saisonnier') {
+    if (!DONNEE_DISPO.saison(s)) return null
+    const mois = s.saison.revenusMensuels
+      .map((v, i) => ({ id: `m${i}`, label: MOIS_COURTS[i], montant: num(v) }))
+      .filter((x) => x.montant > 0)
+    const parts = mois.map((x, i) => ({ ...x, classe: classePour(i, mois.length) }))
+    if (!parts.length) return null
+    return { parCategorie: parts, total: parts.reduce((a, x) => a + x.montant, 0), titre: 'Ton année, mois par mois', sous: 'La part de chaque mois dans ton revenu annuel.', centre: 'par an' }
+  }
+  return null
+}
+
 /** Les formes OFFERTES pour un KPI : ses blocsCompatibles existants, filtrés par les
- *  données. KPI non résoluble → aucune. `comparaison` n'est offert que si le tuyau
- *  scénarios rend ≥2 chemins distincts (data-aware — note #1 résolue par la DONNÉE, pas
- *  à la main : il s'allume parce qu'il a deux vraies valeurs). PUR. */
+ *  données, PLUS les formes du sable que sa famille débloque (série réelle →
+ *  prisme/bandes/courbe/nuage ; tout découpable → beignet/anneau). KPI non
+ *  résoluble → aucune. `comparaison` : seulement si ≥2 vrais chemins. PUR. */
 export function formesPourKPI(kpiId, snapshot, ctx) {
   const def = kpiPourId(kpiId)
   if (!def || !Array.isArray(def.blocsCompatibles)) return []
   if (snapshot !== undefined && snapshot !== null && !resolveKPI(kpiId, snapshot, ctx || {}).disponible) return []
   const comparaisonOk = !!(snapshot && comparaisonScenarios(snapshot, ctx || {}))
-  return def.blocsCompatibles.filter((t) => estConnu(t) && (t !== 'comparaison' || comparaisonOk))
+  const formes = def.blocsCompatibles.filter((t) => estConnu(t) && (t !== 'comparaison' || comparaisonOk))
+  if (snapshot) {
+    if (serieDuKPI(kpiId, snapshot, ctx || {})) for (const f of FORMES_SERIE) { if (estConnu(f) && !formes.includes(f)) formes.push(f) }
+    if (partsDuKPI(kpiId, snapshot)) for (const f of FORMES_PARTS) { if (estConnu(f) && !formes.includes(f)) formes.push(f) }
+  }
+  return formes
 }
 
 /** La forme ADAPTÉE à la TAILLE de tuile (présentation pure — resolveKPI reste la

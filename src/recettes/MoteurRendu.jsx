@@ -19,7 +19,10 @@
 import { useEffect, useState } from 'react'
 import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
-import { resolveKPI, kpiPourId, comparaisonScenarios } from './bibliotheque-kpis.js'
+import { resolveKPI, kpiPourId, comparaisonScenarios, formesPourKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from './bibliotheque-kpis.js'
+
+const SERIE_SET = new Set(FORMES_SERIE)
+const PARTS_SET = new Set(FORMES_PARTS)
 
 // Anti-redondance d'une vue : jamais DEUX fois la même métrique. On déduplique sur la
 // CLÉ (l'id du KPI s'il y en a un, sinon le type) + le groupe métrique (le coussin via
@@ -62,13 +65,16 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
         const type = resoudreSlot(b, snapshot)
         return type ? { type, params: {} } : null
       }
-      // Emplacement KPI : la recette nomme {KPI, forme}. Le moteur résout la FORME
-      // (∈ blocsCompatibles, repli sûr sur le 1er sinon) ; le KPI inconnu est ignoré.
+      // Emplacement KPI : la recette nomme {KPI, forme}. Le moteur résout la FORME —
+      // valide si ∈ blocsCompatibles OU débloquée par la famille (formesPourKPI,
+      // data-aware : un prisme épinglé sur un KPI patrimoine reste un prisme) ;
+      // repli sûr sur le 1er compatible sinon. Le KPI inconnu est ignoré.
       // Le bloc-forme reçoit la valeur résolue (kpi), il ne recalcule jamais la métrique.
       if (b && b.KPI) {
         const def = kpiPourId(b.KPI)
         if (!def || !Array.isArray(def.blocsCompatibles) || def.blocsCompatibles.length === 0) return null
-        const forme = def.blocsCompatibles.includes(b.forme) ? b.forme : def.blocsCompatibles[0]
+        const offerte = def.blocsCompatibles.includes(b.forme) || formesPourKPI(b.KPI, snapshot, b.params || {}).includes(b.forme)
+        const forme = offerte ? b.forme : def.blocsCompatibles[0]
         return composantPour(forme) ? { type: forme, params: b.params || {}, kpi: b.KPI } : null
       }
       return composantPour(b.type) ? b : null
@@ -102,7 +108,32 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
     const cfg = BLOCS[bloc.type]
     // resolve(snapshot, params) : les MONTANTS viennent du snapshot ; certains blocs
     // lisent aussi une INTENTION dans les params (ex. chaine → l'objectif choisi).
-    const data = cfg && typeof cfg.resolve === 'function' ? cfg.resolve(snapshot, bloc.params) : {}
+    let data = cfg && typeof cfg.resolve === 'function' ? cfg.resolve(snapshot, bloc.params) : {}
+    // Un bloc-forme porté par un KPI reçoit LA SÉRIE (ou LES PARTS) de sa
+    // FAMILLE (serieDuKPI/partsDuKPI — jamais inventées) : le prisme d'un KPI
+    // patrimoine montre la projection par âge, celui d'un KPI budget les
+    // postes, etc. Sans série de famille → le resolve générique reste.
+    let paramsBloc = bloc.params || {}
+    if (bloc.kpi && SERIE_SET.has(bloc.type)) {
+      const sd = serieDuKPI(bloc.kpi, snapshot, paramsBloc)
+      if (sd) {
+        const defK = kpiPourId(bloc.kpi)
+        // Les comparaisons (ta moyenne, ton coût de vie…) sont des séries de la
+        // SAISON : elles ne se superposent jamais à la série d'une autre famille
+        // (unités mélangées) — gate MOTEUR, pas seulement UI.
+        data = { ...sd, comparaisons: defK && defK.domaine === 'saisonnier' ? (data.comparaisons || []) : [] }
+        // Une cible dans l'unité PROPRE du KPI (mois, %) n'est pas un plancher en
+        // dollars : les blocs-série ne la tracent pas (le texte du héros, lui, la suit).
+        if (defK && defK.reglage && !String(defK.reglage.unite || '').startsWith('$') && paramsBloc.cible != null) {
+          const { cible: _cible, ...reste } = paramsBloc
+          paramsBloc = reste
+        }
+      }
+    }
+    if (bloc.kpi && PARTS_SET.has(bloc.type)) {
+      const pd = partsDuKPI(bloc.kpi, snapshot)
+      if (pd) data = pd
+    }
     // Emplacement KPI : la métrique est résolue par la bibliothèque (pas de double
     // source) ; le bloc-forme l'affiche via sa prop `kpi`. Donnée absente → resolveKPI
     // rend un état honnête (valeur null), jamais un chiffre inventé.
@@ -140,7 +171,7 @@ export default function MoteurRendu({ recette, snapshot, anime = false }) {
     const Composant = composantPour(bloc.type)
     const el = (
       <div className={sequence ? 'bloc-reveal' : undefined} key={i}>
-        <Composant params={bloc.params} data={data} kpi={kpi} />
+        <Composant params={paramsBloc} data={data} kpi={kpi} />
       </div>
     )
     if (cfg && cfg.taille === 'compacte') sides.push(el)
