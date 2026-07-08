@@ -22,7 +22,7 @@ function arcPath(cx, cy, r, a0, a1, large) {
   return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`
 }
 
-export default function Beignet({ params = {}, data = {} }) {
+export default function Beignet({ params = {}, data = {}, projecteur = false }) {
   // LE SURVOL VIVANT : la portion regardée s'avance, le CENTRE devient sa
   // fiche (nom · montant · part du tout) ; la légende répond dans les 2 sens.
   const sel = useSelection() // clé = index de cat, ou 'autres'
@@ -55,8 +55,20 @@ export default function Beignet({ params = {}, data = {} }) {
   const surSeg = {
     entre: (i) => () => sel.survole(i),
     quitte: () => sel.quitte(),
-    tap: (i) => () => { if (sel.bascule(i)) sons.tap() },
+    // tap-projecteur : dans le sable seulement (sur une tuile, le tap ouvre le sable)
+    tap: (i) => () => { if (projecteur && sel.bascule(i)) sons.tap() },
+    touche: (i) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.bascule(i)) sons.tap() } },
   }
+  // au clavier (sable) : la légende pilote la même sélection que les portions
+  const a11yLegende = (i, labelA11y) => (projecteur ? {
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': labelA11y,
+    'aria-pressed': sel.fige && estVise(i),
+    onFocus: surSeg.entre(i),
+    onBlur: surSeg.quitte,
+    onKeyDown: surSeg.touche(i),
+  } : {})
   // la fiche du centre : la part regardée, sinon le tout
   const partVisee = sel.actif === 'autres'
     ? { label: 'Autres', montant: resteMontant }
@@ -118,6 +130,7 @@ export default function Beignet({ params = {}, data = {} }) {
               onMouseEnter={surSeg.entre(i)}
               onMouseLeave={surSeg.quitte}
               onClick={surSeg.tap(i)}
+              {...a11yLegende(i, `${c.label} · ${formatCAD(c.montant)}${total > 0 ? ` · ${Math.round((c.montant / total) * 100)} %` : ''}`)}
             >
               <span className="bgt-pt" style={{ background: couleurClasse(c.classe) }} />
               <span className="bgt-lbl">{c.label}</span>
@@ -131,6 +144,7 @@ export default function Beignet({ params = {}, data = {} }) {
               onMouseEnter={surSeg.entre('autres')}
               onMouseLeave={surSeg.quitte}
               onClick={surSeg.tap('autres')}
+              {...a11yLegende('autres', `Autres · ${formatCAD(resteMontant)}${total > 0 ? ` · ${Math.round((resteMontant / total) * 100)} %` : ''}`)}
             >
               <span className="bgt-pt" style={{ background: '#cbd5e1' }} />
               <span className="bgt-lbl">Autres</span>

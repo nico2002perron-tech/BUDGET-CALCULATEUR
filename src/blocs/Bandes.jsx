@@ -32,7 +32,7 @@ const I_BANDES = (
   </svg>
 )
 
-export default function Bandes({ params = {}, data = {}, kpi = null }) {
+export default function Bandes({ params = {}, data = {}, kpi = null, projecteur = false }) {
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const gid = useId().replace(/:/g, '') // les deux-points cassent url(#…)
   const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (les barres repoussent)
@@ -87,7 +87,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-bandes">
-      <div className="card-title">{I_BANDES}{titre}{animer && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
+      <div className="card-title">{I_BANDES}{titre}{animer && <BoutonRejouer onClick={() => { setPrise((p) => p + 1); sel.libere() }} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
@@ -118,7 +118,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
         {/* la ligne-guide de la valeur regardée (sous les barres) */}
-        {sel.actif != null && (
+        {sel.actif != null && sel.actif < serie.length && (
           <line className="graf-guide" x1={padL + sel.actif * slot + slot / 2} y1={top} x2={padL + sel.actif * slot + slot / 2} y2={baseY} />
         )}
 
@@ -156,7 +156,8 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
           </text>
         ))}
 
-        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout —
+            le tap-projecteur et le clavier n'existent que dans le sable */}
         {serie.map((v, i) => (
           <rect
             key={`h-${i}`}
@@ -168,13 +169,23 @@ export default function Bandes({ params = {}, data = {}, kpi = null }) {
             fill="transparent"
             onMouseEnter={() => sel.survole(i)}
             onMouseLeave={sel.quitte}
-            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+            onClick={() => { if (projecteur && sel.bascule(i)) sons.tap() }}
+            {...(projecteur ? {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${labels[i]} · ${formatCAD(v)}`,
+              'aria-pressed': sel.fige && sel.actif === i,
+              onFocus: () => sel.survole(i),
+              onBlur: sel.quitte,
+              onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.bascule(i)) sons.tap() } },
+            } : {})}
           />
         ))}
       </svg>
 
-      {sel.actif != null && (
+      {sel.actif != null && sel.actif < serie.length && (
         <InfoBulle
+          key={sel.actif}
           x={(padL + sel.actif * slot + slot / 2) / W}
           y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
           titre={labels[sel.actif]}

@@ -49,13 +49,15 @@ export function abregerMontant(v) {
   const n = Math.round(Number(v) || 0)
   const abs = Math.abs(n)
   const signe = n < 0 ? '−' : ''
+  // la décimale reste jusqu'à 3 chiffres (« 12,6 k$ », pas « 13 k$ ») : une
+  // étiquette d'axe qui s'écarte de ~3-5 % de sa ligne serait un demi-mensonge
   if (abs >= 1_000_000) {
     const m = abs / 1_000_000
-    return `${signe}${(m >= 10 ? Math.round(m) : Math.round(m * 10) / 10).toLocaleString('fr-CA')} M$`
+    return `${signe}${(m >= 100 ? Math.round(m) : Math.round(m * 10) / 10).toLocaleString('fr-CA')} M$`
   }
   if (abs >= 1000) {
     const k = abs / 1000
-    return `${signe}${(k >= 10 ? Math.round(k) : Math.round(k * 10) / 10).toLocaleString('fr-CA')} k$`
+    return `${signe}${(k >= 100 ? Math.round(k) : Math.round(k * 10) / 10).toLocaleString('fr-CA')} k$`
   }
   return `${signe}${abs} $`
 }

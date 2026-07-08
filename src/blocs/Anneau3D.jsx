@@ -45,7 +45,7 @@ function arcPath(cx, cy, r, a0, a1, large) {
 
 const COUCHES = 8 // l'épaisseur de l'anneau (translateZ par couche)
 
-export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
+export default function Anneau3D({ params = {}, data = {}, kpi = null, projecteur = false }) {
   void params
   // LE SURVOL VIVANT : le segment regardé s'illumine sur TOUTE son épaisseur
   // et le HUD plat devient sa fiche (nom · montant · part du tout).
@@ -95,15 +95,15 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
         ) : (
           <path
             key={s.id}
-            className={`a3dseg${sel.actif === k ? ' est-vise' : ''}${sel.actif != null && sel.actif !== k ? ' est-eteint' : ''}`}
+            className={`a3dseg${estViseSeg(k) ? ' est-vise' : ''}${sel.actif != null && !estViseSeg(k) ? ' est-eteint' : ''}`}
             d={s.d}
             fill="none"
             stroke={s.couleur}
-            strokeWidth={sel.actif === k ? sw + 3 : sw}
+            strokeWidth={estViseSeg(k) ? sw + 3 : sw}
             strokeLinecap="butt"
             onMouseEnter={i === 0 ? () => sel.survole(k) : undefined}
             onMouseLeave={i === 0 ? () => sel.quitte() : undefined}
-            onClick={i === 0 ? () => { if (sel.bascule(k)) sons.tap() } : undefined}
+            onClick={i === 0 && projecteur ? () => { if (sel.bascule(k)) sons.tap() } : undefined}
             style={i === 0 ? { cursor: 'pointer' } : undefined}
           />
         ),
@@ -111,8 +111,23 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
     </svg>
   )
 
-  const partVisee = sel.actif != null && segs[sel.actif] ? segs[sel.actif] : null
+  // le TOUT se recoupe : la légende chiffre le top 5 ET la ligne « Autres »
+  const resteMontant = cats.slice(5).reduce((s, c) => s + c.montant, 0)
+  const partVisee = sel.actif === 'autres'
+    ? { label: 'Autres', montant: resteMontant }
+    : sel.actif != null && segs[sel.actif] ? segs[sel.actif] : null
   const pctVise = partVisee && total > 0 ? Math.round((partVisee.montant / total) * 100) : 0
+  const estViseSeg = (k) => sel.actif === k || (sel.actif === 'autres' && k >= 5)
+  // au clavier (sable) : la légende pilote la même sélection que les segments
+  const a11yLegende = (cle, labelA11y) => (projecteur ? {
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': labelA11y,
+    'aria-pressed': sel.fige && (cle === 'autres' ? sel.actif === 'autres' : sel.actif === cle),
+    onFocus: () => sel.survole(cle),
+    onBlur: () => sel.quitte(),
+    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.bascule(cle)) sons.tap() } },
+  } : {})
 
   return (
     <section className="card p3d a3d">
@@ -147,9 +162,19 @@ export default function Anneau3D({ params = {}, data = {}, kpi = null }) {
             key={c.id}
             onMouseEnter={() => sel.survole(i)}
             onMouseLeave={() => sel.quitte()}
-            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+            onClick={projecteur ? () => { if (sel.bascule(i)) sons.tap() } : undefined}
+            {...a11yLegende(i, `${c.label} · ${formatCAD(c.montant)}${total > 0 ? ` · ${Math.round((c.montant / total) * 100)} %` : ''}`)}
           ><span className="sw" style={{ background: couleurClasse(c.classe) }} />{c.label} · {formatCAD(c.montant)}{total > 0 ? ` · ${Math.round((c.montant / total) * 100)} %` : ''}</span>
         ))}
+        {resteMontant > 0 && (
+          <span
+            className={`it a3d-it${sel.actif === 'autres' ? ' est-vise' : ''}`}
+            onMouseEnter={() => sel.survole('autres')}
+            onMouseLeave={() => sel.quitte()}
+            onClick={projecteur ? () => { if (sel.bascule('autres')) sons.tap() } : undefined}
+            {...a11yLegende('autres', `Autres · ${formatCAD(resteMontant)}${total > 0 ? ` · ${Math.round((resteMontant / total) * 100)} %` : ''}`)}
+          ><span className="sw" style={{ background: '#5A6480' }} />Autres · {formatCAD(resteMontant)}{total > 0 ? ` · ${Math.round((resteMontant / total) * 100)} %` : ''}</span>
+        )}
       </div>
     </section>
   )

@@ -2914,6 +2914,8 @@ svg { display: block; }
   box-shadow: 0 14px 32px -14px rgba(3, 4, 94, 0.6);
   animation: ibullePop 0.15s ease-out;
 }
+/* retournée SOUS l'ancre (pas la place au-dessus dans un conteneur clippé) */
+.ibulle--bas { transform: translate(-50%, 14px); }
 .ibulle-t {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   color: rgba(238, 242, 255, 0.62); white-space: nowrap;
@@ -2924,7 +2926,7 @@ svg { display: block; }
 }
 .ibulle-l { font-size: 11px; font-weight: 600; color: rgba(238, 242, 255, 0.78); white-space: nowrap; }
 .ibulle-sous { font-size: 10.5px; font-weight: 700; color: var(--amber-2, #e0a23c); white-space: nowrap; }
-@keyframes ibullePop { from { opacity: 0; transform: translate(-50%, calc(-100% - 5px)); } }
+@keyframes ibullePop { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ibulle { animation: none; } }
 
 .graf-zone { position: relative; }

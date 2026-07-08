@@ -73,7 +73,7 @@ function Prisme({ hauteur, delai, sous, couleur, fort }) {
   )
 }
 
-export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
+export default function Prisme3D({ params = {}, data = {}, kpi = null, projecteur = false }) {
   // ROTATION AU DOIGT : glisser horizontalement fait tourner la scène (CSS 3D
   // piloté au pointeur — zéro dépendance ; three.js reste une porte future).
   // Une fois touchée, la scène reste où TU la laisses (l'oscillation cesse).
@@ -106,10 +106,17 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
   const surTournePointer = (e) => {
     const t = tourneRef.current
     if (!t || e.pointerId !== t.pointerId) return
+    // un pointerup MANQUÉ hors scène (pas encore de capture) laisserait la
+    // rotation « collée » au prochain passage : bouton relâché → prise annulée.
+    if (e.buttons === 0) { tourneRef.current = null; return }
     const delta = e.clientX - t.x
     if (Math.abs(delta) > 5 && !aTourneRef.current) {
       aTourneRef.current = true
       try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* décoratif */ }
+      // un VRAI glisser libère le projecteur : la fiche ne dérive jamais sur
+      // une scène qui tourne (sa position est capturée à l'ancrage).
+      sel.libere()
+      setVise(null)
     }
     angleRef.current = t.angle + delta * 0.45
     echRef.current.push({ t: e.timeStamp, a: angleRef.current })
@@ -159,7 +166,10 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     const r = el.getBoundingClientRect()
     const s = sc.getBoundingClientRect()
     if (!s.width || !s.height) return false
-    setVise({ i, x: (r.left + r.width / 2 - s.left) / s.width, y: Math.max(0.26, (r.top - s.top) / s.height) })
+    // barre haute → pas la place au-dessus (la scène CLIPPE) : la fiche se
+    // retourne sous son ancre au lieu de se faire couper.
+    const yFrac = (r.top - s.top) / s.height
+    setVise({ i, x: (r.left + r.width / 2 - s.left) / s.width, y: Math.max(0.06, yFrac), sens: yFrac < 0.42 ? 'bas' : 'haut' })
     return true
   }
   const surEntreCol = (i) => (e) => {
@@ -167,8 +177,15 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
     if (viser(i, e.currentTarget)) sel.survole(i)
   }
   const surQuitteCol = () => { sel.quitte() }
+  // le TAP-PROJECTEUR n'existe que dans le sable (prop projecteur) : sur une
+  // tuile du board, le tap reste UN geste — ouvrir le sable, jamais deux effets.
   const surTapCol = (i) => (e) => {
-    if (aTourneRef.current) return // un vrai glisser n'est pas un tap
+    if (!projecteur || aTourneRef.current) return
+    if (sel.bascule(i)) { viser(i, e.currentTarget); sons.tap() }
+  }
+  const surToucheCol = (i) => (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
     if (sel.bascule(i)) { viser(i, e.currentTarget); sons.tap() }
   }
 
@@ -212,7 +229,7 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card p3d">
-      <div className="card-title">{I_CUBE}{titre}{!reduce && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
+      <div className="card-title">{I_CUBE}{titre}{!reduce && <BoutonRejouer onClick={() => { setPrise((p) => p + 1); sel.libere(); setVise(null) }} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub p3d-sub">{kpi.texteFactuel}</p> : null}
 
       <div
@@ -252,6 +269,15 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
                   onPointerEnter={surEntreCol(i)}
                   onPointerLeave={surQuitteCol}
                   onClick={surTapCol(i)}
+                  {...(projecteur ? {
+                    tabIndex: 0,
+                    role: 'button',
+                    'aria-label': `${labels[i]} · ${formatCAD(v)}`,
+                    'aria-pressed': sel.fige && sel.actif === i,
+                    onFocus: (e) => { if (!sel.fige && viser(i, e.currentTarget)) sel.survole(i) },
+                    onBlur: surQuitteCol,
+                    onKeyDown: surToucheCol(i),
+                  } : {})}
                 >
                   {i === iMax && <span className="p3d-val">{formatCAD(v)}</span>}
                   <div className="p3d-duo">
@@ -266,10 +292,12 @@ export default function Prisme3D({ params = {}, data = {}, kpi = null }) {
             })}
           </div>
         </div>
-        {sel.actif != null && vise && vise.i === sel.actif && (
+        {sel.actif != null && sel.actif < serie.length && vise && vise.i === sel.actif && (
           <InfoBulle
+            key={sel.actif}
             x={vise.x}
             y={vise.y}
+            sens={vise.sens}
             titre={labels[sel.actif]}
             valeur={serie[sel.actif]}
             lignes={lignesComparees(serie[sel.actif], comparaisons, sel.actif)}

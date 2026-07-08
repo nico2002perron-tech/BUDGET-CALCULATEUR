@@ -24,7 +24,7 @@ const I_NUAGE = (
   </svg>
 )
 
-export default function Nuage({ params = {}, data = {}, kpi = null }) {
+export default function Nuage({ params = {}, data = {}, kpi = null, projecteur = false }) {
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const gid = useId().replace(/:/g, '') // les deux-points cassent url(#…)
   const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (les billes se reposent)
@@ -57,7 +57,7 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-nuage">
-      <div className="card-title">{I_NUAGE}{titre}{animer && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
+      <div className="card-title">{I_NUAGE}{titre}{animer && <BoutonRejouer onClick={() => { setPrise((p) => p + 1); sel.libere() }} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
@@ -71,7 +71,7 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
           </radialGradient>
         </defs>
         {/* la ligne-guide de la valeur regardée */}
-        {sel.actif != null && (
+        {sel.actif != null && sel.actif < serie.length && (
           <line className="graf-guide" x1={xDe(sel.actif)} y1={top} x2={xDe(sel.actif)} y2={baseY} />
         )}
         {[1, 2, 3, 4].map((i) => {
@@ -124,7 +124,7 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
           )
         })}
         {/* l'anneau de la bulle regardée */}
-        {sel.actif != null && (
+        {sel.actif != null && sel.actif < serie.length && (
           <circle
             cx={xDe(sel.actif)}
             cy={yDe(serie[sel.actif])}
@@ -142,7 +142,8 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
           </text>
         ))}
 
-        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout —
+            le tap-projecteur et le clavier n'existent que dans le sable */}
         {serie.map((v, i) => (
           <rect
             key={`h-${i}`}
@@ -154,13 +155,23 @@ export default function Nuage({ params = {}, data = {}, kpi = null }) {
             fill="transparent"
             onMouseEnter={() => sel.survole(i)}
             onMouseLeave={sel.quitte}
-            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+            onClick={() => { if (projecteur && sel.bascule(i)) sons.tap() }}
+            {...(projecteur ? {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${labels[i]} · ${formatCAD(v)}`,
+              'aria-pressed': sel.fige && sel.actif === i,
+              onFocus: () => sel.survole(i),
+              onBlur: sel.quitte,
+              onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.bascule(i)) sons.tap() } },
+            } : {})}
           />
         ))}
       </svg>
 
-      {sel.actif != null && (
+      {sel.actif != null && sel.actif < serie.length && (
         <InfoBulle
+          key={sel.actif}
           x={xDe(sel.actif) / W}
           y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
           titre={labels[sel.actif]}

@@ -425,7 +425,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
         )}
 
         <div className="sable-scene">
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
 
         {/* ÉPINGLER : la boucle se referme — la vue fabriquée devient la tuile. */}

@@ -82,7 +82,7 @@ ok(nH.labels.length === 12 && nH.valeurs.length === 12 && nH.titreBase === null,
 const nCap = normaliserSerie({ labels: Array.from({ length: 30 }, (_, i) => String(i)), valeurs: Array.from({ length: 30 }, () => 1) })
 ok(nCap.labels.length === 12 && nCap.valeurs.length === 12, 'jamais plus de 12 points (bornage dur)')
 ok(etiquetteCourte('34 ans', 5) === '34…' && etiquetteCourte('Logement', 6) === 'Logem…' && etiquetteCourte('Juil', 6) === 'Juil', 'étiquettes coupées AU MOT, jamais au milieu d’un chiffre')
-ok(abregerMontant(850) === '850 $' && abregerMontant(2140) === '2,1 k$' && abregerMontant(12600) === '13 k$' && abregerMontant(1_240_000) === '1,2 M$' && abregerMontant(-2100) === '−2,1 k$', 'axe chiffré : montants abrégés justes (850 $ / 2,1 k$ / 13 k$ / 1,2 M$ / −2,1 k$)', [850, 2140, 12600, 1240000, -2100].map(abregerMontant).join(' | '))
+ok(abregerMontant(850) === '850 $' && abregerMontant(2140) === '2,1 k$' && abregerMontant(12600) === '12,6 k$' && abregerMontant(1_240_000) === '1,2 M$' && abregerMontant(-2100) === '−2,1 k$', 'axe chiffré : la décimale reste jusqu’à 3 chiffres (12,6 k$, jamais « 13 k$ » à 3 % près)', [850, 2140, 12600, 1240000, -2100].map(abregerMontant).join(' | '))
 
 console.log('\n— Les séries de comparaison : résolues du snapshot, JAMAIS inventées —')
 const serie = BLOCS.prisme3d.resolve(snap, { comparaisons: [{ contexte: 'moyenne' }, { contexte: 'cout_vie' }, { contexte: 'an_passe' }] })

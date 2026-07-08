@@ -41,7 +41,11 @@ export function useSelection() {
     setEtat((e) => (e.fige && e.actif === i ? { actif: null, fige: false } : { actif: i, fige: true }))
     return vaFiger
   }
-  return { actif: etat.actif, fige: etat.fige, survole, quitte, bascule }
+  // libération INCONDITIONNELLE (quitte() est volontairement sans effet quand
+  // figé) : un vrai glisser de rotation ou un Rejouer relâche le projecteur —
+  // la fiche ne dérive jamais sur une scène qui a bougé/rejoué.
+  const libere = () => setEtat({ actif: null, fige: false })
+  return { actif: etat.actif, fige: etat.fige, survole, quitte, bascule, libere }
 }
 
 export function useCompteur(cible) {
@@ -70,13 +74,19 @@ export function useCompteur(cible) {
 
 /** props : x/y = fractions 0..1 du conteneur POSITIONNÉ le plus proche ;
  *  titre (étiquette), valeur (nombre → formatCAD, compté), lignes (repères
- *  comparés, faits), sous (mention ambre — exception négative seulement). */
-export function InfoBulle({ x, y, titre, valeur, lignes = [], sous = '' }) {
+ *  comparés, faits), sous (mention ambre — exception négative seulement) ;
+ *  sens : 'haut' (au-dessus de l'ancre) ou 'bas' (SE RETOURNE sous l'ancre
+ *  quand il n'y a pas la place au-dessus — un conteneur à overflow clip,
+ *  comme la scène 3D, couperait la fiche d'une barre haute). */
+export function InfoBulle({ x, y, titre, valeur, lignes = [], sous = '', sens = 'haut' }) {
   const v = useCompteur(valeur)
   return (
+    // aria-hidden : la fiche est purement VISUELLE (pointer-events none, jamais
+    // focusable) — un role="status" annoncerait chaque survol aux lecteurs
+    // d'écran ; l'info vit dans l'aria-label des cibles interactives.
     <div
-      className="ibulle"
-      role="status"
+      className={`ibulle${sens === 'bas' ? ' ibulle--bas' : ''}`}
+      aria-hidden="true"
       style={{ left: `${Math.min(90, Math.max(10, x * 100))}%`, top: `${Math.min(96, Math.max(2, y * 100))}%` }}
     >
       <span className="ibulle-t">{titre}</span>

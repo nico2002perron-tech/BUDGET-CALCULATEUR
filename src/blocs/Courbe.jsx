@@ -33,7 +33,7 @@ const I_COURBE = (
   </svg>
 )
 
-export default function Courbe({ params = {}, data = {}, kpi = null }) {
+export default function Courbe({ params = {}, data = {}, kpi = null, projecteur = false }) {
   const ligneRef = useRef(null)
   const sel = useSelection() // le survol vivant (hover + tap projecteur)
   const [prise, setPrise] = useState(0) // Rejouer : remonte le svg (la ligne se retrace)
@@ -85,7 +85,7 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
 
   return (
     <section className="card bloc-courbe">
-      <div className="card-title">{I_COURBE}{titre}{!reduce && <BoutonRejouer onClick={() => setPrise((p) => p + 1)} />}</div>
+      <div className="card-title">{I_COURBE}{titre}{!reduce && <BoutonRejouer onClick={() => { setPrise((p) => p + 1); sel.libere() }} />}</div>
       {kpi && kpi.texteFactuel ? <p className="card-sub">{kpi.texteFactuel}</p> : null}
 
       <div className="graf-zone">
@@ -107,7 +107,7 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
         <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
 
         {/* la ligne-guide de la valeur regardée (sous la courbe) */}
-        {sel.actif != null && (
+        {sel.actif != null && sel.actif < serie.length && (
           <line className="graf-guide" x1={xDe(sel.actif)} y1={top} x2={xDe(sel.actif)} y2={baseY} />
         )}
 
@@ -139,7 +139,7 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
             {formatCAD(serie[serie.length - 1])}
           </text>
         )}
-        {sel.actif != null && (
+        {sel.actif != null && sel.actif < serie.length && (
           <circle cx={xDe(sel.actif)} cy={yDe(serie[sel.actif])} r="9" style={{ fill: 'color-mix(in srgb, var(--wacc, #00b4d8) 18%, transparent)', stroke: 'var(--wacc, #00b4d8)' }} strokeWidth="1" />
         )}
         {serie.map((v, i) => {
@@ -181,7 +181,8 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
           </text>
         ))}
 
-        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout */}
+        {/* zones de frappe GÉNÉREUSES (toute la colonne), par-dessus tout —
+            le tap-projecteur et le clavier n'existent que dans le sable */}
         {serie.map((v, i) => (
           <rect
             key={`h-${i}`}
@@ -193,13 +194,23 @@ export default function Courbe({ params = {}, data = {}, kpi = null }) {
             fill="transparent"
             onMouseEnter={() => sel.survole(i)}
             onMouseLeave={sel.quitte}
-            onClick={() => { if (sel.bascule(i)) sons.tap() }}
+            onClick={() => { if (projecteur && sel.bascule(i)) sons.tap() }}
+            {...(projecteur ? {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${labels[i]} · ${formatCAD(v)}`,
+              'aria-pressed': sel.fige && sel.actif === i,
+              onFocus: () => sel.survole(i),
+              onBlur: sel.quitte,
+              onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.bascule(i)) sons.tap() } },
+            } : {})}
           />
         ))}
       </svg>
 
-      {sel.actif != null && (
+      {sel.actif != null && sel.actif < serie.length && (
         <InfoBulle
+          key={sel.actif}
           x={xDe(sel.actif) / W}
           y={Math.max(0.14, yDe(serie[sel.actif]) / H)}
           titre={labels[sel.actif]}
