@@ -23,6 +23,7 @@ import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI } from './recettes/bibliotheque-kpis.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
+import { perchesBoard } from './recettes/perches.js'
 import BoardCopilote from './components/BoardCopilote.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
@@ -558,8 +559,13 @@ function App() {
     const data = await res.json()
     if (!res.ok || !data || !Array.isArray(data.actions)) throw new Error('réponse invalide')
     const filtrees = data.actions.filter((a) => a && VERBES_BOARD.includes(a.verbe))
-    // On APPLIQUE contre l'état FRAIS (relu APRÈS le fetch) : une tuile ajoutée/
-    // retouchée pendant l'appel survit ; l'Annuler restaure CE même état.
+    return appliquerBoard(filtrees)
+  }
+  // Applique une salve d'actions board sur l'état FRAIS (relu ICI, jamais la
+  // closure du submit) → persiste + pose la tuile + Annuler. Partagé par la
+  // barre (après le fetch) ET par les perches tappables (exécution directe).
+  function appliquerBoard(actions) {
+    const filtrees = (Array.isArray(actions) ? actions : []).filter((a) => a && VERBES_BOARD.includes(a.verbe))
     const base = widgetsRef.current
     const { etat, faites, refusees } = executerActions(filtrees, { snapshot, nouvelId: () => 'w_' + Date.now() }, { widgets: base, sable: null })
     if (!faites.length && !refusees.length) return {} // rien surfacé → la barre affiche sa note
@@ -822,8 +828,9 @@ function App() {
                 </div>
                 )}
                 {/* LA BARRE-COPILOTE : parle à ton tableau (créer, répondre, retirer…).
-                    onChip garde le tableau monté tant qu'une salve est annulable. */}
-                <BoardCopilote onPiloter={piloterBoard} onChip={setCopiloteChip} />
+                    perches = départs tappables (data-aware) ; onChip garde le tableau
+                    monté tant qu'une salve est annulable. */}
+                <BoardCopilote onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesBoard(widgets, snapshot)} onChip={setCopiloteChip} />
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}`}>

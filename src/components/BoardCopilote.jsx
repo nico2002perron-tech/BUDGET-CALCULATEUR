@@ -9,16 +9,27 @@
    Zéro logique métier ici → l'exécution/validation vit dans actions.js.
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
+import { PLACEHOLDERS_BOARD } from '../recettes/perches.js'
 
-export default function BoardCopilote({ onPiloter, onChip }) {
+function reduitMouvement() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+export default function BoardCopilote({ onPiloter, onPerche, perches = [], onChip }) {
   const [texte, setTexte] = useState('')
   const [charge, setCharge] = useState(false)
   const [note, setNote] = useState(null)
   const [fait, setFait] = useState(null) // { resume, refus, annuler }
+  const [phIdx, setPhIdx] = useState(0) // l'exemple qui TOURNE dans le placeholder
   const inputRef = useRef(null)
   const timerRef = useRef(0)
 
   useEffect(() => () => clearTimeout(timerRef.current), [])
+  useEffect(() => {
+    if (reduitMouvement()) return
+    const id = setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS_BOARD.length), 4000)
+    return () => clearInterval(id)
+  }, [])
   // Signaler à la tour qu'une chip est en cours (elle garde le tableau monté →
   // l'Annuler survit même si la salve a vidé le board). false au démontage.
   useEffect(() => { if (onChip) onChip(!!(fait && fait.annuler)) }, [fait, onChip])
@@ -41,6 +52,17 @@ export default function BoardCopilote({ onPiloter, onChip }) {
     return () => window.removeEventListener('keydown', surTouche)
   }, [])
 
+  // Affiche l'issue d'une salve (barre OU perche) : chip « Fait · Annuler », ou note.
+  const montrer = (r) => {
+    if (r && (r.resume || r.refus)) {
+      clearTimeout(timerRef.current)
+      setFait({ resume: r.resume || null, refus: r.refus || null, annuler: r.annuler || null })
+      timerRef.current = setTimeout(() => setFait(null), 8000)
+      return true
+    }
+    setNote('Je n’ai pas trouvé d’action pour cette demande — essaie « ajoute mon coussin » ou « c’est quoi mon plus gros poste ? ».')
+    return false
+  }
   const soumettre = async (e) => {
     e.preventDefault()
     const t = texte.trim()
@@ -49,21 +71,17 @@ export default function BoardCopilote({ onPiloter, onChip }) {
     setNote(null)
     try {
       const r = await onPiloter(t)
-      if (r && (r.resume || r.refus)) {
-        clearTimeout(timerRef.current)
-        setFait({ resume: r.resume || null, refus: r.refus || null, annuler: r.annuler || null })
-        timerRef.current = setTimeout(() => setFait(null), 8000)
-        setTexte('')
-      } else if (r && r.note) {
-        setNote(r.note)
-      } else {
-        setNote('Je n’ai pas trouvé d’action pour cette demande — essaie « ajoute mon coussin » ou « c’est quoi mon plus gros poste ? ».')
-      }
+      if (montrer(r)) setTexte('')
     } catch {
       setNote('Ta tour n’a pas pu traiter la demande. Réessaie.')
     } finally {
       setCharge(false)
     }
+  }
+  // Une PERCHE tappée : exécution DIRECTE (zéro IA) → même chip « Fait · Annuler ».
+  const taperPerche = (actions) => {
+    setNote(null)
+    try { montrer(onPerche(actions)) } catch { setNote('Ta tour n’a pas pu faire ça.') }
   }
 
   const annuler = () => {
@@ -79,7 +97,7 @@ export default function BoardCopilote({ onPiloter, onChip }) {
           ref={inputRef}
           type="text"
           className="sable-ia-input"
-          placeholder="demande à ta tour — ex. « ajoute mon coussin » · touche /"
+          placeholder={`demande à ta tour — ${PLACEHOLDERS_BOARD[phIdx]} · touche /`}
           value={texte}
           onChange={(e) => setTexte(e.target.value)}
           aria-label="Demander une action à ta tour"
@@ -88,6 +106,19 @@ export default function BoardCopilote({ onPiloter, onChip }) {
           {charge ? '…' : 'IA'}
         </button>
       </form>
+      {/* La tour tend des DÉPARTS tappables (data-aware) + réassurance. Visibles
+          même sous une note : le dead-end devient une redirection. */}
+      {!fait && perches.length > 0 && (
+        <div className="cop-perches">
+          <span className="cop-perches-l">Pour commencer :</span>
+          {perches.map((p) => (
+            <button key={p.label} type="button" className="cop-perche" onClick={() => taperPerche(p.actions)}>
+              {p.label}
+            </button>
+          ))}
+          <span className="cop-aide">j’essaie ta demande — tu peux toujours annuler.</span>
+        </div>
+      )}
       {fait && (
         <div className="sable-fait" role="status">
           {fait.resume ? <span className="sable-fait-t">{fait.resume}</span> : null}

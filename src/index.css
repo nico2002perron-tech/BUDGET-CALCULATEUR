@@ -2583,6 +2583,22 @@ svg { display: block; }
 /* La même barre, en tête du TABLEAU (board) : accent cyan par défaut. */
 .board-copilote { --wacc: var(--cyan); display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 4px 0 14px; }
 .board-copilote .sable-ia { min-width: 100%; }
+
+/* LES PERCHES : des suggestions tappables au repos — fini la page blanche.
+   « Essaie : [chip] [chip] » + une réassurance discrète. */
+.cop-perches { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; }
+.cop-perches-l { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.cop-perche {
+  min-height: 34px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--wacc, var(--cyan)) 9%, #fff);
+  border: 1px solid color-mix(in srgb, var(--wacc, var(--cyan)) 26%, transparent);
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.cop-perche:hover { background: color-mix(in srgb, var(--wacc, var(--cyan)) 16%, #fff); }
+.cop-perche:active { transform: translateY(1px); }
+.cop-aide { flex-basis: 100%; font-size: 11.5px; font-weight: 500; color: var(--muted); opacity: 0.85; }
 .sable-fait {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px; width: 100%;
   padding: 8px 12px; border-radius: 12px;

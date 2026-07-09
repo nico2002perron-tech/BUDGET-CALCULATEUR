@@ -15,6 +15,7 @@ import PersonaStrip from './PersonaStrip.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
+import { perchesSable, PLACEHOLDERS_SABLE } from '../recettes/perches.js'
 import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { sons } from '../lib/sons.js'
 
@@ -65,6 +66,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [iaNote, setIaNote] = useState(null)
   const [fait, setFait] = useState(null) // { resume, refus, avant } — la chip « Fait · Annuler »
   const faitTimerRef = useRef(0)
+  const [phIdx, setPhIdx] = useState(0) // l'exemple qui TOURNE dans le placeholder
   // L'état de scène le PLUS RÉCENT (mis à jour à chaque rendu) : le copilote lit
   // CETTE ref au moment d'APPLIQUER (après le fetch), jamais la closure du submit
   // — une retouche faite pendant la requête n'est donc jamais écrasée.
@@ -86,6 +88,13 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // Nettoyage du timer de la chip « Fait » au démontage (hook inconditionnel,
   // avant tout return — jamais après le garde `if (!actif)`).
   useEffect(() => () => clearTimeout(faitTimerRef.current), [])
+
+  // Le placeholder TOURNE (exemples) — figé sous prefers-reduced-motion.
+  useEffect(() => {
+    if (reduitMouvement()) return
+    const id = setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS_SABLE.length), 4000)
+    return () => clearInterval(id)
+  }, [])
 
   // La tuile d'origine devient PÉRIMÉE si la fenêtre change (rotation, resize)
   // pendant que le sable est ouvert → la fermeture dégrade en fondu simple.
@@ -258,6 +267,14 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // l'épinglage, comme la forme). Aperçu vivant : la scène se teinte en direct.
   const couleurActive = couleurScene || widget.accent || null
   const titreActif = titreScene != null ? titreScene : (recette && recette.titre) || def.question
+
+  // LES PERCHES : des suggestions tappables (data-aware) qui règlent la page
+  // blanche — on tape, ça s'exécute (le même executerActions que la barre).
+  const perches = perchesSable(
+    { widgetId: widget.id, kpiId: kb.KPI, forme: formeActive, comparaisons: compActives, cible: cibleActive > 0 ? cibleActive : null, objectif: kb.params && kb.params.objectif },
+    { ...widget, accent: couleurActive },
+    snapshot,
+  )
 
   // On PUBLIE l'état de scène courant dans la ref à CHAQUE rendu → le copilote
   // (qui applique APRÈS le fetch) lit toujours l'état le plus frais.
@@ -443,7 +460,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
               <input
                 type="text"
                 className="sable-ia-input"
-                placeholder="demande à ta tour — ex. « en courbe, cible 4 000, en vert »"
+                placeholder={`demande à ta tour — ${PLACEHOLDERS_SABLE[phIdx]}`}
                 value={iaTexte}
                 onChange={(e) => setIaTexte(e.target.value)}
                 aria-label="Demander une action à ta tour"
@@ -452,6 +469,20 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 {iaCharge ? '…' : 'IA'}
               </button>
             </form>
+            {/* La tour tend des PERCHES tappables (data-aware) + une réassurance —
+                plus de page blanche. Visibles même sous une note d'échec : le
+                dead-end devient une redirection (on tape, ça s'exécute). */}
+            {!fait && perches.length > 0 && (
+              <div className="cop-perches">
+                <span className="cop-perches-l">Essaie :</span>
+                {perches.map((p) => (
+                  <button key={p.label} type="button" className="cop-perche" onClick={() => { setIaNote(null); appliquerActions(p.actions) }}>
+                    {p.label}
+                  </button>
+                ))}
+                <span className="cop-aide">j’essaie ta demande — rien n’est définitif.</span>
+              </div>
+            )}
             {fait && (
               <div className="sable-fait" role="status">
                 {fait.resume ? <span className="sable-fait-t">{fait.resume}</span> : null}
