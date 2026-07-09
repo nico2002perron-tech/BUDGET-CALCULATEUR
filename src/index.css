@@ -2599,6 +2599,12 @@ svg { display: block; }
 .cop-perche:hover { background: color-mix(in srgb, var(--wacc, var(--cyan)) 16%, #fff); }
 .cop-perche:active { transform: translateY(1px); }
 .cop-aide { flex-basis: 100%; font-size: 11.5px; font-weight: 500; color: var(--muted); opacity: 0.85; }
+
+/* L'ENSEIGNEMENT PROGRESSIF : « Et aussi : [prochain geste] » après une action. */
+.cop-prochain { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; animation: copProchainPop 0.2s ease-out; }
+.cop-prochain-l { font-size: 12px; font-weight: 700; color: var(--muted); }
+@keyframes copProchainPop { from { opacity: 0; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .cop-prochain { animation: none; } }
 .sable-fait {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px; width: 100%;
   padding: 8px 12px; border-radius: 12px;

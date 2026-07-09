@@ -6,7 +6,7 @@
    ========================================================================== */
 import { snapshotFromStore } from '../src/lib/canonical.js'
 import { exempleStore, DEMO_SAISONNIER } from '../src/lib/storage.js'
-import { perchesSable, perchesBoard, PLACEHOLDERS_SABLE, PLACEHOLDERS_BOARD } from '../src/recettes/perches.js'
+import { perchesSable, perchesBoard, PLACEHOLDERS_SABLE, PLACEHOLDERS_BOARD, gestesDe, prochainePerche } from '../src/recettes/perches.js'
 import { executerActions } from '../src/recettes/actions.js'
 import { filtrerFait } from '../src/recettes/schema.js'
 
@@ -70,6 +70,26 @@ console.log('\n— PERCHES DU BOARD : départs data-aware + anti-doublon —')
   const pMaigre = perchesBoard([], snapSaison)
   ok(!pMaigre.some((x) => x.actions[0].kpi === 'taux_effectif' || x.actions[0].kpi === 'valeur_nette'), 'sans fiscalité/patrimoine : pas de départ impôts/patrimoine (data-aware)')
   ok(pMaigre.some((x) => x.actions[0].kpi === 'amplitude_revenus'), 'saison présente : le départ saisonnier reste offert')
+}
+
+console.log('\n— ENSEIGNEMENT PROGRESSIF : le prochain geste pas encore appris —')
+{
+  const widget = { id: 'w1', recette: { situation: 'kpi_amplitude_revenus', titre: 'x', blocs: [{ KPI: 'amplitude_revenus', forme: 'courbe', params: {} }] }, accent: '#7a6fe6' }
+  const scene = { widgetId: 'w1', kpiId: 'amplitude_revenus', forme: 'courbe', comparaisons: [], cible: null }
+  const p = perchesSable(scene, widget, snapEx)
+  // gestesDe : une salve → ses capacités distinctes
+  ok(JSON.stringify(gestesDe([{ verbe: 'ajouter_comparateur' }, { verbe: 'changer_forme' }, { verbe: 'retirer_comparateur' }])) === JSON.stringify(['comparer', 'forme']), 'gestesDe : capacités DISTINCTES d’une salve (comparer, forme)')
+  // rien appris → le prochain = la 1re perche
+  const p0 = prochainePerche(p, [])
+  ok(p0 && p0.label === p[0].label, 'rien appris → le prochain = la 1re perche')
+  // « comparer » appris → le prochain saute la perche de comparaison
+  const geste1 = p[0].actions[0].verbe // ex. ajouter_comparateur → 'comparer'
+  const su = gestesDe([{ verbe: geste1 }])
+  const p1 = prochainePerche(p, su)
+  ok(p1 && p1.label !== p[0].label, 'geste appris → le prochain PASSE au geste suivant (déverrouillage un à un)', p1 && p1.label)
+  // tout appris → plus de nudge
+  const tout = ['comparer', 'forme', 'cible', 'couleur', 'nom', 'creer', 'repondre', 'retirer', 'taille', 'ouvrir']
+  ok(prochainePerche(p, tout) === null, 'tout appris → plus de nudge (on ne réenseigne pas ce qu’on sait)')
 }
 
 console.log('\n— Les placeholders tournants (exemples neutres, filtrés) —')

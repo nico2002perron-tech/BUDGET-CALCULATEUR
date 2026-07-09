@@ -9,13 +9,13 @@
    Zéro logique métier ici → l'exécution/validation vit dans actions.js.
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
-import { PLACEHOLDERS_BOARD } from '../recettes/perches.js'
+import { PLACEHOLDERS_BOARD, prochainePerche } from '../recettes/perches.js'
 
 function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function BoardCopilote({ onPiloter, onPerche, perches = [], onChip }) {
+export default function BoardCopilote({ onPiloter, onPerche, perches = [], appris = [], onChip }) {
   const [texte, setTexte] = useState('')
   const [charge, setCharge] = useState(false)
   const [note, setNote] = useState(null)
@@ -83,6 +83,8 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], onChi
     setNote(null)
     try { montrer(onPerche(actions)) } catch { setNote('Ta tour n’a pas pu faire ça.') }
   }
+  // L'ENSEIGNEMENT PROGRESSIF : le prochain geste pas encore appris (déverrouillé un à un).
+  const prochain = prochainePerche(perches, appris)
 
   const annuler = () => {
     if (fait && typeof fait.annuler === 'function') fait.annuler()
@@ -124,6 +126,13 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], onChi
           {fait.resume ? <span className="sable-fait-t">{fait.resume}</span> : null}
           {fait.refus ? <span className="sable-fait-r">{fait.refus}</span> : null}
           {fait.resume && fait.annuler ? <button type="button" className="sable-fait-annul" onClick={annuler}>Annuler</button> : null}
+        </div>
+      )}
+      {/* Le NUDGE : après un vrai geste, la tour déverrouille le suivant. */}
+      {fait && fait.resume && prochain && (
+        <div className="cop-prochain" role="status">
+          <span className="cop-prochain-l">Et aussi :</span>
+          <button type="button" className="cop-perche" onClick={() => taperPerche(prochain.actions)}>{prochain.label}</button>
         </div>
       )}
       {note && <p className="sable-ia-note" role="status">{note}</p>}

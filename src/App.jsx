@@ -23,7 +23,7 @@ import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI } from './recettes/bibliotheque-kpis.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
-import { perchesBoard } from './recettes/perches.js'
+import { perchesBoard, gestesDe } from './recettes/perches.js'
 import BoardCopilote from './components/BoardCopilote.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
@@ -541,6 +541,19 @@ function App() {
   //    applique ; « Annuler » (closure) restaure les tuiles d'avant.
   const VERBES_BOARD = ['creer_widget', 'repondre_kpi', 'retirer_widget', 'redimensionner', 'ouvrir_sable']
   const DOMAINES_GALERIE = new Set(DOMAINES.map((d) => d.id)) // ce que la Galerie sait bâtir (pas 'objectif'/'dette')
+  // ENSEIGNEMENT PROGRESSIF : les GESTES du copilote déjà utilisés (persistés →
+  // on ne réenseigne pas ce qu'on sait). Juste des clés de capacité, aucun montant.
+  const appris = Array.isArray(store.copiloteAppris) ? store.copiloteAppris : []
+  const marquerAppris = (gestes) => {
+    const neufs = (Array.isArray(gestes) ? gestes : []).filter((g) => g && !appris.includes(g))
+    if (!neufs.length) return
+    // garde locale UNIQUE (base du spread ET source du .includes) : un silo
+    // importé hostile (copiloteAppris = nombre/objet/string) repart proprement.
+    setStore((s) => {
+      const cop = Array.isArray(s.copiloteAppris) ? s.copiloteAppris : []
+      return { ...s, copiloteAppris: [...cop, ...neufs.filter((g) => !cop.includes(g))] }
+    })
+  }
   const sansNeuf = (w) => { const c = { ...w }; delete c.nouveau; return c } // enlève le drapeau transitoire de pose
   async function piloterBoard(texte) {
     // Les indicateurs OFFERTS = ceux des 5 domaines de la Galerie ET résolubles :
@@ -569,6 +582,7 @@ function App() {
     const base = widgetsRef.current
     const { etat, faites, refusees } = executerActions(filtrees, { snapshot, nouvelId: () => 'w_' + Date.now() }, { widgets: base, sable: null })
     if (!faites.length && !refusees.length) return {} // rien surfacé → la barre affiche sa note
+    if (faites.length) marquerAppris(gestesDe(faites.map((f) => ({ verbe: f.verbe })))) // la capacité est apprise
     const crees = etat.widgets.filter((w) => w.nouveau).map((w) => w.id)
     setStore((s) => ({ ...s, tourWidgets: etat.widgets.map(sansNeuf) }))
     if (crees.length) { sons.pose(); setNouveauWidget(crees[crees.length - 1]) } // la tuile SE POSE (le « bam »)
@@ -830,7 +844,7 @@ function App() {
                 {/* LA BARRE-COPILOTE : parle à ton tableau (créer, répondre, retirer…).
                     perches = départs tappables (data-aware) ; onChip garde le tableau
                     monté tant qu'une salve est annulable. */}
-                <BoardCopilote onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesBoard(widgets, snapshot)} onChip={setCopiloteChip} />
+                <BoardCopilote onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesBoard(widgets, snapshot)} appris={appris} onChip={setCopiloteChip} />
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}`}>
@@ -1058,7 +1072,7 @@ function App() {
           qu'il est ouvert → se referme seul. */}
       {(() => {
         const w = sable ? widgets.find((x) => x.id === sable.id) : null
-        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} /> : null
+        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
       })()}
     </div>
   )

@@ -15,7 +15,7 @@ import PersonaStrip from './PersonaStrip.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
-import { perchesSable, PLACEHOLDERS_SABLE } from '../recettes/perches.js'
+import { perchesSable, PLACEHOLDERS_SABLE, gestesDe, prochainePerche } from '../recettes/perches.js'
 import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { sons } from '../lib/sons.js'
 
@@ -49,7 +49,7 @@ function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function CarreDeSable({ widget, snapshot, origine = null, onFermer, onEpingler }) {
+export default function CarreDeSable({ widget, snapshot, origine = null, onFermer, onEpingler, appris = [], onAppris }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const panneauRef = useRef(null)
@@ -275,6 +275,9 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     { ...widget, accent: couleurActive },
     snapshot,
   )
+  // L'ENSEIGNEMENT PROGRESSIF : après une action, la tour souffle le prochain
+  // geste pas encore appris (Duolingo — les pouvoirs se déverrouillent un à un).
+  const prochain = prochainePerche(perches, appris)
 
   // On PUBLIE l'état de scène courant dans la ref à CHAQUE rendu → le copilote
   // (qui applique APRÈS le fetch) lit toujours l'état le plus frais.
@@ -309,7 +312,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     const t2 = w2.recette ? w2.recette.titre : S.titreActif
     if (t2 !== S.titreActif) setTitreScene(t2)
     // La chip « Fait · Annuler » (les refus sont énoncés honnêtement).
-    if (faites.length) sons.pose()
+    if (faites.length) { sons.pose(); if (onAppris) onAppris(gestesDe(faites.map((f) => ({ verbe: f.verbe })))) }
     const resume = resumeActions(faites)
     const refus = refusees.length ? refusees[0].raison : null
     clearTimeout(faitTimerRef.current)
@@ -488,6 +491,13 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 {fait.resume ? <span className="sable-fait-t">{fait.resume}</span> : null}
                 {fait.refus ? <span className="sable-fait-r">{fait.refus}</span> : null}
                 {fait.resume ? <button type="button" className="sable-fait-annul" onClick={annuler}>Annuler</button> : null}
+              </div>
+            )}
+            {/* Le NUDGE : après un vrai geste, la tour déverrouille le suivant. */}
+            {fait && fait.resume && prochain && (
+              <div className="cop-prochain" role="status">
+                <span className="cop-prochain-l">Et aussi :</span>
+                <button type="button" className="cop-perche" onClick={() => { setIaNote(null); appliquerActions(prochain.actions) }}>{prochain.label}</button>
               </div>
             )}
             {iaNote && <p className="sable-ia-note" role="status">{iaNote}</p>}

@@ -19,6 +19,32 @@ import { PALETTE_ACCENTS } from '../lib/entites.js'
 const MAX_PERCHES = 3
 const NOM_COULEUR = { cyan: 'cyan', ocean: 'océan', indigo: 'indigo', vert: 'vert', lavande: 'lavande', magenta: 'magenta' }
 
+/* ── L'ENSEIGNEMENT PROGRESSIF : chaque action appartient à un GESTE (une
+   capacité). La tour souffle le prochain geste que tu n'as pas encore utilisé
+   (Duolingo : on ne réenseigne pas ce qu'on sait). PUR. */
+const GESTE = {
+  ajouter_comparateur: 'comparer', retirer_comparateur: 'comparer',
+  changer_forme: 'forme', poser_cible: 'cible', retirer_cible: 'cible',
+  changer_couleur: 'couleur', renommer: 'nom', changer_icone: 'icone',
+  creer_widget: 'creer', repondre_kpi: 'repondre', retirer_widget: 'retirer',
+  redimensionner: 'taille', ouvrir_sable: 'ouvrir',
+}
+/** Les gestes (capacités) DISTINCTS d'une salve d'actions — pour marquer l'appris. PUR. */
+export function gestesDe(actions) {
+  const out = []
+  for (const a of Array.isArray(actions) ? actions : []) {
+    const g = a && GESTE[a.verbe]
+    if (g && !out.includes(g)) out.push(g)
+  }
+  return out
+}
+/** La PROCHAINE perche à enseigner : la 1re dont le geste n'est pas encore
+ *  appris. `appris` = liste/Set des gestes déjà utilisés. null si tout est su. PUR. */
+export function prochainePerche(perches, appris) {
+  const su = appris instanceof Set ? appris : new Set(Array.isArray(appris) ? appris : [])
+  return (Array.isArray(perches) ? perches : []).find((p) => { const g = GESTE[p.actions[0] && p.actions[0].verbe]; return g && !su.has(g) }) || null
+}
+
 // Ne garde que les perches dont TOUTES les actions aboutissent (dry-run) ET dont
 // le label passe filtrerFait. L'ordre des candidats = la priorité. PUR.
 function valider(candidats, ctx, etat) {
