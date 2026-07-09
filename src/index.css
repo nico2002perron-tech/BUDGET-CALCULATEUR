@@ -2524,9 +2524,37 @@ svg { display: block; }
 
 .sable-corps { width: 100%; display: flex; flex-direction: column; gap: 16px; }
 
-/* LA RANGÉE DE TYPES : chips tappables (≥44px) ; l'incompatible reste visible,
-   grisé — on voit ce que le sable sait faire sans jamais pouvoir se tromper. */
+/* La rangée générique (persona…) reste inline. */
 .sable-types { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+/* LA RANGÉE DE FORMES : des VIGNETTES tappables (glyphe + nom) — on voit la forme
+   avant de la choisir ; l'incompatible reste visible, grisé, jamais faux. */
+.sable-formes { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.sable-types-cartes { display: flex; flex-wrap: wrap; gap: 10px; align-self: stretch; }
+.sable-type-carte {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  min-width: 74px; padding: 12px 12px 9px; border-radius: 15px; cursor: pointer;
+  font-family: inherit; color: var(--navy);
+  border: 1.5px solid color-mix(in srgb, var(--navy) 12%, #fff);
+  background: color-mix(in srgb, var(--wacc, var(--cyan)) 5%, #fff);
+  transition: transform 0.16s ease, border-color 0.16s, background 0.16s, box-shadow 0.16s;
+}
+.sable-type-carte .glyphe { width: 40px; height: 28px; color: var(--wacc, var(--cyan)); transition: color 0.16s; }
+.sable-type-nom { font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em; }
+.sable-type-carte:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 45%, #fff);
+  box-shadow: 0 8px 18px -9px color-mix(in srgb, var(--wacc, var(--cyan)) 62%, transparent);
+}
+.sable-type-carte:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sable-type-carte.est-actif {
+  color: #fff; background: var(--wacc, var(--cyan));
+  border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 70%, var(--navy));
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 80%, transparent);
+}
+.sable-type-carte.est-actif .glyphe { color: #fff; }
+.sable-type-carte:disabled { opacity: 0.42; cursor: not-allowed; border-style: dashed; background: transparent; }
+.sable-type-carte:disabled .glyphe { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .sable-type-carte { transition: none; } .sable-type-carte:hover:not(:disabled) { transform: none; } }
 .sable-types-l {
   font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--muted); margin-right: 4px;
@@ -2648,8 +2676,8 @@ svg { display: block; }
 }
 .sable-obj-retirer:hover { color: var(--navy); border-color: #b9c6da; }
 @media (max-width: 767px) {
-  .sable-types { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-  .sable-type { flex: none; }
+  .sable-types-cartes { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .sable-type-carte { flex: none; }
 }
 /* LA PERSONNALITÉ : la bande d'identité (mascotte / mentor / entité) — une
    voix qui énonce LE fait du KPI, jamais un jugement. */

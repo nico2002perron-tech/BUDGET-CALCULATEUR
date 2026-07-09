@@ -12,6 +12,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
+import GlypheForme from './GlypheForme.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
@@ -433,24 +434,27 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
       <div className="sable-corps">
         {/* LA RANGÉE DE TYPES : choisis l'œil qui regarde ton chiffre. */}
         {formeActive && (
-          <div className="sable-types" role="group" aria-label="Type de graphique">
+          <div className="sable-formes" role="group" aria-label="Type de graphique">
             <span className="sable-types-l">La forme</span>
-            {rangee.map((t) => {
-              const offert = formes.includes(t)
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  className={`sable-type${t === formeActive ? ' est-actif' : ''}`}
-                  disabled={!offert}
-                  aria-pressed={t === formeActive}
-                  title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
-                  onClick={() => { sons.tap(); setFait(null); setFormeChoisie(t) }}
-                >
-                  {nomForme(t)}
-                </button>
-              )
-            })}
+            <div className="sable-types-cartes">
+              {rangee.map((t) => {
+                const offert = formes.includes(t)
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`sable-type-carte${t === formeActive ? ' est-actif' : ''}`}
+                    disabled={!offert}
+                    aria-pressed={t === formeActive}
+                    title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
+                    onClick={() => { sons.tap(); setFait(null); setFormeChoisie(t) }}
+                  >
+                    <GlypheForme forme={t} />
+                    <span className="sable-type-nom">{nomForme(t)}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
