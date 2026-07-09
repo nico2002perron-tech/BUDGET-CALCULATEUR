@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible } from './recettes/bibliotheque-kpis.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
 import BoardCopilote from './components/BoardCopilote.jsx'
@@ -856,6 +856,9 @@ function App() {
                   // Le sable ne s'offre que pour un KPI CONNU du registre (un id disparu —
                   // vieux silo, import — laisserait sinon une tuile « tappable » vers rien).
                   const kpiSable = kb && kpiPourId(kb.KPI) ? kb : null
+                  // La pastille de statut : factuelle, seulement si une cible SÛRE est atteignable
+                  // (sinon null — jamais un jugement inventé). Voir statutCible (data-aware).
+                  const statut = kb && kb.params ? statutCible(kb.KPI, snapshot, kb.params.cible) : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
@@ -875,6 +878,11 @@ function App() {
                         )}
                         <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w)}</span>
                         <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
+                        {statut && statut.atteint && (
+                          <span className="tw-statut" role="img" aria-label={`Cible de ${statut.cible}${statut.unite === '%' ? ' %' : ' ' + statut.unite} atteinte`} title="Cible atteinte">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" /></svg>
+                          </span>
+                        )}
                         <button
                           type="button"
                           className={`tour-widget-retouche${retoucheOuverte ? ' is-ouverte' : ''}`}

@@ -124,8 +124,10 @@ export const REGISTRE_KPIS = [
   {
     id: 'taux_epargne', domaine: 'budget', question: 'Quelle part je mets de côté ?',
     requiert: ['depenses'], blocsCompatibles: ['jauge', 'stat', 'repartition'],
-    // réglable : TA cible d'épargne (ctx.cible, en %) — choisie par l'usager, jamais imposée
-    reglage: { label: 'Ta cible', unite: '%', defaut: 10, min: 1, max: 50, pas: 1 },
+    // réglable : TA cible d'épargne (ctx.cible, en %) — choisie par l'usager, jamais imposée.
+    // sens 'haut' : la valeur et la cible partagent l'unité (%) et « plus haut = atteint »
+    // → seule condition sûre pour une pastille de statut (jamais un jugement inventé).
+    reglage: { label: 'Ta cible', unite: '%', defaut: 10, min: 1, max: 50, pas: 1, sens: 'haut' },
     resolve: (s, ctx) => {
       const rev = num(s.depenses.revenu); const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne)
       const pct = rev > 0 ? Math.round((ep / rev) * 100) : null
@@ -164,7 +166,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'mois_couverts', domaine: 'coussin', question: 'Mon coussin tient combien de mois ?',
     requiert: ['coussin'], blocsCompatibles: ['jauge', 'coussin_urgence'],
-    reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
+    // valeur et cible en 'mois', « plus haut = atteint » → pastille de statut sûre.
+    reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1, sens: 'haut' },
     resolve: (s, ctx) => {
       const m = s.coussin.moisCouverts
       const cible = num(ctx && ctx.cible)
@@ -406,6 +409,26 @@ export function reglageCible(kpiId, snapshot, ctx) {
     if (formes.some((f) => FORMES_COMPARABLES.includes(f) || f === 'nuage')) return REGLAGE_SERIE
   }
   return null
+}
+
+/* ── LE STATUT D'UNE CIBLE : la pastille factuelle sur la tuile (« Cible atteinte »
+   ou « Cible 3 mois »). VOLONTAIREMENT prudent — on ne la calcule QUE quand
+   c'est indiscutable : le KPI porte un réglage avec un `sens` (donc valeur et
+   cible partagent l'unité et une direction connue), une cible > 0 est posée, la
+   donnée est disponible. Sinon → null (jamais un « atteint/sous » inventé sur un
+   KPI dont la cible est une entrée de calcul et non une comparaison). Le texte
+   ne juge pas (pas de « en retard / bien géré ») : il énonce un fait. PUR. */
+export function statutCible(kpiId, snapshot, cible) {
+  const def = kpiPourId(kpiId)
+  if (!def || !def.reglage || !def.reglage.sens) return null
+  const c = Number(cible)
+  if (!(c > 0)) return null
+  const r = resolveKPI(kpiId, snapshot, { cible: c })
+  if (!r || !r.disponible || typeof r.valeur !== 'number' || !Number.isFinite(r.valeur)) return null
+  if (r.unite !== def.reglage.unite) return null // valeur et cible DOIVENT partager l'unité
+  const atteint = def.reglage.sens === 'haut' ? r.valeur >= c : r.valeur <= c
+  const uniteTxt = def.reglage.unite === '%' ? ' %' : ` ${def.reglage.unite}`
+  return { atteint, cible: c, unite: def.reglage.unite, texte: atteint ? 'Cible atteinte' : `Cible ${c}${uniteTxt}` }
 }
 
 // ≤ max points, premiers/derniers inclus (les projections longues restent
