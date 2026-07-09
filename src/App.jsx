@@ -19,9 +19,11 @@ import { construireVerdict } from './lib/verdict.js'
 import Galerie from './components/Galerie.jsx'
 import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
-import { construireGalerie } from './lib/galerie.js'
+import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI } from './recettes/bibliotheque-kpis.js'
+import { executerActions, resumeActions } from './recettes/actions.js'
+import BoardCopilote from './components/BoardCopilote.jsx'
 import SaisieRevenus from './components/SaisieRevenus.jsx'
 import SaisieDepenses from './components/SaisieDepenses.jsx'
 import SaisiePatrimoine from './components/SaisiePatrimoine.jsx'
@@ -205,6 +207,14 @@ function App() {
   }, [])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
+  // Ref des tuiles la PLUS RÉCENTE → le copilote applique contre l'état FRAIS
+  // (une tuile ajoutée pendant le fetch n'est jamais écrasée). Cf. sable A2.
+  const widgetsRef = useRef(widgets)
+  widgetsRef.current = widgets
+  // Une salve du copilote a une chip « Annuler » en cours → garder le tableau
+  // (et donc la barre + la chip) monté même si la salve a VIDÉ le board, sinon
+  // l'Annuler se démonterait avec lui.
+  const [copiloteChip, setCopiloteChip] = useState(false)
 
   // ── MODE « RÉORGANISER » : glisser pour réordonner (pointer events maison,
   // zéro dépendance). La tuile tirée suit le doigt (style direct, pas de
@@ -524,6 +534,48 @@ function App() {
       tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => (w.id === widgetId ? { ...w, accent: hex } : w)),
     }))
 
+  // ── LA BARRE-COPILOTE DU BOARD : ta phrase → des ACTIONS de tableau (créer,
+  //    répondre, retirer, redimensionner, ouvrir). Payload = FORME seulement
+  //    (ids + questions, JAMAIS un montant). executerActions (A1) VALIDE +
+  //    applique ; « Annuler » (closure) restaure les tuiles d'avant.
+  const VERBES_BOARD = ['creer_widget', 'repondre_kpi', 'retirer_widget', 'redimensionner', 'ouvrir_sable']
+  const DOMAINES_GALERIE = new Set(DOMAINES.map((d) => d.id)) // ce que la Galerie sait bâtir (pas 'objectif'/'dette')
+  const sansNeuf = (w) => { const c = { ...w }; delete c.nouveau; return c } // enlève le drapeau transitoire de pose
+  async function piloterBoard(texte) {
+    // Les indicateurs OFFERTS = ceux des 5 domaines de la Galerie ET résolubles :
+    // le copilote ne fait naître QUE ce que la tour sait bâtir (jamais une tuile vide).
+    const kpisOfferts = REGISTRE_KPIS
+      .filter((k) => DOMAINES_GALERIE.has(k.domaine))
+      .filter((k) => { const r = resolveKPI(k.id, snapshot); return r && r.disponible })
+      .map((k) => ({ id: k.id, question: k.question }))
+    const tuiles = widgetsRef.current.map((w) => { const kb = heroKPI(w.recette); return { id: w.id, kpi: kb ? kb.KPI : '', taille: tailleWidget(w) } })
+    const res = await fetch('/api/build-tool', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ mode: 'piloter', surface: 'board', texte, tuiles, kpisOfferts }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data || !Array.isArray(data.actions)) throw new Error('réponse invalide')
+    const filtrees = data.actions.filter((a) => a && VERBES_BOARD.includes(a.verbe))
+    // On APPLIQUE contre l'état FRAIS (relu APRÈS le fetch) : une tuile ajoutée/
+    // retouchée pendant l'appel survit ; l'Annuler restaure CE même état.
+    const base = widgetsRef.current
+    const { etat, faites, refusees } = executerActions(filtrees, { snapshot, nouvelId: () => 'w_' + Date.now() }, { widgets: base, sable: null })
+    if (!faites.length && !refusees.length) return {} // rien surfacé → la barre affiche sa note
+    const crees = etat.widgets.filter((w) => w.nouveau).map((w) => w.id)
+    setStore((s) => ({ ...s, tourWidgets: etat.widgets.map(sansNeuf) }))
+    if (crees.length) { sons.pose(); setNouveauWidget(crees[crees.length - 1]) } // la tuile SE POSE (le « bam »)
+    let ouvert = false
+    if (etat.sable && etat.sable.widgetId) { setSable({ id: etat.sable.widgetId, rect: null }); ouvert = true }
+    const annuler = () => { setStore((s) => ({ ...s, tourWidgets: base })); if (ouvert) setSable(null) }
+    return {
+      resume: faites.length ? resumeActions(faites) : null,
+      refus: refusees.length ? refusees[0].raison : null,
+      annuler: faites.length ? annuler : null,
+    }
+  }
+
   // Le « BAM » : la conversation studio → une ENTITÉ (silo) + sa tuile carte_entite qui
   // SE POSE dans le dashboard (animée, via nouveauWidget → stagger de MoteurRendu).
   const materialiserEntite = (config) => {
@@ -737,8 +789,9 @@ function App() {
             {/* LE TABLEAU : les indicateurs déjà créés (persistants). En-tête façon
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
                 en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
-            {widgets.length > 0 && (
+            {(widgets.length > 0 || copiloteChip) && (
               <div className="tour-tableau">
+                {widgets.length > 0 && (
                 <div className="tour-board-tete">
                   <span className="tb-voyant" aria-hidden="true" />
                   <span className="tb-label">Tes indicateurs</span>
@@ -767,6 +820,10 @@ function App() {
                     )}
                   </button>
                 </div>
+                )}
+                {/* LA BARRE-COPILOTE : parle à ton tableau (créer, répondre, retirer…).
+                    onChip garde le tableau monté tant qu'une salve est annulable. */}
+                <BoardCopilote onPiloter={piloterBoard} onChip={setCopiloteChip} />
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}`}>

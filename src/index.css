@@ -2579,6 +2579,10 @@ svg { display: block; }
 /* LA BARRE-COPILOTE : la barre + la chip « Fait · Annuler » de la salve. */
 .sable-copilote { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .sable-copilote .sable-ia { min-width: 100%; }
+
+/* La même barre, en tête du TABLEAU (board) : accent cyan par défaut. */
+.board-copilote { --wacc: var(--cyan); display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 4px 0 14px; }
+.board-copilote .sable-ia { min-width: 100%; }
 .sable-fait {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px; width: 100%;
   padding: 8px 12px; border-radius: 12px;

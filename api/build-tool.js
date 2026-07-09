@@ -109,7 +109,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 // options OFFERTES envoyées par le client (formes/contextes/couleurs = forme des
 // données seulement, jamais un montant du silo). Le client VALIDE + applique
 // chaque action (actions.js) : une action impossible est refusée honnêtement.
-const SYSTEM_PILOTER = `Tu es le COPILOTE de « la tour de contrôle », une plateforme québécoise de finances personnelles. L'usager regarde UN indicateur dans son « carré de sable » et te parle en français.
+const SYSTEM_PILOTER_SABLE = `Tu es le COPILOTE de « la tour de contrôle », une plateforme québécoise de finances personnelles. L'usager regarde UN indicateur dans son « carré de sable » et te parle en français.
 Ton rôle : traduire sa phrase en une LISTE d'ACTIONS, dans l'ordre. Tu NE calcules RIEN, tu NE mets AUCUN montant venant des données (les chiffres vivent sur l'appareil de l'usager). Le SEUL nombre que tu peux écrire est celui que l'usager PRONONCE lui-même (ex. « une cible de 4000 »).
 
 On te donne : l'indicateur (id + question), sa forme actuelle, les FORMES OFFERTES (ids), les CONTEXTES de comparaison OFFERTS (ids), les COULEURS offertes (ids), si une cible est réglable (+ son unité).
@@ -129,9 +129,31 @@ Une phrase peut donner PLUSIEURS actions (« en courbe avec une cible de 4000 »
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"actions":[ ... ]}`;
 
+// ── Mode PILOTER, surface BOARD : l'usager parle à SON TABLEAU (« ajoute mon
+// coussin », « c'est quoi mon plus gros poste ? », « enlève-la », « agrandis »).
+const SYSTEM_PILOTER_BOARD = `Tu es le COPILOTE de « la tour de contrôle », une plateforme québécoise de finances personnelles. L'usager regarde SON TABLEAU d'indicateurs (des tuiles) et te parle en français.
+Ton rôle : traduire sa phrase en une LISTE d'ACTIONS. Tu NE calcules RIEN, tu NE mets AUCUN montant.
+
+On te donne : les TUILES actuelles (id + indicateur + taille), et les INDICATEURS OFFERTS (id + question) qu'on peut créer ou dont on peut donner la réponse.
+
+VERBES (n'utilise QUE ceux-ci ; ne choisis QUE parmi les ids offerts/présents) :
+- {"verbe":"creer_widget","kpi":"<id d'un INDICATEUR OFFERT>"} — pour « ajoute/montre/suis <indicateur> ».
+- {"verbe":"repondre_kpi","kpi":"<id d'un INDICATEUR OFFERT>"} — quand l'usager POSE une QUESTION (« c'est quoi… », « combien… », « il me reste… ») : pose la tuile qui répond.
+- {"verbe":"retirer_widget","cible":"<id d'une TUILE présente>"} — pour « enlève/retire <tuile> ».
+- {"verbe":"redimensionner","cible":"<id d'une TUILE>","taille":"s|m|l|xl"} — « agrandis » → l ou xl, « réduis » → s.
+- {"verbe":"ouvrir_sable","cible":"<id d'une TUILE>"} — « ouvre/retouche <tuile> ».
+
+Associe l'indicateur le plus PERTINENT à la demande (coussin→sécurité, solde→ce qu'il reste, top_categorie→plus gros poste, taux_effectif→impôts, valeur_nette→patrimoine…). Une demande sans indicateur/tuile correspondante → liste vide.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"actions":[ ... ]}`;
+
 // Maquette déterministe du mode piloter (clé absente) : mots-clés → actions.
 // Couvre les commandes courantes → le copilote marche HORS LIGNE pour tous.
 function mockPiloter(message, p) {
+  if (p && p.surface === 'board') return mockPiloterBoard(message, p);
+  return mockPiloterSable(message, p);
+}
+function mockPiloterSable(message, p) {
   const t = String(message || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const ctx = p || {};
   const formes = Array.isArray(ctx.formesOffertes) ? ctx.formesOffertes : [];
@@ -175,6 +197,49 @@ function mockPiloter(message, p) {
     if (titre) actions.push({ verbe: 'renommer', titre });
   }
 
+  return { actions };
+}
+
+// Maquette déterministe du mode piloter (board) : mots-clés → indicateur → action.
+function mockPiloterBoard(message, p) {
+  const t = String(message || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const offerts = Array.isArray(p && p.kpisOfferts) ? p.kpisOfferts.map((k) => k && k.id) : [];
+  const tuiles = Array.isArray(p && p.tuiles) ? p.tuiles : [];
+  const actions = [];
+  // Associer un INDICATEUR (id) à la phrase, parmi les offerts.
+  const KPI_MOTS = [
+    ['mois_couverts', /(coussin|securite|fonds d urgence|urgence|tient combien|combien de mois)/],
+    ['montant_coussin', /(combien de cote|combien j ai de cote)/],
+    ['solde_mois', /(reste|solde|surplus|ce qu il reste|il me reste)/],
+    ['top_categorie', /(plus gros poste|grosse categorie|ou va|quel poste|pese le plus|plus gros)/],
+    ['cout_vie_mensuel', /(cout de vie|couter de vivre|coute de vivre)/],
+    ['taux_epargne', /(taux d epargne|part.*cote|combien je mets)/],
+    ['equilibre_503020', /(50 ?30 ?20|budget.*balance|equilibre)/],
+    ['taux_effectif', /(impot|imposition|taxes)/],
+    ['revenu_net_mensuel', /(net|revenu net|reste net)/],
+    ['valeur_nette', /(valeur nette|je vaux|patrimoine net|combien je vaux)/],
+    ['patrimoine_retraite', /(retraite|a la retraite)/],
+    ['trajectoire_patrimoine', /(patrimoine.*evolue|evolue.*patrimoine|trajectoire)/],
+    ['amplitude_revenus', /(revenus varient|saison|amplitude|revenu variable)/],
+  ];
+  let kpi = null;
+  for (const [id, re] of KPI_MOTS) { if (re.test(t) && offerts.includes(id)) { kpi = id; break; } }
+  // La tuile visée : celle qui porte ce kpi, sinon « la dernière/celle-là ».
+  const tuileDe = (k) => tuiles.find((x) => x && x.kpi === k);
+  const derniere = tuiles.length ? tuiles[tuiles.length - 1] : null;
+  const retrait = /\b(enleve|enleves|retire|retires|efface|supprime|vire|jette)\b/.test(t);
+  const ouvre = /\b(ouvre|retouche|modifie|change|edite)\b/.test(t);
+  const agrandir = /\b(agrandis|plus grand|plus grande|plus gros|en grand)\b/.test(t);
+  const reduire = /\b(reduis|reduit|plus petit|plus petite|rapetisse)\b/.test(t);
+  const cibleTuile = (kpi && tuileDe(kpi)) || (/(la|celle|ca|cette|derniere)/.test(t) ? derniere : null);
+
+  if (retrait && cibleTuile) actions.push({ verbe: 'retirer_widget', cible: cibleTuile.id });
+  else if (ouvre && cibleTuile) actions.push({ verbe: 'ouvrir_sable', cible: cibleTuile.id });
+  else if ((agrandir || reduire) && cibleTuile) actions.push({ verbe: 'redimensionner', cible: cibleTuile.id, taille: agrandir ? 'l' : 's' });
+  else if (kpi) {
+    const question = /\?|c est quoi|combien|quel|quelle|est-ce|quest|ou va|comment/.test(t);
+    actions.push({ verbe: question ? 'repondre_kpi' : 'creer_widget', kpi });
+  }
   return { actions };
 }
 
@@ -292,6 +357,9 @@ export default async function handler(req, res) {
         contextesOfferts: Array.isArray(b.contextesOfferts) ? b.contextesOfferts.slice(0, 10).map((x) => String(x).slice(0, 30)) : [],
         couleurs: Array.isArray(b.couleurs) ? b.couleurs.slice(0, 10).map((x) => String(x).slice(0, 20)) : [],
         cible: { present: !!cible.present, unite: String(cible.unite || '').slice(0, 12), posee: !!cible.posee },
+        // surface board : l'inventaire des tuiles + les indicateurs offerts (ids + questions).
+        tuiles: Array.isArray(b.tuiles) ? b.tuiles.slice(0, 40).map((x) => ({ id: String((x && x.id) || '').slice(0, 40), kpi: String((x && x.kpi) || '').slice(0, 60), taille: String((x && x.taille) || '').slice(0, 4) })) : [],
+        kpisOfferts: Array.isArray(b.kpisOfferts) ? b.kpisOfferts.slice(0, 30).map((x) => ({ id: String((x && x.id) || '').slice(0, 60), question: String((x && x.question) || '').slice(0, 120) })) : [],
       };
     }
   } catch { /* ignore */ }
@@ -299,15 +367,23 @@ export default async function handler(req, res) {
   if (message.length > 600) message = message.slice(0, 600);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const system = (mode === 'comparer') ? SYSTEM_COMPARER : (mode === 'recette') ? SYSTEM_RECETTE : (mode === 'piloter') ? SYSTEM_PILOTER : SYSTEM;
+  const system = (mode === 'comparer') ? SYSTEM_COMPARER : (mode === 'recette') ? SYSTEM_RECETTE
+    : (mode === 'piloter') ? ((piloter && piloter.surface === 'board') ? SYSTEM_PILOTER_BOARD : SYSTEM_PILOTER_SABLE)
+    : SYSTEM;
   const texteUsager = message; // la phrase BRUTE (le mock lit celle-ci, jamais le gabarit)
   if (mode === 'comparer') {
     const c = comparer || { kpi: '', question: '', saisonnier: false, donneesDisponibles: [], contextesDisponibles: [] };
     message = `KPI : ${c.kpi} — « ${c.question} »\nRevenus saisonniers : ${c.saisonnier ? 'oui' : 'non'}\nDonnées présentes : ${c.donneesDisponibles.join(', ') || '(aucune)'}\nContextes disponibles : ${c.contextesDisponibles.join(', ') || '(aucun)'}\nDemande de l'usager : ${message}`;
   }
   if (mode === 'piloter') {
-    const p = piloter || { kpi: '', question: '', formeActive: '', formesOffertes: [], contextesOfferts: [], couleurs: [], cible: { present: false, unite: '', posee: false } };
-    message = `Indicateur : ${p.kpi} — « ${p.question} »\nForme actuelle : ${p.formeActive || '(aucune)'}\nFormes offertes : ${p.formesOffertes.join(', ') || '(aucune)'}\nContextes de comparaison offerts : ${p.contextesOfferts.join(', ') || '(aucun)'}\nCouleurs offertes : ${p.couleurs.join(', ') || '(aucune)'}\nCible réglable : ${p.cible.present ? `oui (unité ${p.cible.unite || '?'}, ${p.cible.posee ? 'déjà posée' : 'non posée'})` : 'non'}\nDemande de l'usager : ${message}`;
+    const p = piloter || { surface: 'sable', kpi: '', question: '', formeActive: '', formesOffertes: [], contextesOfferts: [], couleurs: [], cible: { present: false, unite: '', posee: false }, tuiles: [], kpisOfferts: [] };
+    if (p.surface === 'board') {
+      const tuiles = (p.tuiles || []).map((x) => `${x.id} (${x.kpi || 'vue'}${x.taille ? ', ' + x.taille : ''})`).join(' ; ') || '(aucune)';
+      const kpis = (p.kpisOfferts || []).map((k) => `${k.id} : « ${k.question} »`).join('\n') || '(aucun)';
+      message = `Tuiles actuelles : ${tuiles}\nIndicateurs offerts :\n${kpis}\nDemande de l'usager : ${message}`;
+    } else {
+      message = `Indicateur : ${p.kpi} — « ${p.question} »\nForme actuelle : ${p.formeActive || '(aucune)'}\nFormes offertes : ${p.formesOffertes.join(', ') || '(aucune)'}\nContextes de comparaison offerts : ${p.contextesOfferts.join(', ') || '(aucun)'}\nCouleurs offertes : ${p.couleurs.join(', ') || '(aucune)'}\nCible réglable : ${p.cible.present ? `oui (unité ${p.cible.unite || '?'}, ${p.cible.posee ? 'déjà posée' : 'non posée'})` : 'non'}\nDemande de l'usager : ${message}`;
+    }
   }
 
   // Sans clé : en modes recette/comparer on renvoie une MAQUETTE locale (le flux
