@@ -2403,6 +2403,22 @@ svg { display: block; }
   border-radius: 20px; padding: 14px 18px; margin: 10px 0 4px;
 }
 .retouche-bloc { display: flex; flex-direction: column; gap: 8px; }
+/* DUPLIQUER : une action à part (pleine largeur du panneau), discrète mais claire. */
+.retouche-actions { flex-basis: 100%; gap: 6px; }
+.retouche-dupli {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  font-family: inherit; font-size: 12.5px; font-weight: 800; color: var(--wacc);
+  background: color-mix(in srgb, var(--wacc) 8%, #fff);
+  border: 1.5px solid color-mix(in srgb, var(--wacc) 28%, #fff); border-bottom-width: 3px;
+  border-radius: 12px; padding: 8px 14px; cursor: pointer;
+  transition: transform 0.09s, border-bottom-width 0.09s, background 0.15s;
+}
+.retouche-dupli svg { width: 15px; height: 15px; }
+.retouche-dupli:hover { background: color-mix(in srgb, var(--wacc) 14%, #fff); }
+.retouche-dupli:active { transform: translateY(2px); border-bottom-width: 1.5px; }
+.retouche-dupli:focus-visible { outline: 2px solid var(--wacc); outline-offset: 2px; }
+.retouche-dupli-note { font-size: 11px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .retouche-dupli:active { transform: none; } }
 
 /* La zone tappable : le curseur invite, l'indice apparaît au survol. */
 .tour-rendu { position: relative; }

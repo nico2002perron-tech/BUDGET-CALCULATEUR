@@ -453,6 +453,33 @@ function App() {
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
 
+  // DUPLIQUER une tuile en VARIANTE : un clone profond (recette + blocs + params,
+  // JSON-sérialisable → isolation totale), posé JUSTE APRÈS l'original, animé. On
+  // garde la MÊME `situation` (progression.js mappe situation→étage : la variante
+  // compte pour son étage ; les clés React sont l'id, jamais la situation). C'est
+  // le geste « plus de pouvoir » : on part d'une base et on la fait diverger.
+  const dupliquerWidget = (id) => {
+    const base = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
+    const src = base.find((w) => w.id === id)
+    if (!src || !src.recette || !Array.isArray(src.recette.blocs)) return
+    let recette
+    try { recette = JSON.parse(JSON.stringify(src.recette)) } catch { return }
+    const t = src.recette.titre || 'Indicateur'
+    recette.titre = `${t.length > 52 ? t.slice(0, 52) : t} (copie)`
+    const neufId = 'w_' + Date.now()
+    const neuf = { id: neufId, recette, accent: src.accent || null, icone: src.icone || null }
+    if (src.taille) neuf.taille = src.taille
+    sons.pose()
+    setStore((s) => {
+      const arr = Array.isArray(s.tourWidgets) ? s.tourWidgets : []
+      const j = arr.findIndex((w) => w.id === id) // index FRAIS (l'état a pu bouger)
+      if (j < 0) return s
+      return { ...s, tourWidgets: [...arr.slice(0, j + 1), neuf, ...arr.slice(j + 1)] }
+    })
+    setNouveauWidget(neufId) // la variante SE POSE (le « bam »)
+    setAngleWidget(null) // ferme la retouche de l'original
+  }
+
   // ÉPINGLER depuis le carré de sable : la vue fabriquée (forme, comparaisons,
   // cible, personnalité) devient LA tuile — mise à jour EN PLACE (même id,
   // jamais un doublon), persistée par le debounce existant.
@@ -962,6 +989,17 @@ function App() {
                                 </button>
                               ))}
                             </div>
+                          </div>
+                          {/* DUPLIQUER : pars d'une base, fais-en une variante — puis diverge
+                              (autre forme, autre couleur, autre cible) dans son carré de sable. */}
+                          <div className="retouche-bloc retouche-actions">
+                            <button type="button" className="retouche-dupli" onClick={() => dupliquerWidget(w.id)}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M5 15V6a2 2 0 0 1 2-2h9" />
+                              </svg>
+                              Dupliquer cette tuile
+                            </button>
+                            <span className="retouche-dupli-note">Une copie indépendante, à faire diverger.</span>
                           </div>
                         </div>
                       )}
