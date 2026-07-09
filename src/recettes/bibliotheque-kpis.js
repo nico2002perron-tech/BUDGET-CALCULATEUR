@@ -422,7 +422,7 @@ export function statutCible(kpiId, snapshot, cible) {
   const def = kpiPourId(kpiId)
   if (!def || !def.reglage || !def.reglage.sens) return null
   const c = Number(cible)
-  if (!(c > 0)) return null
+  if (!Number.isFinite(c) || c <= 0) return null // NaN/Infinity/≤0 (silo corrompu) → rien
   const r = resolveKPI(kpiId, snapshot, { cible: c })
   if (!r || !r.disponible || typeof r.valeur !== 'number' || !Number.isFinite(r.valeur)) return null
   if (r.unite !== def.reglage.unite) return null // valeur et cible DOIVENT partager l'unité

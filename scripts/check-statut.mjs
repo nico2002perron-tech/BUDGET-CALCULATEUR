@@ -53,6 +53,9 @@ console.log('\n— PRUDENCE : aucun statut là où la cible n’est PAS une comp
   ok(statutCible('mois_couverts', snap, 0) === null, 'cible 0 → null')
   ok(statutCible('mois_couverts', snap, null) === null, 'cible null → null')
   ok(statutCible('mois_couverts', snap, -3) === null, 'cible négative → null')
+  ok(statutCible('mois_couverts', snap, Infinity) === null, 'cible Infinity → null (jamais « Cible Infinity »)')
+  ok(statutCible('mois_couverts', snap, NaN) === null, 'cible NaN → null')
+  ok(statutCible('mois_couverts', snap, 'abc') === null, 'cible non numérique → null')
   ok(statutCible('kpi_inexistant', snap, 3) === null, 'KPI inconnu → null')
   // donnée manquante (saison seule : pas de coussin) → null
   ok(statutCible('mois_couverts', snapSaison, 3) === null, 'sans donnée coussin → null (data-aware)')
