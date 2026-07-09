@@ -14,6 +14,7 @@ import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
 import GlypheForme from './GlypheForme.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
+import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide } from '../recettes/derivations.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
 import { perchesSable, PLACEHOLDERS_SABLE, gestesDe, prochainePerche } from '../recettes/perches.js'
@@ -62,6 +63,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [persona, setPersona] = useState(null) // null = celle du widget (épinglée), sinon ton choix du moment
   const [couleurScene, setCouleurScene] = useState(null) // null = l'accent du widget ; sinon la couleur du copilote (repliée à l'épinglage)
   const [titreScene, setTitreScene] = useState(null) // null = le titre du widget ; sinon le renommage du copilote
+  const [derivationChoisie, setDerivationChoisie] = useState(null) // null = celle de la recette ; sinon ton choix (atelier de composition)
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -368,17 +370,28 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     }
   }
 
+  // LA MESURE (atelier de composition) : la LECTURE de la valeur (« montant » ou
+  // « en % de ton revenu »). Ton INTENTION (derivationVoulue) survit à un
+  // changement de forme ; ce qui est OFFERT/appliqué dépend de la forme scalaire.
+  const derivsOffertes = derivationsPourKPI(kb.KPI, snapshot, formeActive)
+  const dvBrute = derivationChoisie != null ? derivationChoisie : (kb.params && kb.params.derivation) || 'brut'
+  const derivationVoulue = derivationValide(dvBrute) ? dvBrute : 'brut' // neutralise une valeur hostile d'un silo importé
+  const derivationActive = derivsOffertes.includes(derivationVoulue) ? derivationVoulue : 'brut'
+
   const paramsScene = {
     ...(kb.params || {}),
     ...(comparable ? { comparaisons: compActives } : {}),
     // cible posée → transmise ; objectif retiré (0) → on l'enlève même si la recette en portait une.
     ...(reglage ? (cibleActive > 0 ? { cible: cibleActive } : { cible: undefined }) : {}),
+    // la dérivée VOULUE voyage dans les params (le moteur ne l'applique que sur une forme scalaire).
+    ...(derivationVoulue && derivationVoulue !== 'brut' ? { derivation: derivationVoulue } : { derivation: undefined }),
   }
 
   // LA PERSONNALITÉ : celle du widget (épinglée) tant que tu n'y touches pas.
-  // Le fait qu'elle énonce = la résolution du KPI avec les params du moment.
+  // Le fait qu'elle énonce = la résolution du KPI avec les params du moment,
+  // dérivée comprise (cohérent avec ce que la scène scalaire affiche).
   const personaActive = persona || (widget.persona && widget.persona.type ? widget.persona : { type: 'neutre' })
-  const kpiResolu = resolveKPI(kb.KPI, snapshot, paramsScene)
+  const kpiResolu = deriver(derivationActive, resolveKPI(kb.KPI, snapshot, paramsScene), snapshot)
 
   // ÉPINGLER À MA TOUR : la vue fabriquée devient LA tuile (mise à jour en
   // place — jamais un doublon) : forme + comparaisons + cible + personnalité.
@@ -392,6 +405,9 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     }
     if (reglage && cibleActive > 0) params.cible = cibleActive
     else delete params.cible
+    // la dérivée VOULUE (l'intention) se replie ; 'brut' → on retire la clé.
+    if (derivationVoulue && derivationVoulue !== 'brut') params.derivation = derivationVoulue
+    else delete params.derivation
     onEpingler({
       forme: formeActive,
       params,
@@ -546,6 +562,26 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                 </button>
               )
             })}
+          </div>
+        )}
+
+        {/* LA MESURE (atelier de composition) : la lecture de la valeur — montant
+            ou « en % de ton revenu ». N'apparaît que si une dérivée est OFFERTE
+            (forme scalaire + KPI en $ + revenu connu) ; sinon rien (honnête). */}
+        {formeActive && derivsOffertes.length > 1 && (
+          <div className="sable-mesure" role="group" aria-label="La mesure">
+            <span className="sable-types-l">La mesure</span>
+            {DERIVATIONS.filter((d) => derivsOffertes.includes(d.id)).map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`sable-type${d.id === derivationActive ? ' est-actif' : ''}`}
+                aria-pressed={d.id === derivationActive}
+                onClick={() => { sons.tap(); setFait(null); setDerivationChoisie(d.id) }}
+              >
+                {d.label}
+              </button>
+            ))}
           </div>
         )}
 

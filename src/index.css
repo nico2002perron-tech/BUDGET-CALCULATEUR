@@ -2642,6 +2642,8 @@ svg { display: block; }
 
 /* AJOUTER À COMPARER : chips-sujets (ajouté = pastille pleine, retirable ×) + barre IA. */
 .sable-comparer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+/* LA MESURE (atelier de composition) : montant vs « en % de ton revenu ». */
+.sable-mesure { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .sable-chip.est-ajoute,
 .sable-chip.est-ajoute:hover:not(:disabled) {
   color: #fff;

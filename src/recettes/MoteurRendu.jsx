@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
 import { resolveKPI, kpiPourId, comparaisonScenarios, formesPourKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from './bibliotheque-kpis.js'
+import { deriver, FORMES_SCALAIRES } from './derivations.js'
 
 const SERIE_SET = new Set(FORMES_SERIE)
 const PARTS_SET = new Set(FORMES_PARTS)
@@ -169,6 +170,12 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
         }
       } else {
         kpi = resolveKPI(bloc.kpi, snapshot, bloc.params)
+        // DÉRIVÉE (atelier de composition) : une autre lecture factuelle de la
+        // valeur (« en % de ton revenu »), seulement sur une forme scalaire (une
+        // série resterait en $). `deriver` rend l'original si non applicable.
+        if (bloc.params && bloc.params.derivation && FORMES_SCALAIRES.has(bloc.type)) {
+          kpi = deriver(bloc.params.derivation, kpi, snapshot)
+        }
       }
     }
     const Composant = composantPour(bloc.type)
