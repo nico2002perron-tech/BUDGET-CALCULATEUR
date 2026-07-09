@@ -38,6 +38,7 @@ import { construireEntite, PALETTE_ACCENTS, photoBornee } from './lib/entites.js
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
 import { VOIX_MENTOR } from './lib/personas.js'
+import { PEAUX, peauValide, classePeau } from './lib/peaux.js'
 import { sons, reglerSons } from './lib/sons.js'
 
 const RECETTE_CALENDRIER = {
@@ -561,6 +562,17 @@ function App() {
       ...s,
       tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => (w.id === widgetId ? { ...w, accent: hex } : w)),
     }))
+  // La PEAU (fini de la carte) : style seulement, teinté de ta couleur. 'defaut' → on
+  // retire la clé (le look de base est l'absence de peau).
+  const changerPeau = (widgetId, peauId) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => {
+        if (w.id !== widgetId) return w
+        if (peauId === 'defaut' || !peauValide(peauId)) { const { peau: _drop, ...reste } = w; return reste }
+        return { ...w, peau: peauId }
+      }),
+    }))
 
   // ── LA BARRE-COPILOTE DU BOARD : ta phrase → des ACTIONS de tableau (créer,
   //    répondre, retirer, redimensionner, ouvrir). Payload = FORME seulement
@@ -891,7 +903,7 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${w.peau ? ` ${classePeau(w.peau)}` : ''}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={w.accent ? { '--wacc': w.accent } : undefined}
@@ -973,6 +985,25 @@ function App() {
                               </div>
                             </div>
                           )}
+                          <div className="retouche-bloc">
+                            <span className="gal-essai-l">Son style</span>
+                            <div className="gal-formes">
+                              {PEAUX.map((p) => {
+                                const actif = (w.peau && peauValide(w.peau) ? w.peau : 'defaut') === p.id
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className={`gal-forme${actif ? ' is-choisie' : ''}`}
+                                    onClick={() => changerPeau(w.id, p.id)}
+                                    aria-pressed={actif}
+                                  >
+                                    {p.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
                           <div className="retouche-bloc">
                             <span className="gal-essai-l">Son icône</span>
                             <div className="gal-icones">

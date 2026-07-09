@@ -2305,6 +2305,29 @@ svg { display: block; }
   background: linear-gradient(165deg, color-mix(in srgb, var(--wacc) 6%, #fff), rgba(255, 255, 255, 0.92) 55%);
 }
 .tour-board .tour-widget .card-title svg { color: var(--wacc); }
+
+/* LES PEAUX : le fini de la carte, teinté de TA couleur (--wacc). Style seulement.
+   On exclut .p3d (le canvas 3D sombre garde son propre monde, partout identique). */
+.tour-board .tour-widget.peau-verre .card:not(.p3d) {
+  background: color-mix(in srgb, var(--wacc) 10%, rgba(255, 255, 255, 0.5));
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  border-color: color-mix(in srgb, var(--wacc) 30%, rgba(255, 255, 255, 0.6));
+  border-bottom-width: 2px;
+  box-shadow: 0 12px 30px -16px color-mix(in srgb, var(--wacc) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.tour-board .tour-widget.peau-mat .card:not(.p3d) {
+  background: color-mix(in srgb, var(--wacc) 13%, #fff);
+  border: 1.5px solid color-mix(in srgb, var(--wacc) 24%, #fff);
+  border-bottom-width: 1.5px;
+  box-shadow: none;
+}
+.tour-board .tour-widget.peau-relief .card:not(.p3d) {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--wacc) 15%, #fff), #fff 62%);
+  border: 2px solid color-mix(in srgb, var(--wacc) 34%, #fff);
+  border-bottom-width: 8px;
+  box-shadow: 0 16px 34px -16px color-mix(in srgb, var(--wacc) 65%, transparent);
+}
 /* Les petits boutons du widget suivent le style joufflu. */
 .tour-board .tour-widget-x { border-width: 1.5px; border-bottom-width: 3px; border-radius: 12px; }
 /* Un widget mono-bloc (un seul KPI) : colonne bornée, jamais une grille à moitié vide. */
