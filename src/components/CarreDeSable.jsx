@@ -425,7 +425,22 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           {I_RETOUR}
         </button>
         <div className="sable-tete-txt">
-          <span className="sable-titre">{titreActif}</span>
+          {/* Le TITRE éditable en place : renommer là où l'on modifie tout le reste
+              (replié sur la tuile à l'épinglage, comme le renommage du copilote). */}
+          <span className="sable-titre-champ">
+            <input
+              type="text"
+              className="sable-titre-input"
+              value={titreActif}
+              maxLength={60}
+              onChange={(e) => { setFait(null); setTitreScene(e.target.value) }}
+              aria-label="Renommer cet indicateur"
+              spellCheck={false}
+            />
+            <svg className="sable-titre-crayon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </span>
           <span className="sable-sous">carré de sable · fabrique ta vue</span>
         </div>
         <span className="sable-badge">IA</span>

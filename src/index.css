@@ -2560,6 +2560,19 @@ svg { display: block; }
 .sable-retour svg { width: 20px; height: 20px; }
 .sable-tete-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .sable-titre { font-size: 18px; font-weight: 900; color: var(--navy); letter-spacing: -0.01em; line-height: 1.2; }
+/* LE TITRE ÉDITABLE : ressemble au titre, révèle son édition au survol/focus. */
+.sable-titre-champ { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sable-titre-input {
+  font-family: inherit; font-size: 18px; font-weight: 900; color: var(--navy);
+  letter-spacing: -0.01em; line-height: 1.2; min-width: 0; width: 100%;
+  border: none; background: transparent; padding: 2px 4px; margin: -2px -4px;
+  border-radius: 8px; border-bottom: 2px solid transparent; cursor: text;
+  transition: background 0.14s, border-color 0.14s;
+}
+.sable-titre-input:hover { background: color-mix(in srgb, var(--wacc, var(--cyan)) 7%, transparent); }
+.sable-titre-input:focus { outline: none; background: color-mix(in srgb, var(--wacc, var(--cyan)) 9%, #fff); border-bottom-color: var(--wacc, var(--cyan)); }
+.sable-titre-crayon { width: 15px; height: 15px; flex: none; color: var(--muted); opacity: 0; transition: opacity 0.14s; pointer-events: none; }
+.sable-titre-champ:hover .sable-titre-crayon, .sable-titre-input:focus + .sable-titre-crayon { opacity: 0.75; }
 .sable-sous {
   font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--muted);
@@ -2809,7 +2822,7 @@ svg { display: block; }
 .tour-widget-ic .twic-init { font-size: 13px; font-weight: 900; color: #fff; letter-spacing: 0.02em; }
 
 @media (max-width: 767px) {
-  .sable-titre { font-size: 16px; }
+  .sable-titre, .sable-titre-input { font-size: 16px; }
   .sable-panneau { margin: 4px auto 24px; border-radius: 20px; }
 }
 
