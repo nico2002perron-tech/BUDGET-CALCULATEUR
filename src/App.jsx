@@ -901,7 +901,7 @@ function App() {
                   const statut = kb && kb.params ? statutCible(kb.KPI, snapshot, kb.params.cible) : null
                   // LE VIVANT : ce KPI a-t-il bougé depuis ta dernière visite ? (pulse d'accueil,
                   // pas sur une tuile qu'on vient de créer). 1re visite → aucun repère → rien.
-                  const aBouge = !anime && kb ? kpiABouge(kb.KPI, baselineRef.current, snapshot) : false
+                  const aBouge = !anime && kb ? kpiABouge(kb.KPI, baselineRef.current, snapshot, kb.params || {}) : false
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id

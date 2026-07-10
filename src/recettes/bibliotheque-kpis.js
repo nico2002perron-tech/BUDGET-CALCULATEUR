@@ -434,14 +434,25 @@ export function statutCible(kpiId, snapshot, cible) {
 /* ── LE VIVANT : est-ce que ce KPI a BOUGÉ entre deux snapshots (ex. depuis ta
    dernière visite) ? On compare sa VALEUR résolue — jamais un chiffre inventé.
    false si un côté manque (1re visite → aucun repère → rien ne pulse). PUR. */
-export function kpiABouge(kpiId, snapAvant, snapApres) {
+export function kpiABouge(kpiId, snapAvant, snapApres, ctx = {}) {
   if (!snapAvant || !snapApres || !kpiPourId(kpiId)) return false
-  const a = resolveKPI(kpiId, snapAvant)
-  const b = resolveKPI(kpiId, snapApres)
+  // ctx (les params de la tuile : cible/objectif) est passé aux DEUX résolutions —
+  // sans lui, la famille « objectif » (cible dans le ctx) rendrait null des deux
+  // côtés et ne pulserait JAMAIS. Même ctx des deux côtés : seul le snapshot change.
+  const a = resolveKPI(kpiId, snapAvant, ctx)
+  const b = resolveKPI(kpiId, snapApres, ctx)
   if (!a || !b) return false
   if (!!a.disponible !== !!b.disponible) return true // la donnée est apparue / a disparu
   if (!a.disponible) return false
-  if (typeof a.valeur === 'number' && typeof b.valeur === 'number') return a.valeur !== b.valeur
+  const estNul = (v) => v == null
+  // On ne PULSE que sur une valeur PRIMITIVE finie (nombre/chaîne). Une valeur OBJET
+  // (ex. equilibre 50/30/20 = {besoin,envie,epargne}) comparée par référence serait
+  // TOUJOURS « différente » (deux instances) = faux positif permanent → on s'abstient.
+  const prim = (v) => (typeof v === 'number' && Number.isFinite(v)) || typeof v === 'string'
+  // Une valeur qui apparaît/disparaît (null ↔ primitive) reste un vrai mouvement.
+  if (estNul(a.valeur) !== estNul(b.valeur)) return prim(a.valeur) || prim(b.valeur)
+  // Deux valeurs non nulles : on ne compare QUE des primitives (jamais un objet par réf).
+  if (!prim(a.valeur) || !prim(b.valeur)) return false
   return a.valeur !== b.valeur
 }
 
