@@ -466,7 +466,7 @@ function App() {
     if (!src || !src.recette || !Array.isArray(src.recette.blocs)) return
     let recette
     try { recette = JSON.parse(JSON.stringify(src.recette)) } catch { return }
-    const t = src.recette.titre || 'Indicateur'
+    const t = src.recette.titre || 'Ta tuile'
     recette.titre = `${t.length > 52 ? t.slice(0, 52) : t} (copie)`
     const neufId = 'w_' + Date.now()
     const neuf = { id: neufId, recette, accent: src.accent || null, icone: src.icone || null }
@@ -920,7 +920,7 @@ function App() {
                           </span>
                         )}
                         <span className="tour-widget-ic" aria-hidden="true">{iconeWidget(w)}</span>
-                        <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Indicateur'}</span>
+                        <span className="tour-widget-titre">{(w.recette && w.recette.titre) || 'Ta tuile'}</span>
                         {statut && statut.atteint && (
                           <span className="tw-statut" role="img" aria-label={`Cible de ${statut.cible}${statut.unite === '%' ? ' %' : ' ' + statut.unite} atteinte`} title="Cible atteinte">
                             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" /></svg>
@@ -939,7 +939,7 @@ function App() {
                           </svg>
                           Retoucher
                         </button>
-                        <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cet indicateur" title="Retirer">×</button>
+                        <button type="button" className="tour-widget-x" onClick={() => retirerWidget(w.id)} aria-label="Retirer cette tuile" title="Retirer">×</button>
                       </div>
 
                       {/* LA RETOUCHE : nom, couleur, forme, icône — TOUT, en tout temps. */}

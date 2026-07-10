@@ -460,7 +460,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
               value={titreActif}
               maxLength={60}
               onChange={(e) => { setFait(null); setTitreScene(e.target.value) }}
-              aria-label="Renommer cet indicateur"
+              aria-label="Renommer ta tuile"
               spellCheck={false}
             />
             <svg className="sable-titre-crayon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -583,8 +583,8 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
             ou « en % de ton revenu ». N'apparaît que si une dérivée est OFFERTE
             (forme scalaire + KPI en $ + revenu connu) ; sinon rien (honnête). */}
         {formeActive && derivsOffertes.length > 1 && (
-          <div className="sable-mesure" role="group" aria-label="La mesure">
-            <span className="sable-types-l">La mesure</span>
+          <div className="sable-mesure" role="group" aria-label="La lecture">
+            <span className="sable-types-l">La lecture</span>
             {DERIVATIONS.filter((d) => derivsOffertes.includes(d.id)).map((d) => (
               <button
                 key={d.id}
@@ -607,10 +607,11 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
             −/+ borné aux min/max du KPI, recalcul en direct, retirable. */}
         {formeActive && reglage && (
           <div className="sable-objectif" role="group" aria-label={`${reglage.label} (${reglage.unite})`}>
-            <span className="sable-types-l">Objectif</span>
+            <span className="sable-types-l">Ta cible</span>
             {cibleActive > 0 ? (
               <>
-                <span className="sable-obj-l">{reglage.label}</span>
+                {/* pas de doublon : on ne répète pas « Ta cible » sous le libellé de section. */}
+                {reglage.label !== 'Ta cible' && <span className="sable-obj-l">{reglage.label}</span>}
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(-reglage.pas)} aria-label={`Moins ${reglage.pas}`}>−</button>
                 <span className="sable-obj-val">{cibleActive}<small>{reglage.unite}</small></span>
                 <button type="button" className="sable-obj-pas" onClick={() => bougeCible(reglage.pas)} aria-label={`Plus ${reglage.pas}`}>+</button>
@@ -618,7 +619,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
               </>
             ) : (
               <button type="button" className="sable-type" onClick={() => { sons.tap(); setFait(null); setCible(cibleRecette || reglage.defaut) }}>
-                Poser un objectif
+                Poser une cible
               </button>
             )}
           </div>

@@ -42,8 +42,8 @@ export default function PersonaStrip({ persona, onChange, kpi, kpiId, domaine })
 
   return (
     <div className="persona">
-      <div className="sable-types" role="group" aria-label="Personnalité du KPI">
-        <span className="sable-types-l">Personnalité</span>
+      <div className="sable-types" role="group" aria-label="Sa personnalité">
+        <span className="sable-types-l">Sa personnalité</span>
         {TYPES_PERSONA.map((t) => (
           <button
             key={t.id}
