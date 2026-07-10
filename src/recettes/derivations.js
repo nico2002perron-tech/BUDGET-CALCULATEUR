@@ -6,7 +6,7 @@
    dans le snapshot (jamais inventée). HONNÊTE : si la dérivée ne s'applique pas
    (mauvaise unité, revenu absent), on rend la valeur D'ORIGINE inchangée. PUR.
    ========================================================================== */
-import { resolveKPI } from './bibliotheque-kpis.js'
+import { resolveKPI, kpiPourId } from './bibliotheque-kpis.js'
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
@@ -18,13 +18,17 @@ export const FORMES_SCALAIRES = new Set(['stat', 'fait'])
 export const DERIVATIONS = [
   { id: 'brut', label: 'Montant' },
   { id: 'pct_revenu', label: 'En % de ton revenu' },
+  { id: 'pct_depenses', label: 'En % de tes dépenses' },
 ]
 const IDS = new Set(DERIVATIONS.map((d) => d.id))
 export function derivationValide(id) { return typeof id === 'string' && IDS.has(id) }
 
-// Le revenu mensuel, depuis le snapshot (jamais inventé) — 0 si absent.
+// Deux dénominateurs, tous deux DU SNAPSHOT (jamais inventés) — 0 si absents.
 function revenuMensuel(snapshot) {
   return num(snapshot && snapshot.depenses && snapshot.depenses.revenu)
+}
+function depensesMensuelles(snapshot) {
+  return num(snapshot && snapshot.depenses && snapshot.depenses.coutVie)
 }
 
 /** Transforme une résolution scalaire de KPI selon la dérivée. Rend la résolution
@@ -32,12 +36,20 @@ function revenuMensuel(snapshot) {
  *  valeur non finie) — jamais un chiffre inventé. Texte factuel (à filtrer). PUR. */
 export function deriver(derivationId, kpiResolu, snapshot) {
   if (!derivationId || derivationId === 'brut' || !kpiResolu) return kpiResolu
+  const enDollars = kpiResolu.disponible && kpiResolu.unite === '$' && typeof kpiResolu.valeur === 'number' && Number.isFinite(kpiResolu.valeur)
   if (derivationId === 'pct_revenu') {
-    if (!kpiResolu.disponible || kpiResolu.unite !== '$' || typeof kpiResolu.valeur !== 'number' || !Number.isFinite(kpiResolu.valeur)) return kpiResolu
+    if (!enDollars) return kpiResolu
     const rev = revenuMensuel(snapshot)
     if (!(rev > 0)) return kpiResolu
     const pct = Math.round((kpiResolu.valeur / rev) * 100)
     return { ...kpiResolu, valeur: pct, unite: '%', texteFactuel: `Ça représente ${pct} % de ton revenu mensuel.` }
+  }
+  if (derivationId === 'pct_depenses') {
+    if (!enDollars) return kpiResolu
+    const dep = depensesMensuelles(snapshot)
+    if (!(dep > 0)) return kpiResolu
+    const pct = Math.round((kpiResolu.valeur / dep) * 100)
+    return { ...kpiResolu, valeur: pct, unite: '%', texteFactuel: `Ça représente ${pct} % de tes dépenses du mois.` }
   }
   return kpiResolu
 }
@@ -47,9 +59,13 @@ export function deriver(derivationId, kpiResolu, snapshot) {
  *  et un revenu connu > 0. PUR. */
 export function derivationsPourKPI(kpiId, snapshot, forme) {
   const out = ['brut']
-  if (FORMES_SCALAIRES.has(forme)) {
-    const r = resolveKPI(kpiId, snapshot)
-    if (r && r.disponible && r.unite === '$' && revenuMensuel(snapshot) > 0) out.push('pct_revenu')
-  }
+  if (!FORMES_SCALAIRES.has(forme)) return out
+  const r = resolveKPI(kpiId, snapshot)
+  if (!r || !r.disponible || r.unite !== '$') return out
+  if (revenuMensuel(snapshot) > 0) out.push('pct_revenu')
+  // « % de tes dépenses » : seulement pour un poste de DÉPENSE (domaine budget) — pas
+  // pour une épargne/un patrimoine (part-des-dépenses n'y aurait pas de sens).
+  const def = kpiPourId(kpiId)
+  if (def && def.domaine === 'budget' && depensesMensuelles(snapshot) > 0) out.push('pct_depenses')
   return out
 }

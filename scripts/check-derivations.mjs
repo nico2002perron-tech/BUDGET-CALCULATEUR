@@ -40,6 +40,15 @@ ok(deriver('pct_revenu', rCoutVie, snapSansRevenu) === rCoutVie, 'revenu absent 
 ok(deriver('pct_revenu', { disponible: true, valeur: 3, unite: 'mois' }, snap).unite === 'mois', 'unité ≠ $ → identité (jamais un % sur des mois)')
 ok(deriver('pct_revenu', { disponible: false, valeur: null, unite: '$' }, snap).disponible === false, 'donnée indisponible → identité')
 ok(deriver('pct_revenu', { disponible: true, valeur: Infinity, unite: '$' }, snap).valeur === Infinity, 'valeur non finie → identité')
+{
+  const rTop = resolveKPI('top_categorie', snap) // $ , poste de dépense
+  const d = deriver('pct_depenses', rTop, snap)
+  const attendu = Math.round((rTop.valeur / snap.depenses.coutVie) * 100)
+  ok(d.unite === '%' && d.valeur === attendu, `pct_depenses : ${rTop.valeur} $ → ${d.valeur} % des dépenses (attendu ${attendu})`, JSON.stringify(d))
+  ok(/% de tes dépenses/.test(d.texteFactuel) && filtrerFait(d.texteFactuel).ok, 'texte « … % de tes dépenses … » filtré', d.texteFactuel)
+  ok(deriver('pct_depenses', rTop, { ...snap, depenses: { ...snap.depenses, coutVie: 0 } }) === rTop, 'sans total de dépenses → identité')
+  ok(deriver('pct_depenses', { disponible: true, valeur: 3, unite: 'mois' }, snap).unite === 'mois', 'pct_depenses : unité ≠ $ → identité')
+}
 
 console.log('\n— derivationsPourKPI : offerte seulement là où ça a un sens —')
 ok(derivationsPourKPI('cout_vie_mensuel', snap, 'stat').includes('pct_revenu'), 'cout_vie (stat, $, revenu) → pct_revenu offerte')
@@ -47,6 +56,9 @@ ok(!derivationsPourKPI('cout_vie_mensuel', snap, 'prisme3d').includes('pct_reven
 ok(!derivationsPourKPI('mois_couverts', snap, 'stat').includes('pct_revenu'), 'KPI non-$ (mois_couverts) → pas offerte')
 ok(!derivationsPourKPI('cout_vie_mensuel', snapSansRevenu, 'stat').includes('pct_revenu'), 'sans revenu connu → pas offerte (data-aware)')
 ok(derivationsPourKPI('cout_vie_mensuel', snap, 'stat')[0] === 'brut', "'brut' toujours en tête")
+ok(derivationsPourKPI('top_categorie', snap, 'fait').includes('pct_depenses'), 'poste budget (top_categorie, fait) → pct_depenses offerte')
+ok(!derivationsPourKPI('montant_coussin', snap, 'stat').includes('pct_depenses'), 'épargne (montant_coussin) → PAS pct_depenses (pas un poste de dépense)')
+ok(!derivationsPourKPI('top_categorie', snap, 'beignet').includes('pct_depenses'), 'forme non scalaire → pct_depenses pas offerte')
 
 console.log('')
 if (echecs > 0) { console.log(`❌ ${echecs} échec(s)`); process.exit(1) }
