@@ -431,6 +431,20 @@ export function statutCible(kpiId, snapshot, cible) {
   return { atteint, cible: c, unite: def.reglage.unite, texte: atteint ? 'Cible atteinte' : `Cible ${c}${uniteTxt}` }
 }
 
+/* ── LE VIVANT : est-ce que ce KPI a BOUGÉ entre deux snapshots (ex. depuis ta
+   dernière visite) ? On compare sa VALEUR résolue — jamais un chiffre inventé.
+   false si un côté manque (1re visite → aucun repère → rien ne pulse). PUR. */
+export function kpiABouge(kpiId, snapAvant, snapApres) {
+  if (!snapAvant || !snapApres || !kpiPourId(kpiId)) return false
+  const a = resolveKPI(kpiId, snapAvant)
+  const b = resolveKPI(kpiId, snapApres)
+  if (!a || !b) return false
+  if (!!a.disponible !== !!b.disponible) return true // la donnée est apparue / a disparu
+  if (!a.disponible) return false
+  if (typeof a.valeur === 'number' && typeof b.valeur === 'number') return a.valeur !== b.valeur
+  return a.valeur !== b.valeur
+}
+
 // ≤ max points, premiers/derniers inclus (les projections longues restent
 // lisibles). `ancres` = indices à inclure COÛTE QUE COÛTE (l'année de retraite,
 // l'année de rupture) : le fait daté du héros a toujours son point sur la courbe.

@@ -2087,6 +2087,21 @@ svg { display: block; }
 @keyframes widget-pose { from { opacity: 0; transform: translateY(-16px) scale(0.96); } to { opacity: 1; transform: none; } }
 .tour-widget.is-anime { animation: widget-pose 0.52s cubic-bezier(0.2, 0.72, 0.2, 1) both; }
 
+/* LE VIVANT : une tuile dont le KPI a BOUGÉ depuis ta dernière visite fait une
+   PULSATION d'accueil (2-3 battements, puis se calme) — le tableau a l'air vivant
+   sans qu'on le touche. Fait, pas jugement ; accent, jamais ambre. */
+@keyframes tuileBouge {
+  0% { box-shadow: 0 0 0 0 transparent; }
+  14% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--wacc, var(--cyan)) 42%, transparent), 0 12px 30px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 45%, transparent); }
+  38% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--wacc, var(--cyan)) 14%, transparent), 0 6px 16px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 18%, transparent); }
+  62% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--wacc, var(--cyan)) 36%, transparent), 0 12px 30px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 40%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.tour-widget.a-bouge { border-radius: 22px; animation: tuileBouge 2.8s ease 0.15s 1; }
+@media (prefers-reduced-motion: reduce) {
+  .tour-widget.a-bouge { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--wacc, var(--cyan)) 30%, transparent); }
+}
+
 @media (max-width: 560px) {
   .studio-bulle { max-width: 90%; }
 }

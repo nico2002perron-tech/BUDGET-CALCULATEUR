@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge } from './recettes/bibliotheque-kpis.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
 import BoardCopilote from './components/BoardCopilote.jsx'
@@ -899,12 +899,15 @@ function App() {
                   // La pastille de statut : factuelle, seulement si une cible SÛRE est atteignable
                   // (sinon null — jamais un jugement inventé). Voir statutCible (data-aware).
                   const statut = kb && kb.params ? statutCible(kb.KPI, snapshot, kb.params.cible) : null
+                  // LE VIVANT : ce KPI a-t-il bougé depuis ta dernière visite ? (pulse d'accueil,
+                  // pas sur une tuile qu'on vient de créer). 1re visite → aucun repère → rien.
+                  const aBouge = !anime && kb ? kpiABouge(kb.KPI, baselineRef.current, snapshot) : false
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={w.accent ? { '--wacc': w.accent } : undefined}
