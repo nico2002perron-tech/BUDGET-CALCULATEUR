@@ -35,7 +35,11 @@ try {
   console.log('— L\'accueil : une décision à la fois —')
   ok(html.includes('Qu’est-ce qu’on crée aujourd’hui'), 'le titre friendly')
   ok(html.includes('gal-chat-input'), 'la barre « décris-le »')
-  ok(html.includes('Choisi pour toi') && (html.match(/gal-vedette/g) || []).length === 1, 'UNE seule vedette curée (pas trois)')
+  // UNE seule vedette : on compte le badge « Choisi pour toi » (marqueur unique),
+  // pas la sous-chaîne de classe (la vedette-live a plusieurs classes gal-vedette-*).
+  ok(html.includes('Choisi pour toi') && (html.match(/Choisi pour toi/g) || []).length === 1, 'UNE seule vedette curée (pas trois)')
+  // LA VITRINE : la vedette est une VRAIE mini-tuile vivante (aperçu MoteurRendu) + un bouton.
+  ok(html.includes('gal-vedette-apercu') && html.includes('gal-vedette-ajouter'), 'la vedette se montre en mini-tuile vivante + bouton « Ajouter »')
   ok((html.match(/gal-famille /g) || []).length + (html.match(/gal-famille"/g) || []).length >= 5, '5 boutons-familles joufflus')
   ok(html.includes('Mon argent du mois') && html.includes('Mon coussin de sécurité') && html.includes('Mon patrimoine'), 'les familles parlent en mots de tous les jours')
   ok(!html.includes('gal-grille'), 'AUCUNE grille-mur à l\'accueil')

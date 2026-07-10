@@ -528,6 +528,22 @@ svg { display: block; }
 /* La vedette « choisi pour toi » : un cran plus riche. */
 .gal-vedette { border-color: color-mix(in srgb, var(--acc) 45%, #fff); background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 13%, #fff), #fff 70%); }
 
+/* LA VITRINE : la vedette en VRAIE mini-tuile vivante — colonne (en-tête + aperçu
+   MoteurRendu + bouton), plus un bouton (c'est une carte, pas un bouton géant). */
+.gal-vedette-live { flex-direction: column; align-items: stretch; gap: 14px; cursor: default; }
+.gal-vedette-live:active { transform: none; border-bottom-width: 6px; }
+.gal-vedette-tete { display: flex; align-items: flex-start; gap: 14px; }
+.gal-vedette-tete .gal-ic { flex: none; }
+/* L'aperçu vivant : la vraie tuile finie, en fenêtre (non interactif ; fondu bas
+   si elle dépasse — un « coup d'œil » qui donne envie). */
+.gal-vedette-apercu {
+  pointer-events: none; position: relative; border-radius: 16px; overflow: hidden;
+  max-height: 260px;
+  -webkit-mask-image: linear-gradient(#000 82%, transparent);
+  mask-image: linear-gradient(#000 82%, transparent);
+}
+.gal-vedette-ajouter { align-self: stretch; text-align: center; }
+
 /* L'en-tête d'une famille (étape 1) : ← retour + pastille + titre. */
 .gal-etape-tete { display: flex; align-items: center; gap: 12px; max-width: 600px; width: 100%; margin: 0 auto; }
 .gal-etape-titre { margin: 0; font-size: 20px; font-weight: 900; color: var(--navy); letter-spacing: -0.01em; }

@@ -254,6 +254,13 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
     () => suggererIndicateurs(snapshot).filter((s) => !dejaLa.has(s.situation))[0] || null,
     [snapshot, dejaLa],
   )
+  // LA VITRINE : la vedette se montre en VRAIE mini-tuile vivante (aperçu MoteurRendu
+  // avec tes chiffres) — on VOIT la belle chose finie, on a envie de l'ajouter.
+  const vedetteAccent = vedette ? ACCENT_SITUATION[vedette.situation] || '#00b4d8' : null
+  const vedetteRecette = useMemo(
+    () => (vedette ? composerRecette(vedette.situation, {}, snapshot) : null),
+    [vedette, snapshot],
+  )
   const [famille, setFamille] = useState(null) // null = accueil ; sinon id de domaine
   const [voirTout, setVoirTout] = useState(false)
   const [essai, setEssai] = useState(null)
@@ -396,22 +403,27 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
       </div>
 
       <div className="gal-colonne">
-        {/* LA carte « choisi pour toi » — une seule, curée, avec sa raison. */}
+        {/* LA carte « choisi pour toi » — une VRAIE mini-tuile vivante (tes chiffres),
+            puis un geste clair pour l'ajouter. On voit la belle chose avant de choisir. */}
         {vedette && (
-          <button
-            type="button"
-            className="gal-carte gal-vedette gal-anim"
-            style={{ '--acc': ACCENT_SITUATION[vedette.situation] || '#00b4d8', '--i': 0 }}
-            onClick={() => onAjouter(composerRecette(vedette.situation, {}, snapshot), ACCENT_SITUATION[vedette.situation])}
-          >
-            <span className="gal-ic" aria-hidden="true">{ICONE_SITUATION[vedette.situation] || I_VEDETTE}</span>
-            <span className="gal-carte-txt">
-              <span className="gal-cat">Choisi pour toi</span>
-              <h4 className="gal-q">{vedette.titre}</h4>
-              <p className="gal-fait">{vedette.raison}</p>
-            </span>
-            <span className="gal-chev" aria-hidden="true">{I_CHEVRON}</span>
-          </button>
+          <div className="gal-carte gal-vedette gal-vedette-live gal-anim" style={{ '--acc': vedetteAccent, '--wacc': vedetteAccent, '--i': 0 }}>
+            <div className="gal-vedette-tete">
+              <span className="gal-ic" aria-hidden="true">{ICONE_SITUATION[vedette.situation] || I_VEDETTE}</span>
+              <span className="gal-carte-txt">
+                <span className="gal-cat">Choisi pour toi</span>
+                <h4 className="gal-q">{vedette.titre}</h4>
+                <p className="gal-fait">{vedette.raison}</p>
+              </span>
+            </div>
+            {vedetteRecette && (
+              <div className="gal-vedette-apercu" aria-hidden="true">
+                <MoteurRendu recette={vedetteRecette} snapshot={snapshot} />
+              </div>
+            )}
+            <button type="button" className="gal-ajouter gal-vedette-ajouter" onClick={() => onAjouter(vedetteRecette || composerRecette(vedette.situation, {}, snapshot), vedetteAccent)}>
+              Ajouter à ma tour
+            </button>
+          </div>
         )}
 
         <p className="gal-question">{vedette ? 'Ou choisis' : 'Choisis'} ce que tu veux surveiller&nbsp;:</p>
