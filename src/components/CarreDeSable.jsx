@@ -15,6 +15,7 @@ import PersonaStrip from './PersonaStrip.jsx'
 import GlypheForme from './GlypheForme.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
 import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide, FORMES_SCALAIRES } from '../recettes/derivations.js'
+import { DECOUPES, decoupesPourKPI, decoupeValide } from '../recettes/decoupes.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
 import { perchesSable, PLACEHOLDERS_SABLE, gestesDe, prochainePerche } from '../recettes/perches.js'
@@ -66,6 +67,8 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [derivationChoisie, setDerivationChoisie] = useState(null) // null = celle de la recette ; sinon ton choix (atelier de composition)
   const [formeSurvol, setFormeSurvol] = useState(null) // LE VIVANT : la forme SURVOLÉE (aperçu direct), null = aucun survol
   const [derivationSurvol, setDerivationSurvol] = useState(null) // LE VIVANT : la mesure survolée (aperçu de la dérivée)
+  const [decoupeChoisie, setDecoupeChoisie] = useState(null) // null = celle de la recette ; sinon ton choix (découpe)
+  const [decoupeSurvol, setDecoupeSurvol] = useState(null) // LE VIVANT : la découpe survolée (aperçu)
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -98,7 +101,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // la rangée « La lecture » si la nouvelle forme n'est pas scalaire ; onMouseLeave/
   // onBlur ne se déclenchent alors JAMAIS → un derivationSurvol resterait collé et
   // rallumerait un aperçu FANTÔME au retour d'une forme scalaire. On le réinitialise.
-  useEffect(() => { setDerivationSurvol(null) }, [formeChoisie])
+  useEffect(() => { setDerivationSurvol(null); setDecoupeSurvol(null) }, [formeChoisie])
 
   // Le placeholder TOURNE (exemples) — figé sous prefers-reduced-motion.
   useEffect(() => {
@@ -390,8 +393,17 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const derivationActive = derivsOffertes.includes(derivationVoulue) ? derivationVoulue : 'brut'
   // LE VIVANT : la mesure SURVOLÉE prévisualise dans la scène ; sinon la choisie.
   const derivationApercu = derivationSurvol && derivsOffertes.includes(derivationSurvol) ? derivationSurvol : derivationActive
-  // La scène est en mode APERÇU si la forme OU la mesure survolée diffère du choix.
-  const enApercu = formeApercu !== formeActive || derivationApercu !== derivationActive
+
+  // LA DÉCOUPE (atelier de composition) : trancher le TOUT autrement (parts). Même
+  // patron que la mesure ; l'intention survit, l'offre dépend de la forme-parts.
+  const decoupsOffertes = decoupesPourKPI(kb.KPI, snapshot, formeActive)
+  const dcBrute = decoupeChoisie != null ? decoupeChoisie : (kb.params && kb.params.decoupe) || 'par_categorie'
+  const decoupeVoulue = decoupeValide(dcBrute) ? dcBrute : 'par_categorie' // neutralise une valeur hostile
+  const decoupeActive = decoupsOffertes.includes(decoupeVoulue) ? decoupeVoulue : 'par_categorie'
+  const decoupeApercu = decoupeSurvol && decoupsOffertes.includes(decoupeSurvol) ? decoupeSurvol : decoupeActive
+
+  // La scène est en mode APERÇU si la forme, la mesure OU la découpe survolée diffère du choix.
+  const enApercu = formeApercu !== formeActive || derivationApercu !== derivationActive || decoupeApercu !== decoupeActive
 
   const paramsScene = {
     ...(kb.params || {}),
@@ -400,6 +412,8 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     ...(reglage ? (cibleActive > 0 ? { cible: cibleActive } : { cible: undefined }) : {}),
     // la dérivée d'APERÇU voyage dans les params (le moteur ne l'applique que sur une forme scalaire).
     ...(derivationApercu && derivationApercu !== 'brut' ? { derivation: derivationApercu } : { derivation: undefined }),
+    // la découpe d'APERÇU voyage aussi (le moteur ne l'applique que sur une forme-parts, revalidée).
+    ...(decoupeApercu && decoupeApercu !== 'par_categorie' ? { decoupe: decoupeApercu } : { decoupe: undefined }),
   }
 
   // LA PERSONNALITÉ : celle du widget (épinglée) tant que tu n'y touches pas.
@@ -425,6 +439,9 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     // → on retire la clé. On n'épingle jamais une dérivée non offerte pour ce KPI/forme.
     if (derivationActive && derivationActive !== 'brut') params.derivation = derivationActive
     else delete params.derivation
+    // la découpe OFFERTE se replie ; 'par_categorie' (défaut) → on retire la clé.
+    if (decoupeActive && decoupeActive !== 'par_categorie') params.decoupe = decoupeActive
+    else delete params.decoupe
     onEpingler({
       forme: formeActive,
       params,
@@ -610,6 +627,30 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           </div>
         )}
 
+        {/* LA DÉCOUPE (atelier de composition) : trancher le TOUT autrement — par
+            catégorie (défaut) ou fixe/variable. N'apparaît que sur une forme-parts
+            (beignet/anneau) d'un poste budget avec une vraie alternative ; sinon rien. */}
+        {formeActive && decoupsOffertes.length > 1 && (
+          <div className="sable-mesure" role="group" aria-label="La découpe">
+            <span className="sable-types-l">La découpe</span>
+            {DECOUPES.filter((d) => decoupsOffertes.includes(d.id)).map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`sable-type${d.id === decoupeActive ? ' est-actif' : ''}${d.id === decoupeSurvol && d.id !== decoupeActive ? ' est-survol' : ''}`}
+                aria-pressed={d.id === decoupeActive}
+                onClick={() => { sons.tap(); setFait(null); setDecoupeSurvol(null); setDecoupeChoisie(d.id) }}
+                onMouseEnter={() => setDecoupeSurvol(d.id)}
+                onMouseLeave={() => setDecoupeSurvol((s) => (s === d.id ? null : s))}
+                onFocus={() => setDecoupeSurvol(d.id)}
+                onBlur={() => setDecoupeSurvol((s) => (s === d.id ? null : s))}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* L'OBJECTIF (opt-in) : rien tant que tu ne le poses pas ; posé → stepper
             −/+ borné aux min/max du KPI, recalcul en direct, retirable. */}
         {formeActive && reglage && (
@@ -641,7 +682,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           {enApercu && (
             <span className="sable-apercu-tag" aria-hidden="true">aperçu · clique pour garder</span>
           )}
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeApercu || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}:${derivationApercu}`} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeApercu || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}:${derivationApercu}:${decoupeApercu}`} />
         </div>
 
         {/* ÉPINGLER : la boucle se referme — la vue fabriquée devient la tuile. */}

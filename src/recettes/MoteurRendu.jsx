@@ -21,6 +21,7 @@ import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
 import { resolveKPI, kpiPourId, comparaisonScenarios, formesPourKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from './bibliotheque-kpis.js'
 import { deriver, FORMES_SCALAIRES, derivationsPourKPI } from './derivations.js'
+import { partsDecoupe, decoupesPourKPI } from './decoupes.js'
 
 const SERIE_SET = new Set(FORMES_SERIE)
 const PARTS_SET = new Set(FORMES_PARTS)
@@ -135,7 +136,15 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
       }
     }
     if (bloc.kpi && PARTS_SET.has(bloc.type)) {
-      const pd = partsDuKPI(bloc.kpi, snapshot)
+      // DÉCOUPE (atelier de composition) : trancher le TOUT autrement (« fixe/variable »)
+      // au lieu de la découpe par défaut (partsDuKPI). On REVALIDE l'applicabilité au
+      // rendu (leçon de revue) : la découpe doit être RÉELLEMENT offerte pour CE KPI +
+      // CETTE forme — une recette persistée/importée non offerte retombe sur le défaut.
+      let pd = null
+      if (paramsBloc.decoupe && decoupesPourKPI(bloc.kpi, snapshot, bloc.type).includes(paramsBloc.decoupe)) {
+        pd = partsDecoupe(paramsBloc.decoupe, snapshot)
+      }
+      if (!pd) pd = partsDuKPI(bloc.kpi, snapshot)
       if (pd) data = pd
     }
     // Emplacement KPI : la métrique est résolue par la bibliothèque (pas de double
