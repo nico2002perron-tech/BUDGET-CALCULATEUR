@@ -34,18 +34,23 @@ function depensesMensuelles(snapshot) {
 /** Transforme une résolution scalaire de KPI selon la dérivée. Rend la résolution
  *  D'ORIGINE inchangée si la dérivée ne s'applique pas (unité ≠ $, revenu absent,
  *  valeur non finie) — jamais un chiffre inventé. Texte factuel (à filtrer). PUR. */
-export function deriver(derivationId, kpiResolu, snapshot) {
+export function deriver(derivationId, kpiResolu, snapshot, kpiId) {
   if (!derivationId || derivationId === 'brut' || !kpiResolu) return kpiResolu
   const enDollars = kpiResolu.disponible && kpiResolu.unite === '$' && typeof kpiResolu.valeur === 'number' && Number.isFinite(kpiResolu.valeur)
+  // DÉFENSE EN PROFONDEUR : une dérivée « % » n'a de sens que pour un FLUX MENSUEL
+  // en $ (domaine budget) — jamais un stock (patrimoine/coussin) ni un montant
+  // annuel (impôts), même si la recette provient d'un import. Sans KPI budget → rien.
+  const def = kpiId ? kpiPourId(kpiId) : null
+  const budgetMensuel = !!def && def.domaine === 'budget'
   if (derivationId === 'pct_revenu') {
-    if (!enDollars) return kpiResolu
+    if (!enDollars || !budgetMensuel) return kpiResolu
     const rev = revenuMensuel(snapshot)
     if (!(rev > 0)) return kpiResolu
     const pct = Math.round((kpiResolu.valeur / rev) * 100)
     return { ...kpiResolu, valeur: pct, unite: '%', texteFactuel: `Ça représente ${pct} % de ton revenu mensuel.` }
   }
   if (derivationId === 'pct_depenses') {
-    if (!enDollars) return kpiResolu
+    if (!enDollars || !budgetMensuel) return kpiResolu
     const dep = depensesMensuelles(snapshot)
     if (!(dep > 0)) return kpiResolu
     const pct = Math.round((kpiResolu.valeur / dep) * 100)
@@ -60,12 +65,14 @@ export function deriver(derivationId, kpiResolu, snapshot) {
 export function derivationsPourKPI(kpiId, snapshot, forme) {
   const out = ['brut']
   if (!FORMES_SCALAIRES.has(forme)) return out
+  // Les dérivées « % » ne conviennent qu'à un FLUX MENSUEL en $ (domaine budget) :
+  // jamais un STOCK (patrimoine, coussin) ni un montant ANNUEL (impôts) — « X % de
+  // ton revenu » y serait une lecture trompeuse (décalage nature/période).
+  const def = kpiPourId(kpiId)
+  if (!def || def.domaine !== 'budget') return out
   const r = resolveKPI(kpiId, snapshot)
   if (!r || !r.disponible || r.unite !== '$') return out
   if (revenuMensuel(snapshot) > 0) out.push('pct_revenu')
-  // « % de tes dépenses » : seulement pour un poste de DÉPENSE (domaine budget) — pas
-  // pour une épargne/un patrimoine (part-des-dépenses n'y aurait pas de sens).
-  const def = kpiPourId(kpiId)
-  if (def && def.domaine === 'budget' && depensesMensuelles(snapshot) > 0) out.push('pct_depenses')
+  if (depensesMensuelles(snapshot) > 0) out.push('pct_depenses')
   return out
 }

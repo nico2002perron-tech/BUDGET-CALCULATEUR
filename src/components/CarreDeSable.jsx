@@ -94,6 +94,12 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // avant tout return — jamais après le garde `if (!actif)`).
   useEffect(() => () => clearTimeout(faitTimerRef.current), [])
 
+  // LE VIVANT (garde) : changer de forme (clic OU copilote → formeChoisie) démonte
+  // la rangée « La lecture » si la nouvelle forme n'est pas scalaire ; onMouseLeave/
+  // onBlur ne se déclenchent alors JAMAIS → un derivationSurvol resterait collé et
+  // rallumerait un aperçu FANTÔME au retour d'une forme scalaire. On le réinitialise.
+  useEffect(() => { setDerivationSurvol(null) }, [formeChoisie])
+
   // Le placeholder TOURNE (exemples) — figé sous prefers-reduced-motion.
   useEffect(() => {
     if (reduitMouvement()) return
@@ -401,7 +407,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // dérivée comprise (cohérent avec ce que la scène scalaire affiche).
   const personaActive = persona || (widget.persona && widget.persona.type ? widget.persona : { type: 'neutre' })
   // Persona cohérente avec la SCÈNE : dérivée seulement si la forme d'aperçu est scalaire.
-  const kpiResolu = deriver(FORMES_SCALAIRES.has(formeApercu) ? derivationApercu : 'brut', resolveKPI(kb.KPI, snapshot, paramsScene), snapshot)
+  const kpiResolu = deriver(FORMES_SCALAIRES.has(formeApercu) ? derivationApercu : 'brut', resolveKPI(kb.KPI, snapshot, paramsScene), snapshot, kb.KPI)
 
   // ÉPINGLER À MA TOUR : la vue fabriquée devient LA tuile (mise à jour en
   // place — jamais un doublon) : forme + comparaisons + cible + personnalité.
@@ -415,8 +421,9 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     }
     if (reglage && cibleActive > 0) params.cible = cibleActive
     else delete params.cible
-    // la dérivée VOULUE (l'intention) se replie ; 'brut' → on retire la clé.
-    if (derivationVoulue && derivationVoulue !== 'brut') params.derivation = derivationVoulue
+    // la dérivée OFFERTE (derivationActive, pas seulement voulue) se replie ; 'brut'
+    // → on retire la clé. On n'épingle jamais une dérivée non offerte pour ce KPI/forme.
+    if (derivationActive && derivationActive !== 'brut') params.derivation = derivationActive
     else delete params.derivation
     onEpingler({
       forme: formeActive,

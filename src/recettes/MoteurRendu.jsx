@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react'
 import { validerRecette, BLOCS, resoudreSlot } from './schema.js'
 import { composantPour } from './registre.js'
 import { resolveKPI, kpiPourId, comparaisonScenarios, formesPourKPI, serieDuKPI, partsDuKPI, FORMES_SERIE, FORMES_PARTS } from './bibliotheque-kpis.js'
-import { deriver, FORMES_SCALAIRES } from './derivations.js'
+import { deriver, FORMES_SCALAIRES, derivationsPourKPI } from './derivations.js'
 
 const SERIE_SET = new Set(FORMES_SERIE)
 const PARTS_SET = new Set(FORMES_PARTS)
@@ -170,11 +170,14 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
         }
       } else {
         kpi = resolveKPI(bloc.kpi, snapshot, bloc.params)
-        // DÉRIVÉE (atelier de composition) : une autre lecture factuelle de la
-        // valeur (« en % de ton revenu »), seulement sur une forme scalaire (une
-        // série resterait en $). `deriver` rend l'original si non applicable.
-        if (bloc.params && bloc.params.derivation && FORMES_SCALAIRES.has(bloc.type)) {
-          kpi = deriver(bloc.params.derivation, kpi, snapshot)
+        // DÉRIVÉE (atelier de composition) : une autre lecture factuelle de la valeur
+        // (« en % de ton revenu »). On REVALIDE l'applicabilité au rendu — la dérivée
+        // doit être RÉELLEMENT offerte pour CE KPI + CETTE forme (data-aware) — pour
+        // qu'une recette persistée/importée non offerte (ex. { valeur_nette, pct_depenses })
+        // ne produise jamais une lecture trompeuse. `deriver` a aussi son propre gate.
+        if (bloc.params && bloc.params.derivation && FORMES_SCALAIRES.has(bloc.type) &&
+            derivationsPourKPI(bloc.kpi, snapshot, bloc.type).includes(bloc.params.derivation)) {
+          kpi = deriver(bloc.params.derivation, kpi, snapshot, bloc.kpi)
         }
       }
     }
