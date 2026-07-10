@@ -24,7 +24,8 @@ const NOM_COULEUR = { cyan: 'cyan', ocean: 'océan', indigo: 'indigo', vert: 've
    (Duolingo : on ne réenseigne pas ce qu'on sait). PUR. */
 const GESTE = {
   ajouter_comparateur: 'comparer', retirer_comparateur: 'comparer',
-  changer_forme: 'forme', poser_cible: 'cible', retirer_cible: 'cible',
+  changer_forme: 'forme', changer_mesure: 'lecture', changer_decoupe: 'decoupe',
+  poser_cible: 'cible', retirer_cible: 'cible',
   changer_couleur: 'couleur', renommer: 'nom', changer_icone: 'icone',
   creer_widget: 'creer', repondre_kpi: 'repondre', retirer_widget: 'retirer',
   redimensionner: 'taille', ouvrir_sable: 'ouvrir',

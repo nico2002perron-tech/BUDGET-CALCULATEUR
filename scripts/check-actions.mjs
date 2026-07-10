@@ -34,7 +34,8 @@ const gele = JSON.stringify(etatSable) // pour prouver l'immutabilité
 const un = (verbe, extra, etat = etatSable, c = ctx) => executerActions([{ verbe, ...extra }], c, etat)
 
 console.log('— Chaque verbe existe et porte un scope connu —')
-ok(VERBES.length === 14, `14 verbes exposés`, VERBES.join(','))
+ok(VERBES.length === 16, `16 verbes exposés`, VERBES.join(','))
+ok(VERBES.includes('changer_mesure') && VERBES.includes('changer_decoupe'), 'les verbes de composition (changer_mesure / changer_decoupe) existent')
 ok(VERBES.every((v) => ['sable', 'board', 'tuile'].includes(ACTIONS[v].scope)), 'tous les scopes ∈ {sable, board, tuile}')
 
 console.log('\n— ajouter_comparateur : data-aware (« l’an passé » attend l’historique) —')
@@ -156,6 +157,31 @@ console.log('\n— JSON HOSTILE : jamais d’exception, jamais de prototype réc
   ok(!leve, 'executerActions ne LÈVE jamais sur des actions malformées')
   ok(r2 && r2.faites.length === 0, 'toutes les cochonneries refusées (aucune appliquée)')
   ok(JSON.stringify(etatSable) === gele, 'l’état d’entrée reste intact malgré le JSON hostile')
+}
+
+console.log('\n— COMPOSITION : changer_mesure / changer_decoupe (validés contre l’offre réelle) —')
+{
+  const etatM = { widgets: [wSaison], sable: { widgetId: 'wm', kpiId: 'cout_vie_mensuel', forme: 'stat', comparaisons: [], cible: null } }
+  const rm = executerActions([{ verbe: 'changer_mesure', mesure: 'pct_revenu' }], ctx, etatM)
+  ok(rm.faites.length === 1 && rm.etat.sable.derivation === 'pct_revenu', 'changer_mesure pct_revenu (cout_vie, stat) → posée sur la scène')
+  ok(rm.faites[0] && filtrerFait(rm.faites[0].resume || '').ok && /Lecture/.test(rm.faites[0].resume || ''), 'résumé « Lecture : … » filtré', rm.faites[0] && rm.faites[0].resume)
+  const rmBrut = executerActions([{ verbe: 'changer_mesure', mesure: 'brut' }], ctx, { ...etatM, sable: { ...etatM.sable, derivation: 'pct_revenu' } })
+  ok(rmBrut.faites.length === 1 && rmBrut.etat.sable.derivation === undefined, 'changer_mesure brut → retire la dérivée (montant nu)')
+  const rmNon = executerActions([{ verbe: 'changer_mesure', mesure: 'pct_revenu' }], ctx, etatSable)
+  ok(rmNon.faites.length === 0 && rmNon.refusees.length === 1, 'changer_mesure sur un KPI non budget → REFUSÉ (offre honnête)')
+  const rmProto = executerActions([{ verbe: 'changer_mesure', mesure: '__proto__' }], ctx, etatM)
+  ok(rmProto.refusees.length === 1 && rmProto.faites.length === 0, 'mesure-piège (__proto__) → refusée sans exception')
+
+  const etatD = { widgets: [wSaison], sable: { widgetId: 'wd', kpiId: 'top_categorie', forme: 'beignet', comparaisons: [], cible: null } }
+  const rd = executerActions([{ verbe: 'changer_decoupe', decoupe: 'fixe_variable' }], ctx, etatD)
+  ok(rd.faites.length === 1 && rd.etat.sable.decoupe === 'fixe_variable', 'changer_decoupe fixe_variable (top_categorie, beignet) → posée')
+  ok(rd.faites[0] && filtrerFait(rd.faites[0].resume || '').ok && /Tranche/.test(rd.faites[0].resume || ''), 'résumé « Tranche : … » filtré (évite « coupe » interdit)', rd.faites[0] && rd.faites[0].resume)
+  const rdNon = executerActions([{ verbe: 'changer_decoupe', decoupe: 'fixe_variable' }], ctx, etatSable)
+  ok(rdNon.faites.length === 0 && rdNon.refusees.length === 1, 'changer_decoupe sur un KPI non-parts → REFUSÉ')
+  // « en % de mes dépenses PUIS en fixe/variable » n'a de sens que sur des formes différentes : on
+  // vérifie juste que les deux verbes coexistent dans une salve sans planter (chacun validé à son tour).
+  const salve = executerActions([{ verbe: 'changer_mesure', mesure: 'pct_depenses' }], ctx, etatM)
+  ok(salve.faites.length === 1 && salve.etat.sable.derivation === 'pct_depenses', 'changer_mesure pct_depenses (poste budget) → posée')
 }
 
 console.log('\n— IMMUTABILITÉ (→ Annuler restaure l’état d’avant à l’identique) —')

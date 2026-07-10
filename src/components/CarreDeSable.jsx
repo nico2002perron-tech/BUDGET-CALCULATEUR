@@ -25,7 +25,7 @@ import { sons } from '../lib/sons.js'
 // Les verbes que la barre-copilote pilote DANS le sable (forme/comparateurs/
 // cible/couleur/titre — tout a un aperçu vivant ici). Les verbes du board
 // (créer/retirer/redimensionner) vivent sur la barre du tableau (A3).
-const VERBES_SABLE = ['changer_forme', 'ajouter_comparateur', 'retirer_comparateur', 'poser_cible', 'retirer_cible', 'changer_couleur', 'renommer']
+const VERBES_SABLE = ['changer_forme', 'changer_mesure', 'changer_decoupe', 'ajouter_comparateur', 'retirer_comparateur', 'poser_cible', 'retirer_cible', 'changer_couleur', 'renommer']
 
 // Les types canoniques du sable, dans l'ordre de la rangée. Un type incompatible
 // avec le KPI courant reste VISIBLE mais grisé (il dit ce que le sable sait faire).
@@ -296,11 +296,33 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // geste pas encore appris (Duolingo — les pouvoirs se déverrouillent un à un).
   const prochain = prochainePerche(perches, appris)
 
+  // LA MESURE (atelier de composition) : la LECTURE de la valeur (« montant » ou
+  // « en % de ton revenu »). Ton INTENTION (derivationVoulue) survit à un
+  // changement de forme ; ce qui est OFFERT/appliqué dépend de la forme scalaire.
+  const derivsOffertes = derivationsPourKPI(kb.KPI, snapshot, formeActive)
+  const dvBrute = derivationChoisie != null ? derivationChoisie : (kb.params && kb.params.derivation) || 'brut'
+  const derivationVoulue = derivationValide(dvBrute) ? dvBrute : 'brut' // neutralise une valeur hostile d'un silo importé
+  const derivationActive = derivsOffertes.includes(derivationVoulue) ? derivationVoulue : 'brut'
+  // LE VIVANT : la mesure SURVOLÉE prévisualise dans la scène ; sinon la choisie.
+  const derivationApercu = derivationSurvol && derivsOffertes.includes(derivationSurvol) ? derivationSurvol : derivationActive
+
+  // LA DÉCOUPE (atelier de composition) : trancher le TOUT autrement (parts). Même
+  // patron que la mesure ; l'intention survit, l'offre dépend de la forme-parts.
+  const decoupsOffertes = decoupesPourKPI(kb.KPI, snapshot, formeActive)
+  const dcBrute = decoupeChoisie != null ? decoupeChoisie : (kb.params && kb.params.decoupe) || 'par_categorie'
+  const decoupeVoulue = decoupeValide(dcBrute) ? dcBrute : 'par_categorie' // neutralise une valeur hostile
+  const decoupeActive = decoupsOffertes.includes(decoupeVoulue) ? decoupeVoulue : 'par_categorie'
+  const decoupeApercu = decoupeSurvol && decoupsOffertes.includes(decoupeSurvol) ? decoupeSurvol : decoupeActive
+
+  // La scène est en mode APERÇU si la forme, la mesure OU la découpe survolée diffère du choix.
+  const enApercu = formeApercu !== formeActive || derivationApercu !== derivationActive || decoupeApercu !== decoupeActive
+
   // On PUBLIE l'état de scène courant dans la ref à CHAQUE rendu → le copilote
   // (qui applique APRÈS le fetch) lit toujours l'état le plus frais.
   sceneEtatRef.current = {
     formeActive, compActives, cibleActive, couleurActive, titreActif,
     formeChoisie, comparaisons, cible, couleurScene, titreScene,
+    derivationActive, decoupeActive, derivationChoisie, decoupeChoisie,
   }
 
   // ── LA BARRE-COPILOTE « Demande à ta tour » : ta phrase → des ACTIONS. L'IA ne
@@ -313,17 +335,21 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     const filtrees = (Array.isArray(actions) ? actions : []).filter((a) => a && VERBES_SABLE.includes(a.verbe))
     const widgetCourant = { ...widget, accent: S.couleurActive, recette: { ...recette, titre: S.titreActif } }
     const objectif = kb.params && kb.params.objectif ? kb.params.objectif : undefined
+    const dCur = S.derivationActive !== 'brut' ? S.derivationActive : undefined // la dérivée courante (undefined = montant nu)
+    const kCur = S.decoupeActive !== 'par_categorie' ? S.decoupeActive : undefined // la découpe courante (undefined = par catégorie)
     const etatCourant = {
       widgets: [widgetCourant],
-      sable: { widgetId: widget.id, kpiId: kb.KPI, forme: S.formeActive, comparaisons: S.compActives, cible: S.cibleActive > 0 ? S.cibleActive : null, objectif },
+      sable: { widgetId: widget.id, kpiId: kb.KPI, forme: S.formeActive, comparaisons: S.compActives, cible: S.cibleActive > 0 ? S.cibleActive : null, objectif, derivation: dCur, decoupe: kCur },
     }
-    const avant = { formeChoisie: S.formeChoisie, comparaisons: S.comparaisons, cible: S.cible, couleurScene: S.couleurScene, titreScene: S.titreScene }
+    const avant = { formeChoisie: S.formeChoisie, comparaisons: S.comparaisons, cible: S.cible, couleurScene: S.couleurScene, titreScene: S.titreScene, derivationChoisie: S.derivationChoisie, decoupeChoisie: S.decoupeChoisie }
     const { etat, faites, refusees } = executerActions(filtrees, { snapshot }, etatCourant)
     // Mapper l'état-scène résultant vers l'état local (seulement ce qui a changé).
     const s2 = etat.sable
     if (s2.forme !== S.formeActive) setFormeChoisie(s2.forme)
     if (s2.comparaisons !== S.compActives) setComparaisons(s2.comparaisons)
     if (s2.cible !== (S.cibleActive > 0 ? S.cibleActive : null)) setCible(s2.cible == null ? 0 : s2.cible)
+    if (s2.derivation !== dCur) setDerivationChoisie(s2.derivation || 'brut')
+    if (s2.decoupe !== kCur) setDecoupeChoisie(s2.decoupe || 'par_categorie')
     const w2 = etat.widgets.find((w) => w.id === widget.id) || widgetCourant
     if ((w2.accent || null) !== S.couleurActive) setCouleurScene(w2.accent || null)
     const t2 = w2.recette ? w2.recette.titre : S.titreActif
@@ -343,6 +369,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     const a = fait.avant
     setFormeChoisie(a.formeChoisie); setComparaisons(a.comparaisons); setCible(a.cible)
     setCouleurScene(a.couleurScene); setTitreScene(a.titreScene)
+    setDerivationChoisie(a.derivationChoisie); setDecoupeChoisie(a.decoupeChoisie)
     clearTimeout(faitTimerRef.current)
     setFait(null)
   }
@@ -369,6 +396,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           contextesOfferts: offerts,
           couleurs: PALETTE_ACCENTS.map((c) => c.id),
           cible: { present: !!reglage, unite: reglage ? reglage.unite : '', posee: cibleActive > 0 },
+          // LA COMPOSITION : les lectures et découpes RÉELLEMENT offertes (ids seulement,
+          // aucune valeur du silo) → l'IA choisit dedans, comme pour la forme.
+          mesuresOffertes: derivsOffertes,
+          decoupesOffertes: decoupsOffertes,
         }),
       })
       const data = await res.json()
@@ -383,27 +414,6 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
       setIaCharge(false)
     }
   }
-
-  // LA MESURE (atelier de composition) : la LECTURE de la valeur (« montant » ou
-  // « en % de ton revenu »). Ton INTENTION (derivationVoulue) survit à un
-  // changement de forme ; ce qui est OFFERT/appliqué dépend de la forme scalaire.
-  const derivsOffertes = derivationsPourKPI(kb.KPI, snapshot, formeActive)
-  const dvBrute = derivationChoisie != null ? derivationChoisie : (kb.params && kb.params.derivation) || 'brut'
-  const derivationVoulue = derivationValide(dvBrute) ? dvBrute : 'brut' // neutralise une valeur hostile d'un silo importé
-  const derivationActive = derivsOffertes.includes(derivationVoulue) ? derivationVoulue : 'brut'
-  // LE VIVANT : la mesure SURVOLÉE prévisualise dans la scène ; sinon la choisie.
-  const derivationApercu = derivationSurvol && derivsOffertes.includes(derivationSurvol) ? derivationSurvol : derivationActive
-
-  // LA DÉCOUPE (atelier de composition) : trancher le TOUT autrement (parts). Même
-  // patron que la mesure ; l'intention survit, l'offre dépend de la forme-parts.
-  const decoupsOffertes = decoupesPourKPI(kb.KPI, snapshot, formeActive)
-  const dcBrute = decoupeChoisie != null ? decoupeChoisie : (kb.params && kb.params.decoupe) || 'par_categorie'
-  const decoupeVoulue = decoupeValide(dcBrute) ? dcBrute : 'par_categorie' // neutralise une valeur hostile
-  const decoupeActive = decoupsOffertes.includes(decoupeVoulue) ? decoupeVoulue : 'par_categorie'
-  const decoupeApercu = decoupeSurvol && decoupsOffertes.includes(decoupeSurvol) ? decoupeSurvol : decoupeActive
-
-  // La scène est en mode APERÇU si la forme, la mesure OU la découpe survolée diffère du choix.
-  const enApercu = formeApercu !== formeActive || derivationApercu !== derivationActive || decoupeApercu !== decoupeActive
 
   const paramsScene = {
     ...(kb.params || {}),

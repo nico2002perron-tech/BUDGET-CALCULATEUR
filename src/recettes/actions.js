@@ -33,6 +33,8 @@ import {
   nomForme, REGISTRE_KPIS,
 } from './bibliotheque-kpis.js'
 import { resoudreComparaisons, CONTEXTES_COMPARAISON, TAILLES_WIDGET, filtrerFait } from './schema.js'
+import { DERIVATIONS, derivationsPourKPI } from './derivations.js'
+import { DECOUPES, decoupesPourKPI } from './decoupes.js'
 import { formatCAD } from '../lib/format.js'
 import { ICONES_IDS } from '../lib/icones-ids.js'
 import { PALETTE_ACCENTS, accentValide } from '../lib/entites.js'
@@ -54,6 +56,10 @@ function fait(txt, repli = '') {
 // Un refus / un succès normalisés.
 const refus = (raison) => ({ ok: false, raison: fait(raison, 'Action impossible.') })
 const ok = () => ({ ok: true })
+
+// Libellés lisibles d'une dérivée / d'une découpe (pour le résumé « Fait »).
+const labelDeriv = (id) => (DERIVATIONS.find((d) => d.id === id) || {}).label || String(id)
+const labelDecoupe = (id) => (DECOUPES.find((d) => d.id === id) || {}).label || String(id)
 
 // ── Ciblage : la tuile visée par une édition (couleur/titre/icône/retirer…).
 //    `action.cible` explicite (barre du board), sinon la tuile du sable ouvert.
@@ -178,6 +184,37 @@ export const ACTIONS = {
     },
     appliquer(a, etat) { return majSable(etat, { forme: a.forme }) },
     resume(a) { return `Forme : ${nomForme(a.forme)}` },
+  },
+
+  // 5b — changer LA LECTURE (dérivée : montant / % du revenu / % des dépenses).
+  //      Validée contre les dérivées RÉELLEMENT offertes pour ce KPI + cette forme.
+  changer_mesure: {
+    scope: 'sable',
+    valider(a, etat, ctx) {
+      if (!etat.sable) return refus('Ouvre d’abord une vue.')
+      const off = derivationsPourKPI(etat.sable.kpiId, ctx.snapshot, etat.sable.forme)
+      if (!a || !off.includes(a.mesure)) return refus('Cette lecture n’est pas offerte ici.')
+      return ok()
+    },
+    // 'brut' → on retire la dérivée (le montant nu) ; sinon on la pose.
+    appliquer(a, etat) { return majSable(etat, { derivation: a.mesure === 'brut' ? undefined : a.mesure }) },
+    resume(a) { return `Lecture : ${labelDeriv(a.mesure)}` },
+  },
+
+  // 5c — changer LA DÉCOUPE (par catégorie / fixe·variable). Validée contre les
+  //      découpes réellement offertes (forme-parts + poste budget + donnée).
+  changer_decoupe: {
+    scope: 'sable',
+    valider(a, etat, ctx) {
+      if (!etat.sable) return refus('Ouvre d’abord une vue.')
+      const off = decoupesPourKPI(etat.sable.kpiId, ctx.snapshot, etat.sable.forme)
+      if (!a || !off.includes(a.decoupe)) return refus('Cette découpe n’est pas offerte ici.')
+      return ok()
+    },
+    appliquer(a, etat) { return majSable(etat, { decoupe: a.decoupe === 'par_categorie' ? undefined : a.decoupe }) },
+    // « Tranche » (pas « Découpe : ») — « coupe » suivi d'un espace est un mot interdit
+    // (l'impératif « coupe tes dépenses ») que « découpe : » déclencherait à tort.
+    resume(a) { return `Tranche : ${labelDecoupe(a.decoupe)}` },
   },
 
   // 6 — changer la couleur d'une tuile (scène ou board)

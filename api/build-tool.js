@@ -112,10 +112,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 const SYSTEM_PILOTER_SABLE = `Tu es le COPILOTE de « la tour de contrôle », une plateforme québécoise de finances personnelles. L'usager regarde UN indicateur dans son « carré de sable » et te parle en français.
 Ton rôle : traduire sa phrase en une LISTE d'ACTIONS, dans l'ordre. Tu NE calcules RIEN, tu NE mets AUCUN montant venant des données (les chiffres vivent sur l'appareil de l'usager). Le SEUL nombre que tu peux écrire est celui que l'usager PRONONCE lui-même (ex. « une cible de 4000 »).
 
-On te donne : l'indicateur (id + question), sa forme actuelle, les FORMES OFFERTES (ids), les CONTEXTES de comparaison OFFERTS (ids), les COULEURS offertes (ids), si une cible est réglable (+ son unité).
+On te donne : l'indicateur (id + question), sa forme actuelle, les FORMES OFFERTES (ids), les LECTURES OFFERTES (dérivées : brut/pct_revenu/pct_depenses), les DÉCOUPES OFFERTES (par_categorie/fixe_variable), les CONTEXTES de comparaison OFFERTS (ids), les COULEURS offertes (ids), si une cible est réglable (+ son unité).
 
 VERBES (n'utilise QUE ceux-ci ; ne choisis QUE parmi les options offertes) :
 - {"verbe":"changer_forme","forme":"<id parmi les FORMES OFFERTES>"}
+- {"verbe":"changer_mesure","mesure":"<id parmi les LECTURES OFFERTES>"} — la LECTURE du chiffre : brut=montant, pct_revenu=en % du revenu, pct_depenses=en % des dépenses.
+- {"verbe":"changer_decoupe","decoupe":"<id parmi les DÉCOUPES OFFERTES>"} — comment TRANCHER le tout : par_categorie ou fixe_variable.
 - {"verbe":"ajouter_comparateur","contexte":"<id parmi les CONTEXTES OFFERTS>"}
 - {"verbe":"retirer_comparateur","contexte":"<id>"}
 - {"verbe":"poser_cible","valeur":<nombre prononcé par l'usager>}
@@ -125,7 +127,7 @@ VERBES (n'utilise QUE ceux-ci ; ne choisis QUE parmi les options offertes) :
 
 Sens des formes courantes : prisme3d=3D en relief, bandes=barres, courbe=ligne, nuage=bulles, beignet=circulaire, anneau3d=anneau, stat=un chiffre, jauge=arc, fait=une phrase.
 Sens des contextes : moyenne=sa moyenne, cout_vie=son coût de vie, an_passe=l'an passé.
-Une phrase peut donner PLUSIEURS actions (« en courbe avec une cible de 4000 » → changer_forme + poser_cible). Une demande impossible/hors options → ne l'inclus pas (liste vide permise).
+Une phrase peut donner PLUSIEURS actions (« mon logement en % de mes dépenses, en fixe/variable » → changer_mesure + changer_decoupe ; « en courbe avec une cible de 4000 » → changer_forme + poser_cible). Une demande impossible/hors options → ne l'inclus pas (liste vide permise).
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"actions":[ ... ]}`;
 
@@ -170,6 +172,23 @@ function mockPiloterSable(message, p) {
     ['stat', /(chiffre|nombre|gros chiffre|un seul)/], ['jauge', /(jauge|arc|cadran)/], ['fait', /(constat|une phrase|en mots)/],
   ];
   for (const [id, re] of FORME_MOTS) { if (re.test(t) && formes.includes(id)) { actions.push({ verbe: 'changer_forme', forme: id }); break; } }
+
+  // LA LECTURE (dérivée) : « en % de mon revenu / de mes dépenses », « en montant »
+  const mesures = Array.isArray(ctx.mesuresOffertes) ? ctx.mesuresOffertes : [];
+  const MESURE_MOTS = [
+    ['pct_revenu', /(%|pourcent|pour ?cent|part|portion).{0,24}(revenu|paye|salaire|gagne)/],
+    ['pct_depenses', /(%|pourcent|pour ?cent|part|portion).{0,24}(depense|budget)/],
+    ['brut', /(en montant|en dollars?|en \$|montant brut|valeur brute|montant nu|remets le montant)/],
+  ];
+  for (const [id, re] of MESURE_MOTS) { if (re.test(t) && mesures.includes(id)) { actions.push({ verbe: 'changer_mesure', mesure: id }); break; } }
+
+  // LA DÉCOUPE : « fixe/variable », « par catégorie »
+  const decoupes = Array.isArray(ctx.decoupesOffertes) ? ctx.decoupesOffertes : [];
+  const DECOUPE_MOTS = [
+    ['fixe_variable', /(fixe.{0,5}variable|variable.{0,5}fixe|fixe ?\/ ?variable|engage|par fixe)/],
+    ['par_categorie', /(par categorie|par poste|categorie)/],
+  ];
+  for (const [id, re] of DECOUPE_MOTS) { if (re.test(t) && decoupes.includes(id)) { actions.push({ verbe: 'changer_decoupe', decoupe: id }); break; } }
 
   // CIBLE : « cible/objectif de 4000 », « 4 000 par mois » ; ou retrait
   if (ctx.cible && ctx.cible.present) {
@@ -354,6 +373,8 @@ export default async function handler(req, res) {
         question: String(b.question || '').slice(0, 200),
         formeActive: String(b.formeActive || '').slice(0, 30),
         formesOffertes: Array.isArray(b.formesOffertes) ? b.formesOffertes.slice(0, 16).map((x) => String(x).slice(0, 30)) : [],
+        mesuresOffertes: Array.isArray(b.mesuresOffertes) ? b.mesuresOffertes.slice(0, 8).map((x) => String(x).slice(0, 30)) : [],
+        decoupesOffertes: Array.isArray(b.decoupesOffertes) ? b.decoupesOffertes.slice(0, 8).map((x) => String(x).slice(0, 30)) : [],
         contextesOfferts: Array.isArray(b.contextesOfferts) ? b.contextesOfferts.slice(0, 10).map((x) => String(x).slice(0, 30)) : [],
         couleurs: Array.isArray(b.couleurs) ? b.couleurs.slice(0, 10).map((x) => String(x).slice(0, 20)) : [],
         cible: { present: !!cible.present, unite: String(cible.unite || '').slice(0, 12), posee: !!cible.posee },
@@ -382,7 +403,7 @@ export default async function handler(req, res) {
       const kpis = (p.kpisOfferts || []).map((k) => `${k.id} : « ${k.question} »`).join('\n') || '(aucun)';
       message = `Tuiles actuelles : ${tuiles}\nIndicateurs offerts :\n${kpis}\nDemande de l'usager : ${message}`;
     } else {
-      message = `Indicateur : ${p.kpi} — « ${p.question} »\nForme actuelle : ${p.formeActive || '(aucune)'}\nFormes offertes : ${p.formesOffertes.join(', ') || '(aucune)'}\nContextes de comparaison offerts : ${p.contextesOfferts.join(', ') || '(aucun)'}\nCouleurs offertes : ${p.couleurs.join(', ') || '(aucune)'}\nCible réglable : ${p.cible.present ? `oui (unité ${p.cible.unite || '?'}, ${p.cible.posee ? 'déjà posée' : 'non posée'})` : 'non'}\nDemande de l'usager : ${message}`;
+      message = `Indicateur : ${p.kpi} — « ${p.question} »\nForme actuelle : ${p.formeActive || '(aucune)'}\nFormes offertes : ${p.formesOffertes.join(', ') || '(aucune)'}\nLectures offertes (dérivées) : ${(p.mesuresOffertes || []).join(', ') || '(aucune)'}\nDécoupes offertes : ${(p.decoupesOffertes || []).join(', ') || '(aucune)'}\nContextes de comparaison offerts : ${p.contextesOfferts.join(', ') || '(aucun)'}\nCouleurs offertes : ${p.couleurs.join(', ') || '(aucune)'}\nCible réglable : ${p.cible.present ? `oui (unité ${p.cible.unite || '?'}, ${p.cible.posee ? 'déjà posée' : 'non posée'})` : 'non'}\nDemande de l'usager : ${message}`;
     }
   }
 
