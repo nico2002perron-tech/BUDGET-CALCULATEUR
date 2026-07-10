@@ -14,7 +14,7 @@ import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
 import GlypheForme from './GlypheForme.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
-import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide } from '../recettes/derivations.js'
+import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide, FORMES_SCALAIRES } from '../recettes/derivations.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
 import { executerActions, resumeActions } from '../recettes/actions.js'
 import { perchesSable, PLACEHOLDERS_SABLE, gestesDe, prochainePerche } from '../recettes/perches.js'
@@ -65,6 +65,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [titreScene, setTitreScene] = useState(null) // null = le titre du widget ; sinon le renommage du copilote
   const [derivationChoisie, setDerivationChoisie] = useState(null) // null = celle de la recette ; sinon ton choix (atelier de composition)
   const [formeSurvol, setFormeSurvol] = useState(null) // LE VIVANT : la forme SURVOLÉE (aperçu direct), null = aucun survol
+  const [derivationSurvol, setDerivationSurvol] = useState(null) // LE VIVANT : la mesure survolée (aperçu de la dérivée)
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -232,7 +233,6 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   // LE VIVANT : la scène montre la forme SURVOLÉE (aperçu avec TES données) tant
   // que le curseur/focus y est ; sinon la forme choisie. « Voir avant l'effort. »
   const formeApercu = formeSurvol && formes.includes(formeSurvol) ? formeSurvol : formeActive
-  const enApercu = formeApercu !== formeActive
 
   // « AJOUTER À COMPARER » : tes comparaisons du moment (celles de la recette tant
   // que tu n'y touches pas). Un sujet est offert si sa série se RÉSOUT vraiment.
@@ -382,21 +382,26 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const dvBrute = derivationChoisie != null ? derivationChoisie : (kb.params && kb.params.derivation) || 'brut'
   const derivationVoulue = derivationValide(dvBrute) ? dvBrute : 'brut' // neutralise une valeur hostile d'un silo importé
   const derivationActive = derivsOffertes.includes(derivationVoulue) ? derivationVoulue : 'brut'
+  // LE VIVANT : la mesure SURVOLÉE prévisualise dans la scène ; sinon la choisie.
+  const derivationApercu = derivationSurvol && derivsOffertes.includes(derivationSurvol) ? derivationSurvol : derivationActive
+  // La scène est en mode APERÇU si la forme OU la mesure survolée diffère du choix.
+  const enApercu = formeApercu !== formeActive || derivationApercu !== derivationActive
 
   const paramsScene = {
     ...(kb.params || {}),
     ...(comparable ? { comparaisons: compActives } : {}),
     // cible posée → transmise ; objectif retiré (0) → on l'enlève même si la recette en portait une.
     ...(reglage ? (cibleActive > 0 ? { cible: cibleActive } : { cible: undefined }) : {}),
-    // la dérivée VOULUE voyage dans les params (le moteur ne l'applique que sur une forme scalaire).
-    ...(derivationVoulue && derivationVoulue !== 'brut' ? { derivation: derivationVoulue } : { derivation: undefined }),
+    // la dérivée d'APERÇU voyage dans les params (le moteur ne l'applique que sur une forme scalaire).
+    ...(derivationApercu && derivationApercu !== 'brut' ? { derivation: derivationApercu } : { derivation: undefined }),
   }
 
   // LA PERSONNALITÉ : celle du widget (épinglée) tant que tu n'y touches pas.
   // Le fait qu'elle énonce = la résolution du KPI avec les params du moment,
   // dérivée comprise (cohérent avec ce que la scène scalaire affiche).
   const personaActive = persona || (widget.persona && widget.persona.type ? widget.persona : { type: 'neutre' })
-  const kpiResolu = deriver(derivationActive, resolveKPI(kb.KPI, snapshot, paramsScene), snapshot)
+  // Persona cohérente avec la SCÈNE : dérivée seulement si la forme d'aperçu est scalaire.
+  const kpiResolu = deriver(FORMES_SCALAIRES.has(formeApercu) ? derivationApercu : 'brut', resolveKPI(kb.KPI, snapshot, paramsScene), snapshot)
 
   // ÉPINGLER À MA TOUR : la vue fabriquée devient LA tuile (mise à jour en
   // place — jamais un doublon) : forme + comparaisons + cible + personnalité.
@@ -584,9 +589,13 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
               <button
                 key={d.id}
                 type="button"
-                className={`sable-type${d.id === derivationActive ? ' est-actif' : ''}`}
+                className={`sable-type${d.id === derivationActive ? ' est-actif' : ''}${d.id === derivationSurvol && d.id !== derivationActive ? ' est-survol' : ''}`}
                 aria-pressed={d.id === derivationActive}
-                onClick={() => { sons.tap(); setFait(null); setDerivationChoisie(d.id) }}
+                onClick={() => { sons.tap(); setFait(null); setDerivationSurvol(null); setDerivationChoisie(d.id) }}
+                onMouseEnter={() => setDerivationSurvol(d.id)}
+                onMouseLeave={() => setDerivationSurvol((s) => (s === d.id ? null : s))}
+                onFocus={() => setDerivationSurvol(d.id)}
+                onBlur={() => setDerivationSurvol((s) => (s === d.id ? null : s))}
               >
                 {d.label}
               </button>
@@ -624,7 +633,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           {enApercu && (
             <span className="sable-apercu-tag" aria-hidden="true">aperçu · clique pour garder</span>
           )}
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeApercu || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeApercu || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}:${derivationApercu}`} />
         </div>
 
         {/* ÉPINGLER : la boucle se referme — la vue fabriquée devient la tuile. */}

@@ -2645,6 +2645,11 @@ svg { display: block; }
   box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 80%, transparent);
 }
 .sable-type:disabled { opacity: 0.42; cursor: not-allowed; border-style: dashed; background: transparent; }
+/* LE VIVANT : le chip SURVOLÉ (mesure en aperçu) — halo d'accent, jamais l'état choisi. */
+.sable-type.est-survol:not(.est-actif) {
+  border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 55%, #fff);
+  box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 70%, transparent);
+}
 
 /* AJOUTER À COMPARER : chips-sujets (ajouté = pastille pleine, retirable ×) + barre IA. */
 .sable-comparer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }

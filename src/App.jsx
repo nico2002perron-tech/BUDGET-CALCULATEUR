@@ -148,6 +148,7 @@ function App() {
   const [erreur, setErreur] = useState(null)
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
+  const [peauSurvol, setPeauSurvol] = useState(null) // LE VIVANT : { id, peau } — la peau survolée en aperçu sur SA tuile
   const [sable, setSable] = useState(null) // { id, rect } du widget ouvert dans le carré de sable (null = fermé)
   const [reorganise, setReorganise] = useState(false) // mode « Réorganiser » du board
 
@@ -903,7 +904,7 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${w.peau ? ` ${classePeau(w.peau)}` : ''}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={w.accent ? { '--wacc': w.accent } : undefined}
@@ -995,7 +996,11 @@ function App() {
                                     key={p.id}
                                     type="button"
                                     className={`gal-forme${actif ? ' is-choisie' : ''}`}
-                                    onClick={() => changerPeau(w.id, p.id)}
+                                    onClick={() => { setPeauSurvol(null); changerPeau(w.id, p.id) }}
+                                    onMouseEnter={() => setPeauSurvol({ id: w.id, peau: p.id })}
+                                    onMouseLeave={() => setPeauSurvol((s) => (s && s.id === w.id ? null : s))}
+                                    onFocus={() => setPeauSurvol({ id: w.id, peau: p.id })}
+                                    onBlur={() => setPeauSurvol((s) => (s && s.id === w.id ? null : s))}
                                     aria-pressed={actif}
                                   >
                                     {p.label}
