@@ -2615,6 +2615,12 @@ svg { display: block; }
   box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 80%, transparent);
 }
 .sable-type-carte.est-actif .glyphe { color: #fff; }
+/* LE VIVANT : la vignette SURVOLÉE (dont la scène s'affiche en aperçu) — halo
+   d'accent, sans prendre l'état « choisi » (réservé au clic). */
+.sable-type-carte.est-survol {
+  border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 55%, #fff);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--wacc, var(--cyan)) 70%, transparent);
+}
 .sable-type-carte:disabled { opacity: 0.42; cursor: not-allowed; border-style: dashed; background: transparent; }
 .sable-type-carte:disabled .glyphe { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .sable-type-carte { transition: none; } .sable-type-carte:hover:not(:disabled) { transform: none; } }
@@ -2801,7 +2807,19 @@ svg { display: block; }
 
 /* La scène n'est plus un cadre : les cartes y vivent DIRECTEMENT, comme sur la
    tuile (le prisme 3D garde SON canvas sombre autoportant, identique partout). */
-.sable-scene { position: relative; }
+.sable-scene { position: relative; transition: box-shadow 0.16s; }
+/* LE VIVANT : quand la scène montre un APERÇU (survol d'une autre forme), un
+   halo d'accent + un repère « clique pour garder » — l'essai est visible, gratuit. */
+.sable-scene.est-apercu { box-shadow: 0 0 0 2px color-mix(in srgb, var(--wacc, var(--cyan)) 45%, transparent), 0 18px 40px -20px color-mix(in srgb, var(--wacc, var(--cyan)) 60%, transparent); border-radius: 24px; }
+.sable-apercu-tag {
+  position: absolute; top: 12px; right: 12px; z-index: 3; pointer-events: none;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.02em; color: #fff;
+  background: color-mix(in srgb, var(--wacc, var(--cyan)) 88%, var(--navy));
+  padding: 5px 11px; border-radius: 999px; box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.4);
+  animation: apercuTagIn 0.16s ease both;
+}
+@keyframes apercuTagIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .sable-scene { transition: none; } .sable-apercu-tag { animation: none; } }
 /* ÉPINGLER : le geste qui referme la boucle — gros bouton accent, joufflu. */
 .sable-pied { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px; }
 .sable-epingler {

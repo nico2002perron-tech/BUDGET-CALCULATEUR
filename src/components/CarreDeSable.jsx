@@ -64,6 +64,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const [couleurScene, setCouleurScene] = useState(null) // null = l'accent du widget ; sinon la couleur du copilote (repliée à l'épinglage)
   const [titreScene, setTitreScene] = useState(null) // null = le titre du widget ; sinon le renommage du copilote
   const [derivationChoisie, setDerivationChoisie] = useState(null) // null = celle de la recette ; sinon ton choix (atelier de composition)
+  const [formeSurvol, setFormeSurvol] = useState(null) // LE VIVANT : la forme SURVOLÉE (aperçu direct), null = aucun survol
   const [iaTexte, setIaTexte] = useState('')
   const [iaCharge, setIaCharge] = useState(false)
   const [iaNote, setIaNote] = useState(null)
@@ -228,6 +229,10 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     ? kb.forme
     : formes.includes('prisme3d') ? 'prisme3d' : formes.includes(kb.forme) ? kb.forme : formes[0] || null
   const formeActive = formeChoisie && formes.includes(formeChoisie) ? formeChoisie : formeDefaut
+  // LE VIVANT : la scène montre la forme SURVOLÉE (aperçu avec TES données) tant
+  // que le curseur/focus y est ; sinon la forme choisie. « Voir avant l'effort. »
+  const formeApercu = formeSurvol && formes.includes(formeSurvol) ? formeSurvol : formeActive
+  const enApercu = formeApercu !== formeActive
 
   // « AJOUTER À COMPARER » : tes comparaisons du moment (celles de la recette tant
   // que tu n'y touches pas). Un sujet est offert si sa série se RÉSOUT vraiment.
@@ -418,8 +423,8 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
     })
     fermer()
   }
-  const recetteScene = formeActive
-    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeActive, params: paramsScene }] }
+  const recetteScene = formeApercu
+    ? { situation: recette.situation, titre: '', blocs: [{ KPI: kb.KPI, forme: formeApercu, params: paramsScene }] }
     : recette
 
   return (
@@ -474,11 +479,15 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                   <button
                     key={t}
                     type="button"
-                    className={`sable-type-carte${t === formeActive ? ' est-actif' : ''}`}
+                    className={`sable-type-carte${t === formeActive ? ' est-actif' : ''}${t === formeSurvol && t !== formeActive ? ' est-survol' : ''}`}
                     disabled={!offert}
                     aria-pressed={t === formeActive}
                     title={offert ? nomForme(t) : `${nomForme(t)} — pas offert pour ce chiffre`}
-                    onClick={() => { sons.tap(); setFait(null); setFormeChoisie(t) }}
+                    onClick={() => { sons.tap(); setFait(null); setFormeSurvol(null); setFormeChoisie(t) }}
+                    onMouseEnter={offert ? () => setFormeSurvol(t) : undefined}
+                    onMouseLeave={offert ? () => setFormeSurvol((s) => (s === t ? null : s)) : undefined}
+                    onFocus={offert ? () => setFormeSurvol(t) : undefined}
+                    onBlur={offert ? () => setFormeSurvol((s) => (s === t ? null : s)) : undefined}
                   >
                     <GlypheForme forme={t} />
                     <span className="sable-type-nom">{nomForme(t)}</span>
@@ -611,8 +620,11 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           <PersonaStrip persona={personaActive} onChange={(p) => { setFait(null); setPersona(p) }} kpi={kpiResolu} kpiId={kb.KPI} domaine={def.domaine} />
         )}
 
-        <div className="sable-scene">
-          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeActive || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
+        <div className={`sable-scene${enApercu ? ' est-apercu' : ''}`}>
+          {enApercu && (
+            <span className="sable-apercu-tag" aria-hidden="true">aperçu · clique pour garder</span>
+          )}
+          <MoteurRendu recette={recetteScene} snapshot={snapshot} projecteur key={`${formeApercu || 'tuile'}:${compActives.map((c) => c.contexte).join('+')}:${cibleActive || ''}`} />
         </div>
 
         {/* ÉPINGLER : la boucle se referme — la vue fabriquée devient la tuile. */}
