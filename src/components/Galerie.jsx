@@ -416,7 +416,11 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
               </span>
             </div>
             {vedetteRecette && (
-              <div className="gal-vedette-apercu" aria-hidden="true">
+              // `inert` (React 19) neutralise d'un coup le focus clavier ET le pointeur
+              // ET retire le sous-arbre de l'arbre d'accessibilité — un contrôle focusable
+              // d'un bloc composé (curseur d'Horizon, segments du beignet) ne peut plus
+              // être atteint au clavier sous un aperçu décoratif. Plus sûr qu'aria-hidden.
+              <div className="gal-vedette-apercu" inert>
                 <MoteurRendu recette={vedetteRecette} snapshot={snapshot} />
               </div>
             )}
