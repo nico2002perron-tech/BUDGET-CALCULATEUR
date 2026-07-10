@@ -151,7 +151,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"actions":[ 
 
 // Maquette déterministe du mode piloter (clé absente) : mots-clés → actions.
 // Couvre les commandes courantes → le copilote marche HORS LIGNE pour tous.
-function mockPiloter(message, p) {
+export function mockPiloter(message, p) {
   if (p && p.surface === 'board') return mockPiloterBoard(message, p);
   return mockPiloterSable(message, p);
 }
@@ -175,17 +175,21 @@ function mockPiloterSable(message, p) {
 
   // LA LECTURE (dérivée) : « en % de mon revenu / de mes dépenses », « en montant »
   const mesures = Array.isArray(ctx.mesuresOffertes) ? ctx.mesuresOffertes : [];
+  // jetons courts ANCRÉS par frontière de mot : « part »/« portion » nus matchaient
+  // « répartition », « partie », « appartement » (revue nuage) → faux « en % de… ».
   const MESURE_MOTS = [
-    ['pct_revenu', /(%|pourcent|pour ?cent|part|portion).{0,24}(revenu|paye|salaire|gagne)/],
-    ['pct_depenses', /(%|pourcent|pour ?cent|part|portion).{0,24}(depense|budget)/],
+    ['pct_revenu', /(%|pourcent|pour ?cent|\bparts?\b|\bportion\b).{0,24}(revenu|paye|salaire|gagne)/],
+    ['pct_depenses', /(%|pourcent|pour ?cent|\bparts?\b|\bportion\b).{0,24}(depense|budget)/],
     ['brut', /(en montant|en dollars?|en \$|montant brut|valeur brute|montant nu|remets le montant)/],
   ];
   for (const [id, re] of MESURE_MOTS) { if (re.test(t) && mesures.includes(id)) { actions.push({ verbe: 'changer_mesure', mesure: id }); break; } }
 
   // LA DÉCOUPE : « fixe/variable », « par catégorie »
   const decoupes = Array.isArray(ctx.decoupesOffertes) ? ctx.decoupesOffertes : [];
+  // « engage » nu matchait « engagement », « je m'engage » (revue nuage) → on le retire
+  // et on s'appuie sur fixe+variable / « par fixe » (fidèle à l'intention).
   const DECOUPE_MOTS = [
-    ['fixe_variable', /(fixe.{0,5}variable|variable.{0,5}fixe|fixe ?\/ ?variable|engage|par fixe)/],
+    ['fixe_variable', /(fixe.{0,5}variable|variable.{0,5}fixe|fixe ?\/ ?variable|par fixe|depenses? engagees?)/],
     ['par_categorie', /(par categorie|par poste|categorie)/],
   ];
   for (const [id, re] of DECOUPE_MOTS) { if (re.test(t) && decoupes.includes(id)) { actions.push({ verbe: 'changer_decoupe', decoupe: id }); break; } }
