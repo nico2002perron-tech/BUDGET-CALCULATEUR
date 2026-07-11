@@ -19,6 +19,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { construireGalerie, DOMAINES, ACCENT_SITUATION } from '../lib/galerie.js'
 import { suggererIndicateurs } from '../recettes/suggestions.js'
 import { formesPourKPI, nomForme, kpiPourId } from '../recettes/bibliotheque-kpis.js'
+import { DERIVATIONS, derivationsPourKPI } from '../recettes/derivations.js'
+import { DECOUPES, decoupesPourKPI } from '../recettes/decoupes.js'
 import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { composerRecette } from '../recettes/composer.js'
 import { formatKPI } from '../lib/format.js'
@@ -127,11 +129,24 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
   const [nom, setNom] = useState('')
   const [icone, setIcone] = useState(null) // null = l'icône automatique du KPI
   const [cible, setCible] = useState(kpi.reglage ? kpi.reglage.defaut : null)
+  const [derivation, setDerivation] = useState('brut') // LA LECTURE (montant / % du revenu / des dépenses)
+  const [decoupe, setDecoupe] = useState('par_categorie') // LA DÉCOUPE (par catégorie / fixe·variable)
   const apercuRef = useRef(null)
   if (formes.length === 0) return null
 
   const r = kpi.reglage
-  const params = r && cible != null ? { cible } : {}
+  // LA MÉTROTHÈQUE : on compose DÈS l'essayage. Les lectures/découpes offertes
+  // dépendent de la forme (comme dans le sable) ; l'effective retombe au défaut
+  // si le choix n'est pas offert pour la forme courante (MoteurRendu revalide).
+  const derivsOffertes = derivationsPourKPI(kpi.id, snapshot, forme)
+  const decoupsOffertes = decoupesPourKPI(kpi.id, snapshot, forme)
+  const derivEff = derivsOffertes.includes(derivation) ? derivation : 'brut'
+  const decoupeEff = decoupsOffertes.includes(decoupe) ? decoupe : 'par_categorie'
+  const params = {
+    ...(r && cible != null ? { cible } : {}),
+    ...(derivEff !== 'brut' ? { derivation: derivEff } : {}),
+    ...(decoupeEff !== 'par_categorie' ? { decoupe: decoupeEff } : {}),
+  }
   const bougeCible = (delta) => setCible(Math.min(r.max, Math.max(r.min, (cible || r.defaut) + delta)))
 
   return (
@@ -146,7 +161,7 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
 
         <div className="gal-essai-corps">
           {/* L'aperçu VIVANT : la cible, la forme et la couleur s'y reflètent en direct. */}
-          <div className="gal-essai-apercu" ref={apercuRef} key={`${forme}:${cible}`}>
+          <div className="gal-essai-apercu" ref={apercuRef} key={`${forme}:${cible}:${derivEff}:${decoupeEff}`}>
             <MoteurRendu recette={{ situation: `essai_${kpi.id}`, titre: '', blocs: [{ KPI: kpi.id, forme, params }] }} snapshot={snapshot} />
           </div>
 
@@ -170,6 +185,34 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
                   {formes.map((f) => (
                     <button key={f} type="button" className={`gal-forme${f === forme ? ' is-choisie' : ''}`} onClick={() => setForme(f)} aria-pressed={f === forme}>
                       {nomForme(f)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* LA MÉTROTHÈQUE : composer dès l'essayage — la LECTURE (montant / %) … */}
+            {derivsOffertes.length > 1 && (
+              <>
+                <span className="gal-essai-l">La lecture</span>
+                <div className="gal-formes" role="group" aria-label="Choisis la lecture">
+                  {DERIVATIONS.filter((d) => derivsOffertes.includes(d.id)).map((d) => (
+                    <button key={d.id} type="button" className={`gal-forme${d.id === derivEff ? ' is-choisie' : ''}`} onClick={() => setDerivation(d.id)} aria-pressed={d.id === derivEff}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* … et la DÉCOUPE (par catégorie / fixe·variable). */}
+            {decoupsOffertes.length > 1 && (
+              <>
+                <span className="gal-essai-l">La découpe</span>
+                <div className="gal-formes" role="group" aria-label="Choisis la découpe">
+                  {DECOUPES.filter((d) => decoupsOffertes.includes(d.id)).map((d) => (
+                    <button key={d.id} type="button" className={`gal-forme${d.id === decoupeEff ? ' is-choisie' : ''}`} onClick={() => setDecoupe(d.id)} aria-pressed={d.id === decoupeEff}>
+                      {d.label}
                     </button>
                   ))}
                 </div>
