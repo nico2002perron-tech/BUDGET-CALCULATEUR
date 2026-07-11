@@ -131,6 +131,9 @@ function normaliser(store) {
     revenus: { ...base.revenus, ...(store.revenus || {}) },
     patrimoine: { ...base.patrimoine, ...(store.patrimoine || {}) },
     depenses: Array.isArray(store.depenses) ? store.depenses : base.depenses,
+    // « Mes vues » : des modèles de tuile réutilisables (structure seulement) —
+    // gardé Array + entrées valides (un silo importé hostile repart propre).
+    mesVues: Array.isArray(store.mesVues) ? store.mesVues.filter((v) => v && v.recette && Array.isArray(v.recette.blocs)) : [],
   }
 }
 
@@ -149,6 +152,7 @@ function App() {
   const [studio, setStudio] = useState(null) // null = fermé ; {} = conversation studio en cours
   const [angleWidget, setAngleWidget] = useState(null) // id du widget dont ChoixAngle est ouvert (porte « après »)
   const [peauSurvol, setPeauSurvol] = useState(null) // LE VIVANT : { id, peau } — la peau survolée en aperçu sur SA tuile
+  const [vueSauvee, setVueSauvee] = useState(false) // toast transitoire « sauvée dans Mes vues »
   const [sable, setSable] = useState(null) // { id, rect } du widget ouvert dans le carré de sable (null = fermé)
   const [reorganise, setReorganise] = useState(false) // mode « Réorganiser » du board
 
@@ -191,6 +195,11 @@ function App() {
     const id = setTimeout(() => setAllumes(null), 7000)
     return () => clearTimeout(id)
   }, [allumes])
+  useEffect(() => {
+    if (!vueSauvee) return
+    const id = setTimeout(() => setVueSauvee(false), 4000)
+    return () => clearTimeout(id)
+  }, [vueSauvee])
   // Le snapshot courant devient le repère de la PROCHAINE visite — écrit au DÉPART (onglet
   // caché / pagehide), jamais au démontage React (StrictMode le double → corromprait le repère).
   const snapshotRef = useRef(snapshot)
@@ -480,6 +489,43 @@ function App() {
     })
     setNouveauWidget(neufId) // la variante SE POSE (le « bam »)
     setAngleWidget(null) // ferme la retouche de l'original
+  }
+
+  // « MES VUES » : sauver une tuile configurée comme MODÈLE réutilisable — STRUCTURE
+  // seulement (recette + style), JAMAIS un montant (la recette ne porte que des
+  // intentions : forme, mesure, découpe, cible, comparaisons). On part de ce qu'on
+  // a fabriqué et on peut le re-poser quand on veut. Anti-doublon par signature.
+  const sauverVue = (id) => {
+    const w = (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).find((x) => x.id === id)
+    if (!w || !w.recette || !Array.isArray(w.recette.blocs)) return
+    let recette
+    try { recette = JSON.parse(JSON.stringify(w.recette)) } catch { return }
+    const nom = (w.recette.titre || 'Ma vue').slice(0, 60)
+    const vue = { id: 'v_' + Date.now(), nom, recette, accent: w.accent || null, icone: w.icone || null, peau: w.peau || null, persona: w.persona || null }
+    const sig = (v) => JSON.stringify([v.recette.situation, v.recette.blocs, v.accent, v.peau])
+    setStore((s) => {
+      const arr = Array.isArray(s.mesVues) ? s.mesVues : []
+      if (arr.some((v) => sig(v) === sig(vue))) return s // déjà sauvée à l'identique
+      return { ...s, mesVues: [vue, ...arr].slice(0, 12) } // plus récente en tête, cap 12
+    })
+    sons.pose()
+    setVueSauvee(true)
+  }
+  const supprimerVue = (vid) =>
+    setStore((s) => ({ ...s, mesVues: (Array.isArray(s.mesVues) ? s.mesVues : []).filter((v) => v.id !== vid) }))
+  // Re-poser un modèle : une tuile NEUVE (nouvel id) depuis la vue sauvée, animée.
+  const appliquerVue = (vue) => {
+    if (!vue || !vue.recette || !Array.isArray(vue.recette.blocs)) return
+    let recette
+    try { recette = JSON.parse(JSON.stringify(vue.recette)) } catch { return }
+    const id = 'w_' + Date.now()
+    const neuf = { id, recette, accent: vue.accent || null, icone: vue.icone || null }
+    if (vue.peau) neuf.peau = vue.peau
+    if (vue.persona) neuf.persona = vue.persona
+    sons.pose()
+    setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), neuf] }))
+    setNouveauWidget(id)
+    setSection('tour') // aller voir la tuile se poser
   }
 
   // ÉPINGLER depuis le carré de sable : la vue fabriquée (forme, comparaisons,
@@ -818,6 +864,13 @@ function App() {
               </div>
             )}
 
+            {vueSauvee && !mission && (
+              <div className="tour-allume gal-anim" role="status">
+                <span className="gal-ic" aria-hidden="true">{I_ECLAIR}</span>
+                <span className="tour-allume-txt"><b>Sauvée dans « Mes vues ».</b> Re-pose-la quand tu veux depuis le studio.</span>
+              </div>
+            )}
+
             {/* La célébration : N outils viennent de s'allumer (un fait, 7 s, jamais un jugement). */}
             {allumes != null && !mission && (
               <div className="tour-allume gal-anim" role="status">
@@ -838,10 +891,13 @@ function App() {
               <Galerie
                 snapshot={snapshot}
                 widgets={widgets}
+                mesVues={Array.isArray(store.mesVues) ? store.mesVues : []}
                 chargement={chargement}
                 erreur={erreur}
                 onDecrire={demanderIA}
                 onAjouter={ajouterWidget}
+                onAppliquerVue={appliquerVue}
+                onSupprimerVue={supprimerVue}
                 onAllerSaisie={allerSaisie}
               />
             )}
@@ -1032,13 +1088,22 @@ function App() {
                           {/* DUPLIQUER : pars d'une base, fais-en une variante — puis diverge
                               (autre forme, autre couleur, autre cible) dans son carré de sable. */}
                           <div className="retouche-bloc retouche-actions">
-                            <button type="button" className="retouche-dupli" onClick={() => dupliquerWidget(w.id)}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M5 15V6a2 2 0 0 1 2-2h9" />
-                              </svg>
-                              Dupliquer cette tuile
-                            </button>
-                            <span className="retouche-dupli-note">Une copie indépendante, à faire diverger.</span>
+                            <div className="retouche-actions-rangee">
+                              <button type="button" className="retouche-dupli" onClick={() => dupliquerWidget(w.id)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M5 15V6a2 2 0 0 1 2-2h9" />
+                                </svg>
+                                Dupliquer cette tuile
+                              </button>
+                              {/* MES VUES : sauver cette configuration comme modèle réutilisable. */}
+                              <button type="button" className="retouche-dupli" onClick={() => sauverVue(w.id)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M5 3h11l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" /><path d="M8 3v5h7" /><path d="M8 14h8" />
+                                </svg>
+                                Sauver comme modèle
+                              </button>
+                            </div>
+                            <span className="retouche-dupli-note">Une copie à faire diverger, ou un modèle pour « Mes vues ».</span>
                           </div>
                         </div>
                       )}

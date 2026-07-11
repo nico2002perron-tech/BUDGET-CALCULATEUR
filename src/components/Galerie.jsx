@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { construireGalerie, DOMAINES, ACCENT_SITUATION } from '../lib/galerie.js'
 import { suggererIndicateurs } from '../recettes/suggestions.js'
-import { formesPourKPI, nomForme } from '../recettes/bibliotheque-kpis.js'
+import { formesPourKPI, nomForme, kpiPourId } from '../recettes/bibliotheque-kpis.js'
 import { PALETTE_ACCENTS } from '../lib/entites.js'
 import { composerRecette } from '../recettes/composer.js'
 import { formatKPI } from '../lib/format.js'
@@ -59,6 +59,9 @@ const FAMILLES = [
 
 const reduitMouvement = () =>
   typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+// Le bloc-héros (KPI) d'une recette — pour l'icône d'une vue sauvée. PUR.
+const heroDeRecette = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
 
 /* La vraie valeur qui COMPTE jusqu'à son chiffre quand la carte entre à l'écran. */
 function ValeurVivante({ valeur, unite }) {
@@ -240,7 +243,7 @@ export function EssayageForme({ kpi, snapshot, onAjouter, onFermer }) {
   )
 }
 
-export default function Galerie({ snapshot, widgets = [], chargement, erreur, onDecrire, onAjouter, onAllerSaisie }) {
+export default function Galerie({ snapshot, widgets = [], mesVues = [], chargement, erreur, onDecrire, onAjouter, onAppliquerVue, onSupprimerVue, onAllerSaisie }) {
   const galerie = useMemo(() => construireGalerie(snapshot), [snapshot])
   // L'invitation d'une famille éteinte vient de SES propres cartes givrées (jamais
   // de celles d'une autre famille — la mission lancée doit être la bonne).
@@ -427,6 +430,29 @@ export default function Galerie({ snapshot, widgets = [], chargement, erreur, on
             <button type="button" className="gal-ajouter gal-vedette-ajouter" onClick={() => onAjouter(vedetteRecette || composerRecette(vedette.situation, {}, snapshot), vedetteAccent)}>
               Ajouter à ma tour
             </button>
+          </div>
+        )}
+
+        {/* MES VUES : les modèles que TU as fabriqués (structure seulement). Un tap les
+            re-pose sur ta tour ; le × les retire. « Je possède mon tableau. » */}
+        {mesVues.length > 0 && (
+          <div className="gal-mesvues">
+            <p className="gal-question">Tes vues sauvées&nbsp;:</p>
+            <div className="gal-mesvues-liste">
+              {mesVues.map((v) => {
+                const kb = heroDeRecette(v.recette)
+                const dom = kb ? (kpiPourId(kb.KPI) || {}).domaine : null
+                return (
+                  <div key={v.id} className="gal-vue" style={{ '--acc': v.accent || '#00b4d8' }}>
+                    <button type="button" className="gal-vue-btn" onClick={() => onAppliquerVue && onAppliquerVue(v)}>
+                      <span className="gal-ic" aria-hidden="true">{kb ? iconeKPI(kb.KPI, dom) : I_VEDETTE}</span>
+                      <span className="gal-vue-nom">{v.nom || 'Ma vue'}</span>
+                    </button>
+                    <button type="button" className="gal-vue-x" onClick={() => onSupprimerVue && onSupprimerVue(v.id)} aria-label={`Retirer « ${v.nom || 'ma vue'} » de tes vues`}>×</button>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
