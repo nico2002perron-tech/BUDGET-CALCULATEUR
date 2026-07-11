@@ -22,6 +22,7 @@ import { appliquerMission } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge } from './recettes/bibliotheque-kpis.js'
+import { composerVueObjectif } from './recettes/vue-objectif.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
 import BoardCopilote from './components/BoardCopilote.jsx'
@@ -513,6 +514,25 @@ function App() {
   }
   const supprimerVue = (vid) =>
     setStore((s) => ({ ...s, mesVues: (Array.isArray(s.mesVues) ? s.mesVues : []).filter((v) => v.id !== vid) }))
+  // L'ADVISOR CONFORME : un but → une VUE COMPOSÉE de FAITS. Depuis une tuile-objectif
+  // (héros d'un projet, ex. « Maison »), un geste déploie le tableau complet — où j'en
+  // suis, ce qu'il manque, l'effort, le réalisme À MON RYTHME. Jamais un conseil : ce
+  // sont les KPI objectif (déjà conformes), résolus data-aware sur la MÊME cible.
+  const monterVueObjectif = (id) => {
+    const w = (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).find((x) => x.id === id)
+    const kb = w && heroKPI(w.recette)
+    const objectif = kb && kb.params && kb.params.objectif
+    if (!objectif || !(Number(objectif.cible) > 0)) return
+    const recettes = composerVueObjectif(objectif, snapshot, kb.KPI)
+    const dejaLa = new Set((Array.isArray(store.tourWidgets) ? store.tourWidgets : []).map((x) => x.recette && x.recette.situation))
+    const neufs = recettes.filter((r) => !dejaLa.has(r.situation)).map((r, i) => ({ id: `w_${Date.now()}_${i}`, recette: r, accent: w.accent || null }))
+    if (!neufs.length) { setAngleWidget(null); return }
+    sons.pose()
+    setStore((s) => ({ ...s, tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), ...neufs] }))
+    setNouveauWidget(neufs[neufs.length - 1].id) // le dernier SE POSE (le « bam »)
+    setAngleWidget(null)
+  }
+
   // Re-poser un modèle : une tuile NEUVE (nouvel id) depuis la vue sauvée, animée.
   const appliquerVue = (vue) => {
     if (!vue || !vue.recette || !Array.isArray(vue.recette.blocs)) return
@@ -955,6 +975,8 @@ function App() {
                   // La pastille de statut : factuelle, seulement si une cible SÛRE est atteignable
                   // (sinon null — jamais un jugement inventé). Voir statutCible (data-aware).
                   const statut = kb && kb.params ? statutCible(kb.KPI, snapshot, kb.params.cible) : null
+                  // Tuile-OBJECTIF (héros d'un projet, ex. « Maison ») → on peut déployer sa VUE composée de faits.
+                  const estObjectif = !!(kb && (kpiPourId(kb.KPI) || {}).domaine === 'objectif' && kb.params && kb.params.objectif && Number(kb.params.objectif.cible) > 0)
                   // LE VIVANT : ce KPI a-t-il bougé depuis ta dernière visite ? (pulse d'accueil,
                   // pas sur une tuile qu'on vient de créer). 1re visite → aucun repère → rien.
                   const aBouge = !anime && kb ? kpiABouge(kb.KPI, baselineRef.current, snapshot, kb.params || {}) : false
@@ -1102,8 +1124,17 @@ function App() {
                                 </svg>
                                 Sauver comme modèle
                               </button>
+                              {/* L'ADVISOR CONFORME : un but → le tableau complet de faits (tuiles-objectif seulement). */}
+                              {estObjectif && (
+                                <button type="button" className="retouche-dupli retouche-vue-projet" onClick={() => monterVueObjectif(w.id)}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
+                                  </svg>
+                                  Monte le tableau du projet
+                                </button>
+                              )}
                             </div>
-                            <span className="retouche-dupli-note">Une copie à faire diverger, ou un modèle pour « Mes vues ».</span>
+                            <span className="retouche-dupli-note">{estObjectif ? 'Déploie où tu en es, ce qu’il manque, l’effort — rien que des faits.' : 'Une copie à faire diverger, ou un modèle pour « Mes vues ».'}</span>
                           </div>
                         </div>
                       )}
