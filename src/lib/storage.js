@@ -21,6 +21,9 @@ export function emptyStore() {
   return {
     version: 1,
     updatedAt: null,
+    // Pré-remplissage fait une seule fois (VISION §8) : posé à true après l'amorçage
+    // de la tour. Une tuile retirée par l'usager ne revient jamais.
+    amorcee: false,
     identity: { prenom: null, metier: null, age: null, situation: null },
     revenus: {
       mode: 'regulier', // régulier (par fréquence de paie) | saisonnier

@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, candidatsKPI, resoudreForme } from './recettes/bibliotheque-kpis.js'
 import { composerVueObjectif } from './recettes/vue-objectif.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
@@ -457,7 +457,10 @@ function App() {
     if (dejaLa) { setErreur('Tu as déjà cette vue dans ta tour.'); return }
     setErreur(null)
     sons.pose()
-    const id = 'w_' + Date.now()
+    // Id UNIQUE même pour des ajouts rapprochés dans la même milliseconde (le
+    // pré-remplissage en pose plusieurs d'affilée) : Date.now() seul entrerait en
+    // collision → clés React dupliquées.
+    const id = 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
     setStore((s) => ({
       ...s,
       tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette, accent: accent || null, icone: icone || null }],
@@ -466,6 +469,28 @@ function App() {
   }
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
+
+  // PRÉ-REMPLISSAGE (VISION §8 : « réarranger un dashboard VIDE est un piège — le
+  // bon truc doit déjà être à la bonne place »). Au TOUT premier chargement où des
+  // revenus existent et où la tour est encore vide, on POSE 2-3 indicateurs budget
+  // par le chemin NORMAL (ajouterWidget), jamais en écrivant tourWidgets à la main.
+  // On ne pose QUE des KPIs dont la donnée existe (candidatsKPI) — jamais une tuile
+  // éteinte sur le poste (l'éteint vit dans l'atelier). Le drapeau `amorcee` est
+  // posé une seule fois : une tuile retirée par l'usager ne revient JAMAIS.
+  const amorceFaite = useRef(false) // verrou synchrone : survit au double-invoke de StrictMode
+  useEffect(() => {
+    if (amorceFaite.current || store.amorcee || widgets.length > 0 || !aDesRevenus(store)) return
+    const cands = candidatsKPI('budget', snapshot).slice(0, 3)
+    if (cands.length === 0) return // aucune donnée prête → on n'amorce pas (on réessaiera au prochain rendu)
+    amorceFaite.current = true // pose le verrou AVANT de semer (le 2e passage StrictMode ressort ici)
+    cands.forEach((k) => {
+      const forme = resoudreForme(k.id, null, snapshot, {})
+      if (!forme) return
+      ajouterWidget({ situation: `kpi_${k.id}`, titre: k.question, blocs: [{ KPI: k.id, forme, params: {} }] })
+    })
+    setStore((s) => ({ ...s, amorcee: true }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, snapshot, widgets.length])
 
   // DUPLIQUER une tuile en VARIANTE : un clone profond (recette + blocs + params,
   // JSON-sérialisable → isolation totale), posé JUSTE APRÈS l'original, animé. On
