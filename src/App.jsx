@@ -16,7 +16,6 @@ import EvenementsSaillants from './components/EvenementsSaillants.jsx'
 import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
-import Galerie from './components/Galerie.jsx'
 import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
@@ -41,7 +40,8 @@ import CarreDeSable from './components/CarreDeSable.jsx'
 import { VOIX_MENTOR } from './lib/personas.js'
 import { PEAUX, peauValide, classePeau } from './lib/peaux.js'
 import { sons, reglerSons } from './lib/sons.js'
-import { useTheme } from './lib/vivant.js'
+import { useTheme, usePassage } from './lib/vivant.js'
+import AnneauModeles from './components/AnneauModeles.jsx'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -147,6 +147,20 @@ function App() {
   const [menuDonneesOuvert, setMenuDonneesOuvert] = useState(() => !aDesRevenus(normaliser(loadStore()))) // accordéon du rail
   const [menuOuvert, setMenuOuvert] = useState(false)
   const fileRef = useRef(null)
+
+  // L'ATELIER (passage tour→atelier + anneau). Le passage n'est ACTIF que sur la
+  // tour ; ailleurs il reste à plat. La barre IA a son propre champ/état.
+  const refAtelier = useRef(null)
+  const iaRef = useRef(null)
+  const [iaTexte, setIaTexte] = useState('')
+  usePassage(refAtelier, section === 'tour')
+  const focusIA = () => iaRef.current && iaRef.current.focus()
+  // PIÈGE A : le scroll-snap ne vit QUE sur l'écran tour (sinon la SAISIE DE DONNÉES
+  // se calerait bizarrement). On (dé)pose la classe sur <html> selon la section.
+  useEffect(() => {
+    document.documentElement.classList.toggle('scene-active', section === 'tour')
+    return () => document.documentElement.classList.remove('scene-active')
+  }, [section])
 
   // Fabrication (section « Ma tour ») — LA GALERIE (cartes vivantes + barre « décris-le »).
   const [nouveauWidget, setNouveauWidget] = useState(null) // id du widget à animer (à sa CRÉATION seulement)
@@ -911,6 +925,9 @@ function App() {
         )}
 
         {section === 'tour' && (
+          <>
+          <section className="scene-tour">
+          <div className="tour-corps">
           <div className="tour">
             <div className="tour-hero">
               <h1 className="tour-bonjour">
@@ -952,26 +969,8 @@ function App() {
               </div>
             )}
 
-            {/* LE STUDIO GUIDÉ. La mission « 2 min » prend le relais quand on allume une
-                famille ; la conversation studio (« puis-je me le permettre ») garde le sien. */}
-            {mission ? (
-              <MissionAllumage famille={mission} onFini={finirMission} onAnnuler={() => setMission(null)} />
-            ) : studio ? (
-              <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
-            ) : (
-              <Galerie
-                snapshot={snapshot}
-                widgets={widgets}
-                mesVues={Array.isArray(store.mesVues) ? store.mesVues : []}
-                chargement={chargement}
-                erreur={erreur}
-                onDecrire={demanderIA}
-                onAjouter={ajouterWidget}
-                onAppliquerVue={appliquerVue}
-                onSupprimerVue={supprimerVue}
-                onAllerSaisie={allerSaisie}
-              />
-            )}
+            {/* LA FABRICATION (barre IA + anneau de modèles, ou la mission/le studio
+                guidés) vit dans la SCÈNE-ATELIER plus bas — atteinte en DESCENDANT. */}
 
             {/* LE TABLEAU : les indicateurs déjà créés (persistants). En-tête façon
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
@@ -1235,6 +1234,60 @@ function App() {
               </div>
             )}
           </div>
+          </div>
+          <div className="scene-indice" aria-hidden="true">
+            <span>L&rsquo;atelier</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+          </section>
+
+          {/* SCÈNE 2 — L'ATELIER. Atteinte en DESCENDANT : la tour recule, cette feuille
+              de verre glisse par-dessus et la floute (usePassage → --p). Deux portes :
+              décrire à l'IA, ou prendre un modèle sur l'anneau. La mission/le studio
+              guidés prennent le relais ici quand ils sont actifs. */}
+          <section className="scene-atelier" ref={refAtelier}>
+            <div className="couture" aria-hidden="true" />
+            <div className="couture-lueur" aria-hidden="true" />
+            {mission ? (
+              <MissionAllumage famille={mission} onFini={finirMission} onAnnuler={() => setMission(null)} />
+            ) : studio ? (
+              <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
+            ) : (
+              <>
+                <div className="at-tete at-bloc" style={{ '--s': 0, '--e': 0.55 }}>
+                  <span className="at-eyebrow">{I_VEDETTE} L&rsquo;atelier</span>
+                  <h2 className="at-t">Un instrument de plus pour ta tour ?</h2>
+                  <p className="at-s">Décris ce que tu veux suivre, ou prends un modèle sur l&rsquo;anneau — tes vrais chiffres sont déjà dedans.</p>
+                </div>
+                <form
+                  className="ia-wrap at-bloc"
+                  style={{ '--s': 0.1, '--e': 0.6 }}
+                  onSubmit={(e) => { e.preventDefault(); const t = iaTexte.trim(); if (t) { demanderIA(t); setIaTexte('') } }}
+                >
+                  <div className="ia-halo" aria-hidden="true" />
+                  <div className="ia-barre">
+                    <span className="ia-etincelle" aria-hidden="true">{I_VEDETTE}</span>
+                    <input
+                      ref={iaRef}
+                      className="ia-input"
+                      value={iaTexte}
+                      onChange={(e) => setIaTexte(e.target.value)}
+                      placeholder="Décris un indicateur — ex. « combien il me reste ce mois-ci »"
+                      aria-label="Décris l&rsquo;indicateur à créer"
+                    />
+                    <button type="submit" className="ia-go" disabled={chargement || !iaTexte.trim()} aria-label="Composer l&rsquo;indicateur">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </button>
+                  </div>
+                </form>
+                {erreur && <p className="at-erreur at-bloc" role="alert" style={{ '--s': 0.1, '--e': 0.6 }}>{erreur}</p>}
+                <div className="at-bloc at-anneau" style={{ '--s': 0.2, '--e': 0.85 }}>
+                  <AnneauModeles snapshot={snapshot} widgets={widgets} onAjouter={ajouterWidget} onAllerSaisie={allerSaisie} onCreer={focusIA} />
+                </div>
+              </>
+            )}
+          </section>
+          </>
         )}
 
         {section === 'donnees' && (

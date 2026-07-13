@@ -129,11 +129,17 @@ export function useVerre3D(max = 6) {
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
 const doux = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
-export function usePassage(refAtelier) {
+export function usePassage(refAtelier, actif = true) {
   useEffect(() => {
-    const el = refAtelier.current
-    if (!el) return
     const root = document.documentElement
+    const el = refAtelier.current
+    // Pas d'atelier monté (autre section) ou passage désactivé → on remet la scène
+    // à plat et on ne s'abonne à rien. (Se ré-attache quand `actif` redevient vrai.)
+    if (!el || !actif) {
+      root.style.setProperty('--p', '0')
+      root.style.setProperty('--pic', '0')
+      return
+    }
 
     if (REDUIT()) {
       root.style.setProperty('--p', '0')
@@ -169,7 +175,7 @@ export function usePassage(refAtelier) {
       root.style.removeProperty('--p')
       root.style.removeProperty('--pic')
     }
-  }, [refAtelier])
+  }, [refAtelier, actif])
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
