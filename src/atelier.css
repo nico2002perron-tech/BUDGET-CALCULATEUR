@@ -1,0 +1,351 @@
+/* ============================================================================
+   atelier.css — LE PASSAGE (tour → atelier) + L'ANNEAU.
+
+   Dépend de theme.css (les rôles) et de rien d'autre. Aucune couleur brute :
+   si tu vois un #hex ici hors marque, c'est un bug.
+
+   Deux scènes, un fondu enchaîné. La tour ne s'en va PAS quand tu descends :
+   elle est collante, elle RECULE, et l'atelier — une feuille de verre dépoli —
+   glisse par-dessus et la floute pour vrai (backdrop-filter). Ce n'est pas un
+   fondu peint : c'est de l'optique.
+   ========================================================================== */
+
+/* Le passage n'a de sens que sur l'écran « tour ». On l'active via une classe
+   sur <html> (posée/retirée par App selon la section) — jamais globalement,
+   sinon la SAISIE DE DONNÉES se calerait bizarrement. */
+html.scene-active {
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCÈNE 1 — LA TOUR. Collante. Elle recule ; elle ne part pas.
+   ══════════════════════════════════════════════════════════════════════════ */
+.scene-tour {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+}
+.tour-corps {
+  flex: 1;
+  transform: translateY(calc(var(--p) * -46px)) scale(calc(1 - var(--p) * 0.05));
+  opacity: calc(1 - var(--p) * 0.55);
+  transform-origin: 50% 20%;
+  will-change: transform, opacity;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCÈNE 2 — L'ATELIER. Plein écran. Une feuille de verre qui glisse par-dessus.
+   ══════════════════════════════════════════════════════════════════════════ */
+.scene-atelier {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 34px;
+  overflow: hidden;
+  border-radius: 40px 40px 0 0;
+  background: linear-gradient(180deg, var(--feuille) 0%, var(--fond-2) 22%, var(--fond-2) 100%);
+  -webkit-backdrop-filter: blur(calc(var(--p) * 30px)) saturate(130%);
+  backdrop-filter: blur(calc(var(--p) * 30px)) saturate(130%);
+  box-shadow: 0 -40px 90px -30px rgba(0, 0, 0, 0.55);
+}
+
+/* LA COUTURE — un trait de lumière s'ouvre du centre vers les bords au moment
+   du passage. Sa largeur suit --p ; son intensité suit sin²(p·π) : elle naît à
+   zéro, elle explose PILE à mi-passage, elle meurt à zéro. */
+.couture {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 1px;
+  width: calc(var(--p) * 100%);
+  opacity: var(--pic);
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--menthe) 18%,
+    var(--cyan-soft) 50%, var(--menthe) 82%, transparent);
+  box-shadow:
+    0 0 22px color-mix(in srgb, var(--menthe) 70%, transparent),
+    0 0 60px color-mix(in srgb, var(--cyan) 45%, transparent);
+}
+.couture-lueur {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 190px;
+  pointer-events: none;
+  opacity: calc(var(--pic) * 0.8);
+  filter: blur(46px);
+  background: radial-gradient(ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--menthe) 55%, transparent), transparent 70%);
+}
+
+/* Les blocs de l'atelier montent à des VITESSES DIFFÉRENTES (parallaxe douce).
+   Chacun a sa fenêtre : --s (début) → --e (fin), en % du passage. */
+.at-bloc {
+  --q: clamp(0, calc((var(--p) - var(--s, 0)) / (var(--e, 1) - var(--s, 0))), 1);
+  opacity: var(--q);
+  transform: translateY(calc((1 - var(--q)) * 44px)) scale(calc(0.965 + var(--q) * 0.035));
+  filter: blur(calc((1 - var(--q)) * 7px));
+  will-change: transform, opacity, filter;
+}
+
+.at-tete { position: relative; z-index: 3; text-align: center; max-width: 640px; flex: none; }
+.at-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--menthe);
+  background: color-mix(in srgb, var(--menthe) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--menthe) 28%, transparent);
+  border-radius: 999px; padding: 6px 14px;
+}
+[data-theme='clair'] .at-eyebrow {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.at-eyebrow svg { width: 12px; height: 12px; }
+.at-t {
+  margin: 14px 0 0; font-size: 28px; font-weight: 800;
+  letter-spacing: -0.035em; line-height: 1.18; color: var(--ink-fort);
+}
+.at-s { margin: 9px 0 0; font-size: 13px; font-weight: 500; color: var(--muted); line-height: 1.55; }
+.at-erreur {
+  margin: 12px 0 0; max-width: 620px; text-align: center;
+  font-size: 12.5px; font-weight: 700; color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
+  border-radius: 12px; padding: 9px 14px;
+}
+/* La zone de l'anneau prend toute la place restante de la scène. */
+.at-anneau { flex: 1; width: 100%; min-height: 0; display: flex; z-index: 2; }
+
+/* LA BARRE IA — elle RAYONNE. Le halo est l'un des rares endroits où l'accent
+   chromatique a le droit d'apparaître. */
+.ia-wrap { position: relative; width: 100%; max-width: 620px; margin-top: 22px; z-index: 3; flex: none; }
+.ia-halo {
+  position: absolute; inset: -28px -20px; border-radius: 60px;
+  pointer-events: none; filter: blur(38px);
+  background:
+    radial-gradient(ellipse 70% 130% at 30% 50%, color-mix(in srgb, var(--menthe) 55%, transparent), transparent 62%),
+    radial-gradient(ellipse 62% 120% at 72% 55%, color-mix(in srgb, var(--cyan) 50%, transparent), transparent 64%);
+}
+.ia-barre {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  padding: 6px 6px 6px 18px; border-radius: 18px;
+  background: var(--surface-2); border: 1px solid var(--line-fort);
+  -webkit-backdrop-filter: blur(26px) saturate(170%); backdrop-filter: blur(26px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--sh);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.ia-barre:focus-within {
+  border-color: var(--menthe);
+  box-shadow: inset 0 1px 0 var(--rim),
+    0 0 0 3px color-mix(in srgb, var(--menthe) 22%, transparent), var(--sh);
+}
+.ia-etincelle { flex: none; width: 20px; height: 20px; color: var(--menthe); }
+[data-theme='clair'] .ia-etincelle { color: var(--accent); }
+.ia-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink); padding: 10px 0;
+}
+.ia-input::placeholder { color: var(--muted); }
+.ia-go {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  cursor: pointer; border: none; color: #03212a;
+  background: linear-gradient(135deg, var(--menthe), var(--cyan));
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 70%), transparent);
+  transition: transform 0.1s;
+}
+.ia-go:active { transform: scale(0.92); }
+.ia-go:disabled { opacity: 0.5; cursor: default; }
+[data-theme='clair'] .ia-go { color: #fff; background: linear-gradient(135deg, var(--accent), var(--cyan)); }
+.ia-go svg { width: 20px; height: 20px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   L'ANNEAU — N plaques de verre sur un cylindre.
+   ══════════════════════════════════════════════════════════════════════════ */
+.carrousel {
+  position: relative; z-index: 2; flex: 1; width: 100%; min-height: 0; margin-top: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.anneau-vue {
+  position: relative; width: 100%; height: 320px;
+  perspective: 1250px; perspective-origin: 50% 42%;
+  cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.anneau-vue:active { cursor: grabbing; }
+.anneau { position: absolute; left: 50%; top: 48%; width: 0; height: 0; transform-style: preserve-3d; }
+
+.plaque {
+  position: absolute; left: -132px; top: -112px; width: 264px; height: 224px;
+  border-radius: 22px; cursor: pointer; font-family: inherit; text-align: left;
+  padding: 15px 16px 0;
+  background: linear-gradient(150deg, var(--surface-2), var(--surface) 62%);
+  -webkit-backdrop-filter: blur(20px) saturate(175%); backdrop-filter: blur(20px) saturate(175%);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim-bas), var(--sh);
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+  /* LE REFLET AU SOL — la plaque se mire sous elle-même. Une ligne. */
+  -webkit-box-reflect: below 10px linear-gradient(transparent 58%, var(--reflet));
+}
+
+/* LE LUSTRE — une bande de lumière FIXE DANS LA PIÈCE. La plaque la traverse en
+   tournant. --gx et --gi sont posés par la boucle physique. */
+.pl-lustre { position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit; overflow: hidden; }
+.pl-lustre::before {
+  content: ''; position: absolute; top: -30%; bottom: -30%;
+  left: var(--gx, 150%); width: 38%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.62), transparent);
+  transform: skewX(-14deg);
+  opacity: var(--gi, 0);
+  mix-blend-mode: screen;
+}
+.pl-arete {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: inherit; padding: 1px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.6), transparent 42%, transparent 58%,
+    color-mix(in srgb, var(--menthe) 55%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.65;
+}
+.plaque.avant {
+  border-color: color-mix(in srgb, var(--menthe) 50%, transparent);
+  box-shadow: inset 0 1px 0 var(--rim),
+    0 0 0 1px color-mix(in srgb, var(--menthe) 28%, transparent),
+    0 34px 76px -22px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 60%), rgba(0, 0, 0, 0.85));
+}
+
+.pl-tete { position: relative; z-index: 2; }
+.pl-n { font-size: 13.5px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.01em; line-height: 1.25; }
+.pl-src {
+  position: relative; z-index: 2; margin-top: 8px; display: inline-block;
+  font-size: 8.5px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 8px;
+}
+.pl-fait { position: relative; z-index: 2; margin: 8px 0 0; font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.45; }
+/* L'APERÇU EST LE VRAI BLOC, rendu en réduction. Ce que tu vois est ce que tu prends. */
+.pl-apercu { position: absolute; left: 12px; right: 12px; bottom: 44px; height: 68px; z-index: 1; overflow: hidden; }
+.pl-apercu > * { transform: scale(0.62); transform-origin: 0 0; width: 161%; pointer-events: none; }
+
+.pl-ajout {
+  position: absolute; left: 16px; right: 16px; bottom: 13px; z-index: 6;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  height: 33px; border-radius: 11px; font-size: 11.5px; font-weight: 800;
+  color: #03212a; background: linear-gradient(135deg, var(--menthe), var(--cyan));
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 0.4s, transform 0.4s var(--spring);
+}
+.plaque.avant .pl-ajout { opacity: 1; transform: none; }
+[data-theme='clair'] .pl-ajout { color: #fff; background: linear-gradient(135deg, var(--accent), var(--cyan)); }
+
+/* LA PLAQUE ÉTEINTE — une donnée manque. JAMAIS cachée : elle dit CE qui manque,
+   et elle est la porte vers l'endroit où le donner. Neutre (l'ambre reste réservé
+   à l'exception ; une donnée absente est une invitation, pas une exception). */
+.plaque.eteinte { opacity: 0.55; border-style: dashed; }
+.plaque.eteinte .pl-n { color: var(--muted); }
+.pl-manque { position: relative; z-index: 2; margin: 14px 0 0; font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.5; }
+.pl-ajout.pl-aller { background: none; color: var(--ink); border: 1px solid var(--line-fort); }
+
+/* LA PLAQUE « CRÉE LE TIEN » — la porte IA vit DANS l'anneau aussi. */
+.plaque.creer { border-style: dashed; border-color: var(--line-fort);
+  background: linear-gradient(150deg, var(--surface), transparent 70%); }
+.pl-vide { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; }
+.pl-vide-plus {
+  width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center;
+  color: #03212a; font-size: 25px; font-weight: 300;
+  background: linear-gradient(140deg, var(--menthe), var(--cyan));
+  box-shadow: 0 14px 30px -10px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 75%), transparent);
+}
+[data-theme='clair'] .pl-vide-plus { color: #fff; background: linear-gradient(140deg, var(--accent), var(--cyan)); }
+.pl-vide b { font-size: 14px; font-weight: 800; color: var(--ink-fort); }
+.pl-vide span { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+/* LE SOL — la nappe de lumière sous l'anneau. Sans elle, il flotte dans le vide. */
+.sol {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  width: 660px; height: 76px; pointer-events: none; filter: blur(28px); opacity: 0.55;
+  background: radial-gradient(ellipse 46% 100% at 50% 0%,
+    color-mix(in srgb, var(--cyan) 50%, transparent), transparent 72%);
+}
+[data-theme='clair'] .sol { opacity: 0.22; }
+
+.car-pied { display: flex; align-items: center; gap: 14px; margin-top: 6px; z-index: 3; }
+.car-fl {
+  width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  cursor: pointer; font-family: inherit; font-size: 18px;
+  border: 1px solid var(--line-fort); background: var(--surface); color: var(--ink);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  transition: border-color 0.2s, background 0.2s, transform 0.12s;
+}
+.car-fl:hover { border-color: var(--menthe); background: var(--surface-2); }
+.car-fl:active { transform: scale(0.93); }
+.car-pts { display: flex; gap: 6px; }
+.car-pt {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--line-fort); cursor: pointer;
+  transition: width 0.4s var(--spring), background 0.4s;
+  padding: 0; border: none;
+}
+.car-pt.on { width: 22px; border-radius: 99px; background: linear-gradient(90deg, var(--menthe), var(--cyan)); }
+.car-aide {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--muted); opacity: 0.5; margin-top: 9px; z-index: 3;
+}
+/* L'indice « descends pour l'atelier » — vit au bas de la scène-tour. */
+.scene-indice {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); opacity: calc(0.6 - var(--p) * 0.6); pointer-events: none;
+  transition: opacity 0.3s;
+}
+.scene-indice svg { width: 18px; height: 18px; animation: indiceFlotte 2.4s ease-in-out infinite; }
+@keyframes indiceFlotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+@media (max-width: 1050px) {
+  .scene-tour { min-height: auto; position: relative; }
+  .at-t { font-size: 23px; }
+  .anneau-vue { height: 280px; }
+}
+
+/* Mouvement réduit : l'anneau se fige à plat, le passage disparaît, tout reste
+   lisible ET cliquable. Aucune information n'est portée par le mouvement seul. */
+@media (prefers-reduced-motion: reduce) {
+  html.scene-active { scroll-snap-type: none; scroll-behavior: auto; }
+  .tour-corps { transform: none !important; opacity: 1 !important; }
+  .at-bloc { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .scene-atelier { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .plaque { -webkit-box-reflect: none; }
+  .pl-lustre { display: none; }
+  .scene-indice svg { animation: none; }
+
+  /* L'ANNEAU DEVIENT UNE GRILLE (aucune 3D), tout reste lisible ET cliquable —
+     aucune information n'est portée par le mouvement seul. */
+  .anneau-vue { height: auto; perspective: none; cursor: default; overflow: visible; }
+  .anneau.plat {
+    position: static; transform: none !important; transform-style: flat;
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; width: 100%; padding: 6px 0;
+  }
+  .anneau.plat .plaque {
+    position: relative; left: auto; top: auto;
+    transform: none !important; opacity: 1 !important; filter: none !important;
+    -webkit-box-reflect: none; width: 240px; height: 208px;
+  }
+  .anneau.plat .plaque .pl-ajout { opacity: 1; transform: none; }
+  .anneau.plat .sol { display: none; }
+}
