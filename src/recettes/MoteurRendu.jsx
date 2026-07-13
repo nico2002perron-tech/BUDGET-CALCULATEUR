@@ -59,7 +59,7 @@ function prefersReduce() {
 // `projecteur` : true dans le CARRÉ DE SABLE seulement — le tap-qui-fige et les
 // cibles clavier du survol vivant y vivent ; sur une TUILE du board, le tap
 // reste UN seul geste (ouvrir le sable), jamais une double action.
-export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false }) {
+export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false, apercu = false }) {
   const r = validerRecette(recette)
   // Un emplacement à CANDIDATS → on rend le bloc `choisi` (repli sûr si invalide ; un
   // `choisi` inconnu ne peut jamais atteindre le rendu). Puis : seuls les types CONNUS,
@@ -200,6 +200,10 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
     else mains.push(el)
   })
 
+  // APERÇU (plaque de l'anneau) : LE VRAI BLOC en réduction — un seul bloc,
+  // colonne unique, pas de grille 2 colonnes ni de cascade. Ce que l'usager voit
+  // est exactement ce qu'il prend. (Rétro-compatible : apercu défaut false.)
+  if (apercu) return <div className="grid-solo">{[...mains, ...sides]}</div>
   if (!aSide) return <div className="grid-main">{mains}</div>
   // Que des blocs compacts (ex. un seul KPI) → pas de grille à moitié vide :
   // une colonne bornée, le bloc respire au centre.
