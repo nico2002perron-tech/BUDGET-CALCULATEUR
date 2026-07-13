@@ -41,6 +41,7 @@ import CarreDeSable from './components/CarreDeSable.jsx'
 import { VOIX_MENTOR } from './lib/personas.js'
 import { PEAUX, peauValide, classePeau } from './lib/peaux.js'
 import { sons, reglerSons } from './lib/sons.js'
+import { useTheme } from './lib/vivant.js'
 
 const RECETTE_CALENDRIER = {
   situation: 'calendrier',
@@ -139,6 +140,7 @@ function normaliser(store) {
 }
 
 function App() {
+  const [peau, basculerPeau] = useTheme() // sombre par défaut ; le clair reste servi
   const [store, setStore] = useState(() => normaliser(loadStore()))
   const [section, setSection] = useState(() => (aDesRevenus(normaliser(loadStore())) ? 'tour' : 'donnees'))
   const [sousSection, setSousSection] = useState('revenus') // sous-section active de « Mes données »
@@ -760,6 +762,30 @@ function App() {
     </div>
   )
 
+  // La bascule de peau — un fait, pas un réglage caché. Montre l'icône de la peau
+  // vers laquelle on VA (soleil en sombre, lune en clair). Vit dans le rail (desktop)
+  // et la topbar (mobile) : toujours à portée.
+  const basculePeau = (
+    <button
+      type="button"
+      className="peau-bascule"
+      onClick={basculerPeau}
+      aria-label={peau === 'sombre' ? 'Passer en peau claire' : 'Passer en peau sombre'}
+      title={peau === 'sombre' ? 'Peau claire' : 'Peau sombre'}
+    >
+      {peau === 'sombre' ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z" />
+        </svg>
+      )}
+    </button>
+  )
+
   // Navigation rail : « Mes données » est un parent déroulant ; Ma tour / Calendrier
   // restent simples. Sur mobile, l'accordéon devient une feuille du bas (dd-sheet).
   const estMobile = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
@@ -807,7 +833,7 @@ function App() {
           <span className="brand-dot" aria-hidden="true" />
           Ta tour de contrôle
         </div>
-        {donneesMenu}
+        <div className="topbar-actions">{basculePeau}{donneesMenu}</div>
       </header>
 
       {/* Nav persistante : rail (desktop) / onglets bas (mobile) */}
@@ -837,7 +863,7 @@ function App() {
             <span className="rail-txt">Calendrier</span>
           </button>
         </div>
-        <div className="rail-foot">{donneesMenu}</div>
+        <div className="rail-foot">{basculePeau}{donneesMenu}</div>
       </nav>
 
       {/* Mobile : feuille du bas des sous-sections (le rail est la barre du bas). */}

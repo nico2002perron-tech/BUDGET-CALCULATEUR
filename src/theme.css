@@ -1,0 +1,240 @@
+/* ============================================================================
+   theme.css — LA COUCHE DE TOKENS SÉMANTIQUES. Importée AVANT index.css.
+
+   Une seule règle : plus aucun fichier ne connaît une couleur brute. Tout le
+   monde parle en RÔLES (--fond, --surface, --ink, --line, --acc). Les deux
+   peaux vivent ici, et NULLE PART ailleurs. Basculer = changer un attribut sur
+   <html>, pas dupliquer une règle.
+
+   VISION §12 (réécrit) : la tour est un POSTE. Le sombre est le défaut — il
+   rend le verre légitime (il a enfin quelque chose à flouter), il rend le cyan
+   puissant (il n'est plus dilué sur toutes les surfaces), et il réconcilie les
+   trois sources de lumière qui se battaient dans l'ancien index.css.
+   Le clair reste servi : présentation client, salle éclairée, impression.
+   ========================================================================== */
+
+:root {
+  /* ── LA MARQUE — elle ne bouge JAMAIS, dans aucune peau. ───────────────── */
+  --navy: #03045e;
+  --cyan: #00b4d8;
+  --accent: #0077b6;
+  --cyan-soft: #7fe9ff;
+
+  /* ── LE SENS (VISION §12, inchangé) ────────────────────────────────────── */
+  --amber: #e0a23c;        /* l'exception. RÉSERVÉ. Jamais décoratif. */
+  --amber-fort: #b8740a;
+  --green: #0f8a5f;
+
+  /* ── LE DÉCOR — hors marque, jamais sur une donnée chiffrée. ────────────
+     Précédent : --lav existait déjà sous cette règle. --menthe la rejoint :
+     elle vit dans le bandeau, la nav active, les sparklines de tuile. Elle
+     ne touche jamais un chiffre. */
+  --menthe: #4fe3c1;
+  --lav: #7a6fe6;
+
+  /* ── LA GÉOMÉTRIE ──────────────────────────────────────────────────────── */
+  --r: 20px;
+  --r-tuile: 24px;
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --doux: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ── LE PASSAGE (posé par usePassage) ──────────────────────────────────── */
+  --p: 0;      /* 0 = la tour · 1 = l'atelier */
+  --pic: 0;    /* le pic de la couture lumineuse, à mi-passage */
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PEAU SOMBRE — le défaut. Charbon TEINTÉ navy (jamais #000 : ça fait terminal).
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-theme='sombre'] {
+  --fond: #080b14;
+  --fond-2: #0a0e1a;
+
+  --surface: rgba(255, 255, 255, 0.055);   /* la carte de donnée */
+  --surface-2: rgba(255, 255, 255, 0.09);  /* la carte relevée (survol, champ) */
+  --surface-plein: #0f1428;                /* opaque : popovers, menus */
+  --feuille: rgba(9, 13, 24, 0.8);         /* le verre dépoli qui recouvre */
+
+  --ink: #eaf0ff;
+  --ink-fort: #ffffff;
+  --muted: #7c8aac;
+
+  --line: rgba(255, 255, 255, 0.08);
+  --line-fort: rgba(255, 255, 255, 0.16);
+
+  /* Le verre : l'arête haute capte la lumière, l'arête basse la rend. */
+  --rim: rgba(255, 255, 255, 0.34);
+  --rim-bas: rgba(255, 255, 255, 0.05);
+  --reflet: rgba(255, 255, 255, 0.2);
+
+  --acc: var(--cyan);
+  --lueur: 1;              /* les traits de données ÉMETTENT */
+  --grain: 0.42;           /* le grain du bandeau — fort, argentique */
+  --bandeau-op: 1;
+
+  --danger: #ff8a8a;                       /* le rouge d'alerte — lisible sur fond sombre */
+  --danger-fond: rgba(224, 80, 80, 0.16);  /* sa teinte translucide (survol suppr.), jamais opaque */
+
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh: 0 28px 64px -26px rgba(0, 0, 0, 0.9);
+  --sh-haut: 0 50px 110px -30px rgba(0, 0, 0, 0.8);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PEAU CLAIRE — mêmes rôles, valeurs inversées. Le néon s'éteint tout seul
+   (--lueur: 0) : aucune règle dupliquée, les color-mix() retombent à zéro.
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-theme='clair'] {
+  --fond: #f3f6fa;
+  --fond-2: #eef3f9;
+
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-2: #ffffff;
+  --surface-plein: #ffffff;
+  --feuille: rgba(243, 246, 250, 0.82);
+
+  --ink: #0a1840;
+  --ink-fort: #03045e;
+  --muted: #5a6b8c;
+
+  --line: rgba(3, 4, 94, 0.09);
+  --line-fort: rgba(3, 4, 94, 0.18);
+
+  --rim: rgba(255, 255, 255, 0.95);
+  --rim-bas: rgba(3, 4, 94, 0.04);
+  --reflet: rgba(3, 4, 94, 0.1);
+
+  --acc: var(--accent);
+  --lueur: 0;
+  --grain: 0.14;
+  --bandeau-op: 0.4;
+
+  --danger: #c0392b;
+  --danger-fond: #fde7e7;
+
+  --sh-sm: 0 1px 2px rgba(3, 4, 94, 0.05);
+  --sh: 0 24px 54px -28px rgba(3, 4, 94, 0.32);
+  --sh-haut: 0 44px 96px -32px rgba(3, 4, 94, 0.4);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA PLAQUE DE VERRE — la primitive. Toute surface de donnée hérite d'ici.
+   UNE seule source de lumière : zénithale. Le rebord joufflu de 6px est mort
+   sur la donnée ; il ne survit QUE sur les boutons (.bouton-3d).
+   ══════════════════════════════════════════════════════════════════════════ */
+.verre {
+  position: relative;
+  border-radius: var(--r-tuile);
+  background: linear-gradient(150deg, var(--surface-2), var(--surface) 58%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.06);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.06);
+  border: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    inset 0 -1px 0 var(--rim-bas),
+    inset 0 0 40px -18px rgba(255, 255, 255, 0.35),
+    var(--sh);
+  transition: transform 0.5s var(--doux), border-color 0.3s;
+}
+/* le spéculaire suit le curseur (--mx/--my posés par useVerre3D) */
+.verre::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 0%),
+    rgba(255, 255, 255, 0.22),
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.verre:hover::before { opacity: 1; }
+/* l'arête réfractée */
+.verre::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.5),
+    transparent 40%,
+    transparent 60%,
+    color-mix(in srgb, var(--menthe) 45%, transparent)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.55;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LE MOUVEMENT SÉMANTIQUE — il ne tourne pas sur une minuterie. Il se
+   déclenche quand LA DONNÉE change. C'est la seule définition de « vivant ».
+   ══════════════════════════════════════════════════════════════════════════ */
+.a-change {
+  animation: battement 0.9s var(--spring);
+}
+@keyframes battement {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 42%, transparent), var(--sh); }
+  55%  { box-shadow: 0 0 0 9px color-mix(in srgb, var(--acc) 0%, transparent), var(--sh); }
+  100% { box-shadow: 0 0 0 0 transparent, var(--sh); }
+}
+
+/* le chiffre : la taille fait le travail, pas la graisse (600, jamais 900) */
+.chiffre {
+  font-size: clamp(28px, 3vw, 46px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--ink-fort);
+  font-variant-numeric: tabular-nums;
+}
+.chiffre small {
+  font-size: 0.4em;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-left: 3px;
+}
+/* le label chuchote */
+.label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.72;
+}
+
+/* le rebord joufflu SURVIT — mais seulement ici. */
+.bouton-3d {
+  font-family: inherit;
+  font-weight: 800;
+  color: #03212a;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--menthe), var(--cyan));
+  border: none;
+  border-bottom: 5px solid color-mix(in srgb, var(--cyan) 60%, #000);
+  border-radius: 16px;
+  padding: 13px 24px;
+  box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 70%), transparent);
+  transition: transform 0.09s, border-bottom-width 0.09s;
+}
+.bouton-3d:active { transform: translateY(3px); border-bottom-width: 2px; }
+[data-theme='clair'] .bouton-3d {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--cyan));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verre, .a-change, .bouton-3d { animation: none !important; transition: none !important; }
+}
