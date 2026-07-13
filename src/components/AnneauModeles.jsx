@@ -14,20 +14,23 @@
    Physique en SECONDES (deg/s), pas en frames : même vitesse à 60 Hz ou 120 Hz.
    Trois régimes qui se relaient : DÉRIVE · LANCÉ · VISÉ.
    ========================================================================== */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { REGISTRE_KPIS, DONNEE_DISPO, resolveKPI, resoudreForme } from '../recettes/bibliotheque-kpis.js'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 
 const DOMAINES = ['budget', 'coussin', 'patrimoine', 'impot']
 
-/* La donnée manquante, dite en français — jamais en nom de variable. */
+/* La donnée manquante, dite en français — jamais en nom de variable. `section` DOIT
+   être une mission réelle (missions.js n'a que revenus/depenses/placements) : router
+   vers une clé inexistante blanchit l'atelier. coussin se remplit dans la mission
+   revenus ; patrimoine/projection dans placements. */
 const OU_LA_PRENDRE = {
   capacite: { texte: 'tes revenus', section: 'revenus' },
   depenses: { texte: 'tes dépenses', section: 'depenses' },
   categories: { texte: 'tes catégories de dépenses', section: 'depenses' },
-  coussin: { texte: 'ton coussin', section: 'patrimoine' },
-  patrimoine: { texte: 'ton patrimoine', section: 'patrimoine' },
-  projection: { texte: 'ton âge et ton horizon', section: 'patrimoine' },
+  coussin: { texte: 'ton coussin', section: 'revenus' },
+  patrimoine: { texte: 'ton patrimoine', section: 'placements' },
+  projection: { texte: 'ton âge et ton horizon', section: 'placements' },
   fiscalite: { texte: 'ton revenu brut', section: 'revenus' },
 }
 const sectionPour = (r) => (OU_LA_PRENDRE[r] && OU_LA_PRENDRE[r].section) || 'revenus'
@@ -35,6 +38,50 @@ const textePour = (r) => (OU_LA_PRENDRE[r] && OU_LA_PRENDRE[r].texte) || r
 
 const REDUIT = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/* LE CONTENU d'une plaque — mémoïsé. Il ne dépend QUE de {p, snapshot} (stables
+   pendant une rotation) : ainsi la pagination (setDevant à chaque cran pendant un
+   lancé) ne ré-exécute JAMAIS les <MoteurRendu apercu> de chaque plaque. La rotation
+   visible reste pilotée impérativement (pl.style dans la boucle physique). */
+const PlaqueContenu = memo(function PlaqueContenu({ p, snapshot }) {
+  return (
+    <>
+      <span className="pl-lustre" />
+      <span className="pl-arete" />
+      {p.creer ? (
+        <span className="pl-vide">
+          <span className="pl-vide-plus">+</span>
+          <b>Crée le tien</b>
+          <span>Dis-le dans tes mots</span>
+        </span>
+      ) : (
+        <>
+          <div className="pl-tete">
+            <span className="pl-n">{p.kpi.question}</span>
+          </div>
+          <span className="pl-src">{p.kpi.requiert.map((r) => textePour(r)).join(' + ')}</span>
+          {p.dispo ? (
+            <>
+              {/* L'APERÇU EST LE VRAI BLOC, rendu en réduction. Ce que tu vois est ce que tu prends. */}
+              <div className="pl-apercu">
+                <MoteurRendu recette={p.recette} snapshot={snapshot} apercu />
+              </div>
+              <p className="pl-fait">{p.resolu?.texteFactuel}</p>
+              <span className="pl-ajout">+ Ajouter à ma tour</span>
+            </>
+          ) : (
+            /* ÉTEINTE — jamais cachée. La donnée manquante est écrite ; la plaque
+               devient la porte vers l'endroit où la donner. */
+            <>
+              <p className="pl-manque">Il me manque {p.manque.map((r) => textePour(r)).join(' et ')}.</p>
+              <span className="pl-ajout pl-aller">Aller la remplir →</span>
+            </>
+          )}
+        </>
+      )}
+    </>
+  )
+})
 
 export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAllerSaisie, onCreer }) {
   /* Les KPIs déjà posés sur la tour (par l'emplacement KPI de leur recette) : on
@@ -180,26 +227,59 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
       if (idx !== s.devant) { s.devant = idx; setDevant(idx) }
     }
 
+    let visible = true
     const boucle = (t) => {
       const dt = Math.min(0.05, (t - brut) / 1000)
       brut = t
       physique(dt)
       poser()
-      raf = requestAnimationFrame(boucle)
+      raf = visible ? requestAnimationFrame(boucle) : null
+    }
+    const demarrer = () => { if (raf == null) { brut = performance.now(); raf = requestAnimationFrame(boucle) } }
+    // Hors écran (l'usager lit la tour plus haut) → on SUSPEND la boucle : pas de
+    // CPU/batterie pour une animation invisible. On reprend quand elle réapparaît.
+    let io = null
+    if (typeof IntersectionObserver === 'function' && vueRef.current) {
+      io = new IntersectionObserver((entrees) => {
+        visible = entrees[0].isIntersecting
+        if (visible) demarrer()
+      })
+      io.observe(vueRef.current)
     }
     raf = requestAnimationFrame(boucle)
-    return () => cancelAnimationFrame(raf)
+    return () => { if (raf != null) cancelAnimationFrame(raf); if (io) io.disconnect() }
   }, [N, PAS, RAYON, reduit])
+
+  // La molette HORIZONTALE (ou shift+molette) fait tourner l'anneau. Écouteur NATIF
+  // non-passif : un onWheel React est toujours passif (preventDefault ignoré → un
+  // swipe horizontal du trackpad déclencherait la navigation « retour »).
+  useEffect(() => {
+    const el = vueRef.current
+    if (!el || reduit) return
+    const h = (e) => {
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0)
+      if (!d) return
+      e.preventDefault()
+      const s = S.current
+      s.cible = null; s.action = performance.now(); s.vel += d * 1.6
+    }
+    el.addEventListener('wheel', h, { passive: false })
+    return () => el.removeEventListener('wheel', h)
+  }, [reduit])
 
   /* ── LA PRISE : 1:1 avec le doigt, vitesse en deg/SECONDE. On distingue le TAP
         du DRAG : on ne CAPTURE le pointeur (ce qui vole le `click` au bouton de la
         plaque) qu'une fois un vrai mouvement engagé. Un tap laisse filer le clic. ── */
+  // En mouvement réduit (grille à plat), aucune prise : le clic d'une plaque ne
+  // doit jamais être volé par un micro-drag (il n'y a rien à faire tourner).
   const onPointerDown = (e) => {
+    if (reduit) return
     const s = S.current
     s.pending = true; s.tire = false; s.vel = 0; s.cible = null; s.action = performance.now()
     s.ax = e.clientX; s.aa = s.angle; s.xPrec = e.clientX; s.tPrec = performance.now(); s.pid = e.pointerId
   }
   const onPointerMove = (e) => {
+    if (reduit) return
     const s = S.current
     if (s.pending && Math.abs(e.clientX - s.ax) > 4) {
       // c'est un DRAG : on démarre à tirer et on capture (le clic est annulé)
@@ -211,17 +291,12 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
     const t = performance.now(), dt = (t - s.tPrec) / 1000
     if (dt > 0.004) { s.vel = ((e.clientX - s.xPrec) * 0.34) / dt; s.xPrec = e.clientX; s.tPrec = t }
   }
+  // pointerup ET pointercancel : une interruption système émet pointercancel (pas
+  // pointerup) ; sans ce relâchement, s.tire resterait vrai et figerait l'anneau.
   const onPointerUp = () => {
     const s = S.current
     s.pending = false
     if (s.tire) { s.tire = false; s.action = performance.now() }
-  }
-  const onWheel = (e) => {
-    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0)
-    if (!d) return // le défilement vertical reste au navigateur (c'est lui qui pilote le passage)
-    e.preventDefault()
-    const s = S.current
-    s.cible = null; s.action = performance.now(); s.vel += d * 1.6
   }
 
   const cliquer = (i, p) => {
@@ -243,7 +318,7 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onWheel={onWheel}
+        onPointerCancel={onPointerUp}
       >
         {/* Le parent NE TOURNE PAS — chaque plaque porte SON angle (deux rotations
             qui s'annulent = un anneau figé). Il ne fait que reculer + s'incliner.
@@ -257,68 +332,36 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
               className={`plaque${p.creer ? ' creer' : ''}${!p.creer && !p.dispo ? ' eteinte' : ''}`}
               onClick={() => cliquer(i, p)}
             >
-              <span className="pl-lustre" />
-              <span className="pl-arete" />
-
-              {p.creer ? (
-                <span className="pl-vide">
-                  <span className="pl-vide-plus">+</span>
-                  <b>Crée le tien</b>
-                  <span>Dis-le dans tes mots</span>
-                </span>
-              ) : (
-                <>
-                  <div className="pl-tete">
-                    <span className="pl-n">{p.kpi.question}</span>
-                  </div>
-                  <span className="pl-src">
-                    {p.kpi.requiert.map((r) => textePour(r)).join(' + ')}
-                  </span>
-
-                  {p.dispo ? (
-                    <>
-                      {/* L'APERÇU EST LE VRAI BLOC, rendu en réduction. Ce que tu vois
-                          est exactement ce que tu prends. */}
-                      <div className="pl-apercu">
-                        <MoteurRendu recette={p.recette} snapshot={snapshot} apercu />
-                      </div>
-                      <p className="pl-fait">{p.resolu?.texteFactuel}</p>
-                      <span className="pl-ajout">+ Ajouter à ma tour</span>
-                    </>
-                  ) : (
-                    /* ÉTEINTE — jamais cachée. La donnée qui manque est écrite, et la
-                       plaque devient la porte vers l'endroit où la donner. */
-                    <>
-                      <p className="pl-manque">
-                        Il me manque {p.manque.map((r) => textePour(r)).join(' et ')}.
-                      </p>
-                      <span className="pl-ajout pl-aller">Aller la remplir →</span>
-                    </>
-                  )}
-                </>
-              )}
+              <PlaqueContenu p={p} snapshot={snapshot} />
             </button>
           ))}
         </div>
         <div className="sol" />
       </div>
 
-      <div className="car-pied">
-        <button type="button" className="car-fl" onClick={() => craner(-1)} aria-label="Plaque précédente">‹</button>
-        <div className="car-pts">
-          {plaquesData.map((p, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`car-pt${i === devant ? ' on' : ''}`}
-              onClick={() => viser(i)}
-              aria-label={`Aller à la plaque ${i + 1}`}
-            />
-          ))}
-        </div>
-        <button type="button" className="car-fl" onClick={() => craner(1)} aria-label="Plaque suivante">›</button>
-      </div>
-      <div className="car-aide">Attrape · lance · ou molette</div>
+      {/* Le pied (flèches + points) pilote la ROTATION : sans intérêt à plat (chaque
+          plaque est déjà directement activable), et craner/viser n'ont pas d'effet
+          sans la boucle. On ne le rend donc pas en mouvement réduit. */}
+      {!reduit && (
+        <>
+          <div className="car-pied">
+            <button type="button" className="car-fl" onClick={() => craner(-1)} aria-label="Plaque précédente">‹</button>
+            <div className="car-pts">
+              {plaquesData.map((p, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`car-pt${i === devant ? ' on' : ''}`}
+                  onClick={() => viser(i)}
+                  aria-label={`Aller à la plaque ${i + 1}`}
+                />
+              ))}
+            </div>
+            <button type="button" className="car-fl" onClick={() => craner(1)} aria-label="Plaque suivante">›</button>
+          </div>
+          <div className="car-aide">Attrape · lance · ou molette</div>
+        </>
+      )}
     </div>
   )
 }

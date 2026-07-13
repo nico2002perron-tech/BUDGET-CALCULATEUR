@@ -130,6 +130,17 @@ const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
 const doux = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
 export function usePassage(refAtelier, actif = true) {
+  // Réactif au réglage « réduire le mouvement » : s'il change en cours de session,
+  // l'effet se re-monte (sinon l'atelier resterait figé/invisible au basculement).
+  const [reduit, setReduit] = useState(REDUIT)
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return
+    const mq = matchMedia('(prefers-reduced-motion: reduce)')
+    const on = () => setReduit(mq.matches)
+    if (mq.addEventListener) mq.addEventListener('change', on); else mq.addListener(on)
+    return () => { if (mq.removeEventListener) mq.removeEventListener('change', on); else mq.removeListener(on) }
+  }, [])
+
   useEffect(() => {
     const root = document.documentElement
     const el = refAtelier.current
@@ -141,7 +152,7 @@ export function usePassage(refAtelier, actif = true) {
       return
     }
 
-    if (REDUIT()) {
+    if (reduit) {
       root.style.setProperty('--p', '0')
       root.style.setProperty('--pic', '0')
       return
@@ -175,7 +186,7 @@ export function usePassage(refAtelier, actif = true) {
       root.style.removeProperty('--p')
       root.style.removeProperty('--pic')
     }
-  }, [refAtelier, actif])
+  }, [refAtelier, actif, reduit])
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

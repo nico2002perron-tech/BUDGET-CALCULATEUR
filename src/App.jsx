@@ -17,7 +17,7 @@ import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import MissionAllumage from './components/MissionAllumage.jsx'
-import { appliquerMission } from './lib/missions.js'
+import { appliquerMission, MISSIONS } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
 import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, candidatsKPI, resoudreForme } from './recettes/bibliotheque-kpis.js'
@@ -198,7 +198,9 @@ function App() {
   // formulaire. Les saisies détaillées de « Mes données » restent là pour fignoler.
   const [mission, setMission] = useState(null) // 'revenus' | 'depenses' | 'placements' | null
   const [allumes, setAllumes] = useState(null) // célébration : N outils qui viennent de s'allumer
-  const allerSaisie = (sousSec) => setMission(sousSec || 'revenus')
+  // Défense en profondeur : une clé de section sans mission réelle blanchirait
+  // l'atelier (MissionAllumage rend null) → repli sur « revenus ».
+  const allerSaisie = (sousSec) => setMission(MISSIONS[sousSec] ? sousSec : 'revenus')
   const finirMission = (reponses) => {
     const avant = construireGalerie(snapshot).totaux.prets
     const storeApres = appliquerMission(mission, reponses, store)
@@ -477,6 +479,10 @@ function App() {
     const id = 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
     setStore((s) => ({
       ...s,
+      // Dès qu'une tuile est posée (par l'usager OU par l'amorçage), le pré-remplissage
+      // ne pourra plus jamais revenir — même si la tour est ensuite vidée. C'est
+      // l'invariant « une tuile retirée ne revient jamais », verrouillé à l'action.
+      amorcee: true,
       tourWidgets: [...(Array.isArray(s.tourWidgets) ? s.tourWidgets : []), { id, recette, accent: accent || null, icone: icone || null }],
     }))
     setNouveauWidget(id) // → ce widget se CONSTRUIT pièce par pièce
@@ -955,7 +961,7 @@ function App() {
             {vueSauvee && !mission && (
               <div className="tour-allume gal-anim" role="status">
                 <span className="gal-ic" aria-hidden="true">{I_ECLAIR}</span>
-                <span className="tour-allume-txt"><b>Sauvée dans « Mes vues ».</b> Re-pose-la quand tu veux depuis le studio.</span>
+                <span className="tour-allume-txt"><b>Sauvée dans « Mes vues ».</b> Re-pose-la quand tu veux depuis l&rsquo;atelier (descends).</span>
               </div>
             )}
 
@@ -1281,6 +1287,23 @@ function App() {
                   </div>
                 </form>
                 {erreur && <p className="at-erreur at-bloc" role="alert" style={{ '--s': 0.1, '--e': 0.6 }}>{erreur}</p>}
+                {/* MES VUES : les modèles que l'usager a sauvés — re-posables ici (leur
+                    seule porte de sortie, sinon le tiroir serait en écriture seule). */}
+                {Array.isArray(store.mesVues) && store.mesVues.length > 0 && (
+                  <div className="at-mesvues at-bloc" style={{ '--s': 0.14, '--e': 0.7 }}>
+                    <span className="at-mesvues-l">Mes vues</span>
+                    <div className="at-mesvues-liste">
+                      {store.mesVues.map((v) => (
+                        <span key={v.id} className="at-vue">
+                          <button type="button" className="at-vue-poser" onClick={() => appliquerVue(v)} title="Re-poser ce modèle sur ta tour">
+                            {(v.recette && v.recette.titre) || 'Ma vue'}
+                          </button>
+                          <button type="button" className="at-vue-x" onClick={() => supprimerVue(v.id)} aria-label="Retirer ce modèle">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="at-bloc at-anneau" style={{ '--s': 0.2, '--e': 0.85 }}>
                   <AnneauModeles snapshot={snapshot} widgets={widgets} onAjouter={ajouterWidget} onAllerSaisie={allerSaisie} onCreer={focusIA} />
                 </div>

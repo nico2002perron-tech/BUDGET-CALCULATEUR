@@ -16,14 +16,19 @@
 html.scene-active {
   scroll-behavior: smooth;
   scroll-snap-type: y proximity;
+  /* un swipe horizontal au-dessus de l'anneau ne doit JAMAIS déclencher la
+     navigation « retour » du navigateur (trackpad). */
+  overscroll-behavior-x: contain;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SCÈNE 1 — LA TOUR. Collante. Elle recule ; elle ne part pas.
+   SCÈNE 1 — LA TOUR. Elle recule (--p) puis s'efface, mais elle N'EST PAS épinglée :
+   le board peut dépasser 100vh (beaucoup de tuiles) et un sticky plus haut que la
+   fenêtre, recouvert par la feuille opaque de l'atelier, rendrait les dernières
+   tuiles inatteignables. Le document défile normalement → tout reste accessible.
    ══════════════════════════════════════════════════════════════════════════ */
 .scene-tour {
-  position: sticky;
-  top: 0;
+  position: relative;
   min-height: 100vh;
   z-index: 1;
   display: flex;
@@ -130,6 +135,16 @@ html.scene-active {
 }
 /* La zone de l'anneau prend toute la place restante de la scène. */
 .at-anneau { flex: 1; width: 100%; min-height: 0; display: flex; z-index: 2; }
+
+/* MES VUES — les modèles sauvés par l'usager, re-posables ici (leur seule porte). */
+.at-mesvues { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 720px; margin-top: 6px; z-index: 3; }
+.at-mesvues-l { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.at-mesvues-liste { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.at-vue { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--line-fort); background: var(--surface); overflow: hidden; }
+.at-vue-poser { font-family: inherit; font-size: 12px; font-weight: 700; color: var(--ink); background: none; border: none; padding: 6px 4px 6px 13px; cursor: pointer; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.at-vue-poser:hover { color: var(--acc); }
+.at-vue-x { font-family: inherit; width: 26px; height: 28px; flex: none; border: none; background: none; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.at-vue-x:hover { color: var(--danger); }
 
 /* LA BARRE IA — elle RAYONNE. Le halo est l'un des rares endroits où l'accent
    chromatique a le droit d'apparaître. */
@@ -347,5 +362,7 @@ html.scene-active {
     -webkit-box-reflect: none; width: 240px; height: 208px;
   }
   .anneau.plat .plaque .pl-ajout { opacity: 1; transform: none; }
-  .anneau.plat .sol { display: none; }
+  /* .sol est un FRÈRE de .anneau (pas un descendant) : on le cible directement.
+     La nappe de lumière n'a de sens qu'en vue 3D animée. */
+  .sol { display: none; }
 }

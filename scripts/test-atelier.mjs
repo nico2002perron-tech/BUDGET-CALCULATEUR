@@ -72,13 +72,12 @@ async function page(reduit) {
   await p.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' })); await p.waitForTimeout(500)
   const pr = await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--p').trim())
   dit(pr === '0' || pr === '', 'mouvement réduit : le passage reste à 0 (rien ne bouge au scroll)', `--p=${pr}`)
-  // les plaques restent cliquables (pointer-events auto) et posent une tuile
+  // en mode plat, PAS de flèches/points (retirés) : la plaque est cliquée DIRECTEMENT
+  dit((await p.locator('.car-pied').count()) === 0, 'mouvement réduit : pas de flèches/points inertes (contrôles morts retirés)')
   const avW = await p.locator('.tour-widget').count()
-  await p.locator('.car-pts .car-pt').first().click(); await p.waitForTimeout(300)
-  await p.locator('.plaque').first().click({ trial: false }).catch(() => {})
-  await p.waitForTimeout(500)
+  await p.locator('.anneau.plat .plaque').first().click(); await p.waitForTimeout(500)
   const apW = await p.locator('.tour-widget').count()
-  dit(apW >= avW, 'mouvement réduit : l’anneau reste interactif (aucune info portée par le mouvement seul)', `${avW} → ${apW}`)
+  dit(apW === avW + 1, 'mouvement réduit : cliquer une plaque à plat POSE une tuile', `${avW} → ${apW}`)
   dit(erreurs.length === 0, 'aucune erreur (mouvement réduit)', erreurs.slice(0, 3).join(' | '))
   await ctx.close()
 }
