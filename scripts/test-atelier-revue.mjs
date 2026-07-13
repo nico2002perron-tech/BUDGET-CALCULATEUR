@@ -32,19 +32,44 @@ async function page(seed, reduit = false) {
   await ctx.close()
 }
 
-// M5 : une plaque ÉTEINTE (patrimoine/impôt, pas de données) → « Aller la remplir »
-//      ouvre une mission réelle, l'atelier ne blanchit jamais. Testé en mode PLAT
-//      (mouvement réduit) : plaques statiques → clic déterministe, MÊME chemin
-//      (cliquer → onAllerSaisie → allerSaisie → setMission).
+// LOT 2 : l'anneau ne montre QU'AU PLUS 7 plaques (6 KPI + créer), un par domaine ;
+//         la liste plate montre TOUT ; jamais un KPI déjà posé.
 {
-  const { ctx, p, err } = await page(JSON.stringify({ ...exempleStore(), amorcee: true, tourWidgets: [] }), true)
+  const { ctx, p } = await page(JSON.stringify({ ...exempleStore(), amorcee: true, tourWidgets: [{ id: 'w0', recette: { situation: 'kpi_solde_mois', titre: 'x', blocs: [{ KPI: 'solde_mois', forme: 'stat', params: {} }] } }] }))
+  await p.locator('.scene-atelier').scrollIntoViewIfNeeded(); await p.waitForTimeout(600)
+  const nAnneau = await p.locator('.anneau .plaque').count()
+  dit(nAnneau <= 7, 'LOT2 : l’anneau ne dépasse jamais 7 plaques (6 KPI + créer)', `${nAnneau}`)
+  const doms = await p.evaluate(() => [...document.querySelectorAll('.anneau .plaque .pl-label, .anneau .plaque .pl-n')].length)
+  dit(doms <= 6, 'LOT2 : au plus 6 plaques de KPI', `${doms}`)
+  // aucun KPI déjà posé (solde_mois) dans l'anneau ni la liste
+  await p.locator('.car-tout').click(); await p.waitForTimeout(400)
+  const total = await p.locator('.al-item').count()
+  dit(total > 7 && total < 40, 'LOT2 : « Voir tout » ouvre une liste plate de tous les indicateurs', `${total} items`)
+  const pose = await p.evaluate(() => [...document.querySelectorAll('.al-q')].some((e) => e.textContent === 'Il me reste quoi ?'))
+  dit(pose === false, 'LOT2 : un KPI déjà posé (solde_mois) n’est jamais reproposé')
+  await ctx.close()
+}
+
+// LOT 1 : la plaque ALLUMÉE présente le CHIFFRE (gros), pas l'étiquette de plomberie.
+{
+  const { ctx, p } = await page(JSON.stringify({ ...exempleStore(), amorcee: true, tourWidgets: [] }))
+  await p.locator('.scene-atelier').scrollIntoViewIfNeeded(); await p.waitForTimeout(700)
+  dit((await p.locator('.anneau .plaque .pl-chiffre').count()) > 0, 'LOT1 : les plaques allumées montrent un CHIFFRE (.pl-chiffre)')
+  dit((await p.locator('.anneau .plaque:not(.eteinte) .pl-src').count()) === 0, 'LOT1 : plus d’étiquette de source (.pl-src) sur les plaques allumées')
+  await ctx.close()
+}
+
+// M5 : un indicateur ÉTEINT → « Il manque… » → clic ouvre une mission RÉELLE, jamais
+//      un atelier blanc. Testé via la LISTE PLATE (déterministe, contient les éteints).
+{
+  const { ctx, p, err } = await page(JSON.stringify({ ...exempleStore(), amorcee: true, tourWidgets: [] }))
   await p.locator('.scene-atelier').scrollIntoViewIfNeeded(); await p.waitForTimeout(500)
-  const et = p.locator('.anneau.plat .plaque.eteinte').first()
-  dit((await p.locator('.anneau.plat .plaque.eteinte').count()) > 0, 'M5 : des plaques éteintes existent (KPIs patrimoine/impôt sans données)')
-  await et.click(); await p.waitForTimeout(600) // à plat : un seul clic → « aller remplir » → mission
+  await p.locator('.car-tout').click(); await p.waitForTimeout(400)
+  dit((await p.locator('.al-item.eteinte').count()) > 0, 'M5 : des indicateurs éteints existent (donnée manquante honnête)')
+  await p.locator('.al-item.eteinte').first().click(); await p.waitForTimeout(600)
   const aMission = await p.locator('.scene-atelier .mission, .scene-atelier form').count()
   const atelierVide = await p.locator('.scene-atelier').evaluate((el) => el.textContent.trim().length < 5)
-  dit(!atelierVide, 'M5 : l’atelier n’est jamais blanc après avoir cliqué une plaque éteinte')
+  dit(!atelierVide, 'M5 : l’atelier n’est jamais blanc après avoir cliqué un indicateur éteint')
   dit(aMission > 0, 'M5 : une mission RÉELLE est rendue (jamais un cul-de-sac)', `contenu=${aMission}`)
   dit(err.length === 0, 'M5 : aucune erreur', err.slice(0, 2).join(' | '))
   await ctx.close()

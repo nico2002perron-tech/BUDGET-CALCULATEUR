@@ -344,6 +344,35 @@ html.scene-active {
   font-size: 10px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
   color: var(--muted); opacity: 0.5; margin-top: 9px; z-index: 3;
 }
+/* LE LIEN vers l'exhaustivité — discret, HORS de l'anneau (on ne l'impose pas). */
+.car-tout {
+  margin-top: 10px; z-index: 3; font-family: inherit;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+  color: var(--muted); background: none; border: none; cursor: pointer;
+  border-bottom: 1px dashed var(--line-fort); padding: 2px 2px 3px;
+}
+.car-tout:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+/* LA LISTE PLATE — tous les indicateurs, scrollable. Pas un anneau : l'exhaustivité
+   existe, elle ne tourne pas devant toi. */
+.anneau-liste { width: 100%; max-width: 760px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.al-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex: none; }
+.al-retour { font-family: inherit; font-size: 12px; font-weight: 800; color: var(--acc); background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.al-retour:hover { background: var(--surface); }
+.al-titre { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.al-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow-y: auto; min-height: 0; align-content: start; padding: 2px 4px 6px 2px; }
+.al-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  text-align: left; font-family: inherit; cursor: pointer; padding: 11px 14px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  transition: border-color 0.15s, background 0.15s;
+}
+.al-item:hover { border-color: color-mix(in srgb, var(--menthe) 45%, transparent); background: var(--surface-2); }
+.al-item.eteinte { border-style: dashed; opacity: 0.72; }
+.al-q { font-size: 13px; font-weight: 700; color: var(--ink-fort); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-item.eteinte .al-q { color: var(--muted); }
+.al-val { flex: none; font-size: 15px; font-weight: 800; color: var(--ink-fort); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.al-manque { flex: none; font-size: 10.5px; font-weight: 700; color: var(--muted); text-align: right; max-width: 48%; line-height: 1.3; }
 /* L'indice « descends pour l'atelier » — vit au bas de la scène-tour. */
 .scene-indice {
   position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);

@@ -19,7 +19,10 @@ import { REGISTRE_KPIS, DONNEE_DISPO, resolveKPI, resoudreForme } from '../recet
 import { formatKPI } from '../lib/format.js'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 
-const DOMAINES = ['budget', 'coussin', 'patrimoine', 'impot']
+// L'anneau montre UN KPI par domaine (diversité, pas un catalogue) — ordre de
+// priorité : budget d'abord (universel), puis le reste. La liste plate, elle, montre tout.
+const ORDRE_DOMAINES = ['budget', 'coussin', 'patrimoine', 'objectif', 'impot', 'saisonnier', 'dette']
+const MAX_ANNEAU = 6 // + « Crée le tien » = 7 plaques au plus
 
 /* La donnée manquante, dite en français — jamais en nom de variable. `section` DOIT
    être une mission réelle (missions.js n'a que revenus/depenses/placements) : router
@@ -110,11 +113,11 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
     return s
   }, [widgets])
 
-  /* ── LES PLAQUES : les KPIs des domaines, allumés OU éteints. Un KPI éteint reste
-        visible — c'est une invitation à remplir la donnée qui manque. ─── */
-  const plaquesData = useMemo(() => {
-    const liste = REGISTRE_KPIS
-      .filter((k) => DOMAINES.includes(k.domaine) && !dejaPosees.has(k.id))
+  /* ── TOUTES les plaques candidates (non-posées), pour la LISTE PLATE « Voir tout ».
+        Un KPI éteint reste visible : c'est une invitation à remplir la donnée. ─── */
+  const toutesPlaques = useMemo(() => {
+    return REGISTRE_KPIS
+      .filter((k) => !dejaPosees.has(k.id))
       .map((k) => {
         const manque = k.requiert.filter((r) => !(DONNEE_DISPO[r] && DONNEE_DISPO[r](snapshot)))
         const dispo = manque.length === 0
@@ -127,9 +130,29 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
           recette: dispo && forme ? { situation: `kpi_${k.id}`, titre: k.question, blocs: [{ KPI: k.id, forme, params: {} }] } : null,
         }
       })
-    liste.sort((a, b) => Number(b.dispo) - Number(a.dispo)) // les allumés d'abord
-    return [...liste, { creer: true }]
+      .sort((a, b) => Number(b.dispo) - Number(a.dispo)) // dispo d'abord (liste plate)
   }, [snapshot, dejaPosees])
+
+  /* ── L'ANNEAU : au plus 6 plaques, UN KPI par domaine (VISION §8 : une
+        recommandation, pas un catalogue). Dispo d'abord ; au plus 2 éteintes. ─── */
+  const plaquesData = useMemo(() => {
+    const choix = []
+    const pris = new Set()
+    const prendre = (dom, dispo) => {
+      if (choix.length >= MAX_ANNEAU) return
+      const k = toutesPlaques.find((x) => x.kpi.domaine === dom && x.dispo === dispo && !pris.has(x.kpi.id))
+      if (k) { choix.push(k); pris.add(k.kpi.id) }
+    }
+    for (const dom of ORDRE_DOMAINES) prendre(dom, true) // 1 DISPO par domaine
+    let nEteint = 0
+    for (const dom of ORDRE_DOMAINES) { // compléter avec des éteintes — au plus 2
+      if (choix.length >= MAX_ANNEAU || nEteint >= 2) break
+      const avant = choix.length
+      prendre(dom, false)
+      if (choix.length > avant) nEteint++
+    }
+    return [...choix, { creer: true }]
+  }, [toutesPlaques])
 
   const N = plaquesData.length
   const PAS = 360 / N
@@ -138,6 +161,7 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
   const vueRef = useRef(null)
   const refs = useRef([])
   const [devant, setDevant] = useState(0)
+  const [voirTout, setVoirTout] = useState(false) // l'exhaustivité : une LISTE PLATE, jamais l'anneau
 
   /* Mouvement réduit : l'anneau ne tourne pas, il se met à PLAT (grille), et reste
      entièrement lisible ET cliquable. Réactif (l'usager peut changer le réglage). */
@@ -310,13 +334,50 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
     if (s.tire) { s.tire = false; s.action = performance.now() }
   }
 
+  // L'ACTION d'une plaque — partagée par l'anneau ET la liste plate.
+  const choisirPlaque = (p) => {
+    if (p.creer) { onCreer?.(); return }
+    if (!p.dispo) { onAllerSaisie?.(sectionPour(p.manque[0])); return }
+    if (p.recette) onAjouter?.(p.recette)
+  }
   const cliquer = (i, p) => {
     // En 3D : une plaque pas de front → on l'AMÈNE devant (elle n'est pas encore le
     // choix). À plat (mouvement réduit) : chaque plaque est directement activable.
     if (!reduit && !refs.current[i]?.classList.contains('avant')) { viser(i); return }
-    if (p.creer) { onCreer?.(); return }
-    if (!p.dispo) { onAllerSaisie?.(sectionPour(p.manque[0])); return }
-    if (p.recette) onAjouter?.(p.recette)
+    choisirPlaque(p)
+  }
+
+  if (voirTout) {
+    /* L'EXHAUSTIVITÉ existe, mais elle ne s'impose pas : une LISTE PLATE (pas un
+       anneau), scrollable, tous les indicateurs, chacun avec son chiffre ou sa
+       donnée manquante. On y va par choix, on en revient d'un geste. */
+    return (
+      <div className="carrousel">
+        <div className="anneau-liste">
+          <div className="al-tete">
+            <button type="button" className="al-retour" onClick={() => setVoirTout(false)}>‹ L&rsquo;anneau</button>
+            <span className="al-titre">Tous tes indicateurs</span>
+          </div>
+          <div className="al-grille">
+            {toutesPlaques.map((p) => (
+              <button
+                key={p.kpi.id}
+                type="button"
+                className={`al-item${p.dispo ? '' : ' eteinte'}`}
+                onClick={() => choisirPlaque(p)}
+              >
+                <span className="al-q">{p.kpi.question}</span>
+                {p.dispo ? (
+                  <span className="al-val">{formatKPI(p.resolu?.valeur, p.resolu?.unite)}</span>
+                ) : (
+                  <span className="al-manque">Il manque {p.manque.map((r) => textePour(r)).join(', ')}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -354,25 +415,26 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
           plaque est déjà directement activable), et craner/viser n'ont pas d'effet
           sans la boucle. On ne le rend donc pas en mouvement réduit. */}
       {!reduit && (
-        <>
-          <div className="car-pied">
-            <button type="button" className="car-fl" onClick={() => craner(-1)} aria-label="Plaque précédente">‹</button>
-            <div className="car-pts">
-              {plaquesData.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={`car-pt${i === devant ? ' on' : ''}`}
-                  onClick={() => viser(i)}
-                  aria-label={`Aller à la plaque ${i + 1}`}
-                />
-              ))}
-            </div>
-            <button type="button" className="car-fl" onClick={() => craner(1)} aria-label="Plaque suivante">›</button>
+        <div className="car-pied">
+          <button type="button" className="car-fl" onClick={() => craner(-1)} aria-label="Plaque précédente">‹</button>
+          <div className="car-pts">
+            {plaquesData.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`car-pt${i === devant ? ' on' : ''}`}
+                onClick={() => viser(i)}
+                aria-label={`Aller à la plaque ${i + 1}`}
+              />
+            ))}
           </div>
-          <div className="car-aide">Attrape · lance · ou molette</div>
-        </>
+          <button type="button" className="car-fl" onClick={() => craner(1)} aria-label="Plaque suivante">›</button>
+        </div>
       )}
+      {/* L'exhaustivité, discrète, HORS de l'anneau — on ne l'impose pas. */}
+      <button type="button" className="car-tout" onClick={() => setVoirTout(true)}>
+        Voir tous les indicateurs ({toutesPlaques.length})
+      </button>
     </div>
   )
 }
