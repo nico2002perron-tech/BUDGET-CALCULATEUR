@@ -16,6 +16,7 @@
    ========================================================================== */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { REGISTRE_KPIS, DONNEE_DISPO, resolveKPI, resoudreForme } from '../recettes/bibliotheque-kpis.js'
+import { formatKPI } from '../lib/format.js'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 
 const DOMAINES = ['budget', 'coussin', 'patrimoine', 'impot']
@@ -39,11 +40,28 @@ const textePour = (r) => (OU_LA_PRENDRE[r] && OU_LA_PRENDRE[r].texte) || r
 const REDUIT = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/* Dégraissage de la phrase : si elle COMMENCE par le nombre déjà affiché en gros,
+   on retire le nombre en tête (« 47 % de tes dépenses… » → « de tes dépenses… ») ;
+   sinon on la montre TELLE QUELLE — jamais mutilée (les texteFactuel de
+   bibliotheque-kpis.js sont conformes/filtrés et servent ailleurs : on n'y touche
+   pas ; une redondance vaut mieux qu'une phrase cassée). */
+function phrasePlaque(texte, montre) {
+  const t = String(texte || '').trim()
+  if (montre && montre !== '—' && t.startsWith(montre)) {
+    const reste = t.slice(montre.length).replace(/^[\s,.;:–—-]+/, '').trim()
+    if (reste.length >= 4) return reste.charAt(0).toLowerCase() + reste.slice(1)
+  }
+  return t
+}
+
 /* LE CONTENU d'une plaque — mémoïsé. Il ne dépend QUE de {p, snapshot} (stables
    pendant une rotation) : ainsi la pagination (setDevant à chaque cran pendant un
    lancé) ne ré-exécute JAMAIS les <MoteurRendu apercu> de chaque plaque. La rotation
    visible reste pilotée impérativement (pl.style dans la boucle physique). */
 const PlaqueContenu = memo(function PlaqueContenu({ p, snapshot }) {
+  const montre = !p.creer && p.dispo ? formatKPI(p.resolu?.valeur, p.resolu?.unite) : null
+  const aChiffre = montre != null && montre !== '—' // faux pour une valeur OBJET (ex. l'équilibre en parts)
+  const phrase = !p.creer && p.dispo ? phrasePlaque(p.resolu?.texteFactuel, montre) : ''
   return (
     <>
       <span className="pl-lustre" />
@@ -54,30 +72,27 @@ const PlaqueContenu = memo(function PlaqueContenu({ p, snapshot }) {
           <b>Crée le tien</b>
           <span>Dis-le dans tes mots</span>
         </span>
-      ) : (
+      ) : !p.dispo ? (
+        /* ÉTEINTE — INCHANGÉE : c'est ICI que vit l'honnêteté sur la donnée. La
+           donnée manquante est écrite ; la plaque est la porte vers « Mes données ». */
         <>
-          <div className="pl-tete">
-            <span className="pl-n">{p.kpi.question}</span>
-          </div>
+          <div className="pl-tete"><span className="pl-n">{p.kpi.question}</span></div>
           <span className="pl-src">{p.kpi.requiert.map((r) => textePour(r)).join(' + ')}</span>
-          {p.dispo ? (
-            <>
-              {/* L'APERÇU EST LE VRAI BLOC, rendu en réduction. Ce que tu vois est ce que tu prends. */}
-              <div className="pl-apercu">
-                <MoteurRendu recette={p.recette} snapshot={snapshot} apercu />
-              </div>
-              <p className="pl-fait">{p.resolu?.texteFactuel}</p>
-              <span className="pl-ajout">+ Ajouter à ma tour</span>
-            </>
-          ) : (
-            /* ÉTEINTE — jamais cachée. La donnée manquante est écrite ; la plaque
-               devient la porte vers l'endroit où la donner. */
-            <>
-              <p className="pl-manque">Il me manque {p.manque.map((r) => textePour(r)).join(' et ')}.</p>
-              <span className="pl-ajout pl-aller">Aller la remplir →</span>
-            </>
-          )}
+          <p className="pl-manque">Il me manque {p.manque.map((r) => textePour(r)).join(' et ')}.</p>
+          <span className="pl-ajout pl-aller">Aller la remplir →</span>
         </>
+      ) : (
+        /* ALLUMÉE — elle PRÉSENTE : le CHIFFRE est la réponse. La question chuchote
+           au-dessus ; l'aperçu (le vrai bloc) passe DERRIÈRE, discret. */
+        <div className={`pl-corps${aChiffre ? '' : ' pl-corps-obj'}`}>
+          <span className="pl-label">{p.kpi.question}</span>
+          {aChiffre && <span className="pl-chiffre">{montre}</span>}
+          <div className="pl-apercu">
+            <MoteurRendu recette={p.recette} snapshot={snapshot} apercu />
+          </div>
+          {phrase && <p className="pl-phrase">{phrase}</p>}
+          <span className="pl-ajout">+ Ajouter à ma tour</span>
+        </div>
       )}
     </>
   )
@@ -95,8 +110,8 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
     return s
   }, [widgets])
 
-  /* ── LES PLAQUES : tous les KPIs des domaines, allumés OU éteints. Un KPI éteint
-        reste visible — c'est une invitation à remplir la donnée qui manque. ─── */
+  /* ── LES PLAQUES : les KPIs des domaines, allumés OU éteints. Un KPI éteint reste
+        visible — c'est une invitation à remplir la donnée qui manque. ─── */
   const plaquesData = useMemo(() => {
     const liste = REGISTRE_KPIS
       .filter((k) => DOMAINES.includes(k.domaine) && !dejaPosees.has(k.id))
@@ -105,18 +120,14 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
         const dispo = manque.length === 0
         const forme = dispo ? resoudreForme(k.id, k.blocsCompatibles[0], snapshot, {}) : null
         return {
-          kpi: k,
-          dispo,
-          manque,
+          kpi: k, dispo, manque, forme,
           resolu: dispo ? resolveKPI(k.id, snapshot) : null,
-          forme,
           // L'aperçu est le VRAI bloc : une recette d'emplacement KPI (le format que
           // MoteurRendu connaît), rendue en réduction via la prop `apercu`.
           recette: dispo && forme ? { situation: `kpi_${k.id}`, titre: k.question, blocs: [{ KPI: k.id, forme, params: {} }] } : null,
         }
       })
-    /* les allumés d'abord — on ne fait pas tourner l'usager devant des portes closes */
-    liste.sort((a, b) => Number(b.dispo) - Number(a.dispo))
+    liste.sort((a, b) => Number(b.dispo) - Number(a.dispo)) // les allumés d'abord
     return [...liste, { creer: true }]
   }, [snapshot, dejaPosees])
 
