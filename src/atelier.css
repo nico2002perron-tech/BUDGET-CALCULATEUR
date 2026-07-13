@@ -48,6 +48,40 @@ html.scene-active {
   will-change: transform, opacity;
 }
 
+/* LE BANDEAU — un BLOC de couleur, pas une ambiance. Bord franc en bas, et les
+   tuiles le CHEVAUCHENT : moitié dans la couleur, moitié dans le noir. C'est ce
+   chevauchement qui donne au verre des tuiles une raison d'exister (de la matière
+   à réfracter). Fixé au haut de la scène-tour (le board défile par-dessus). */
+.bandeau {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 240px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: calc(var(--bandeau-op) * (1 - var(--p) * 0.9));
+  background:
+    radial-gradient(120% 150% at 8% -30%, color-mix(in srgb, var(--menthe) 70%, #fff), transparent 48%),
+    linear-gradient(104deg, var(--menthe) 0%, color-mix(in srgb, var(--menthe) 40%, var(--cyan)) 38%,
+      var(--cyan) 62%, var(--accent) 100%);
+}
+.bandeau::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, transparent 46%,
+    color-mix(in srgb, var(--fond) 55%, transparent) 74%, var(--fond) 100%);
+}
+/* LE GRAIN — fort (42 %), pas subtil : c'est lui qui donne au dégradé sa texture
+   argentique au lieu d'un rendu CSS lisse. */
+.bandeau::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SCÈNE 2 — L'ATELIER. Plein écran. Une feuille de verre qui glisse par-dessus.
    ══════════════════════════════════════════════════════════════════════════ */

@@ -254,6 +254,40 @@ function App() {
   const tuilesRef = useRef(new Map()) // id → élément .tour-widget
   const dragRef = useRef(null) // le geste en cours { id, pointerId, px, py, tx, ty, derniereCible, tCible, surMove, surFin }
   const rectsAvantRef = useRef(null) // photos des rects AVANT un réordonnancement (FLIP)
+  const flipEnCoursRef = useRef(false) // vrai pendant l'anim FLIP → le tilt (verre 3D) se coupe
+  const tuileTilteeRef = useRef(null) // la tuile actuellement inclinée sous le curseur
+
+  // LE VERRE 3D au survol — DÉLÉGUÉ sur le board (plutôt que useVerre3D par tuile,
+  // qui exigerait d'extraire chaque tuile en composant et risquerait le FLIP/drag/
+  // retouche). Même logique : la tuile sous le curseur s'incline et un reflet
+  // (--mx/--my) suit le pointeur. COUPÉ en Réorganiser ET pendant le FLIP (PIÈGE 1 :
+  // le transform inline se battrait avec le drag et l'anim FLIP). reduced-motion → rien.
+  const resetTilt = () => {
+    const el = tuileTilteeRef.current
+    if (!el) return
+    el.style.transition = 'transform .7s cubic-bezier(.22, .61, .36, 1)'
+    el.style.transform = ''
+    el.style.removeProperty('--mx')
+    el.style.removeProperty('--my')
+    tuileTilteeRef.current = null
+  }
+  const surBoardMove = (e) => {
+    if (reorganise || flipEnCoursRef.current || reduitMouvement()) return
+    const el = e.target.closest ? e.target.closest('.tour-widget') : null
+    if (!el || el.classList.contains('is-anime') || el.classList.contains('est-tiree')) { resetTilt(); return }
+    if (tuileTilteeRef.current && tuileTilteeRef.current !== el) resetTilt()
+    tuileTilteeRef.current = el
+    const r = el.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width
+    const py = (e.clientY - r.top) / r.height
+    el.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`)
+    el.style.setProperty('--my', `${(py * 100).toFixed(1)}%`)
+    el.style.transition = 'transform .12s linear'
+    el.style.transform = `perspective(1200px) rotateY(${((px - 0.5) * 12).toFixed(2)}deg) rotateX(${(-(py - 0.5) * 12).toFixed(2)}deg) translateY(-4px)`
+  }
+  // Entrer en Réorganiser efface un tilt résiduel (sinon la tuile resterait inclinée
+  // pendant le drag). eslint-disable : resetTilt ne touche que des refs.
+  useEffect(() => { if (reorganise) resetTilt() }, [reorganise]) // eslint-disable-line react-hooks/exhaustive-deps
   const [tireeId, setTireeId] = useState(null) // la tuile soulevée — PILOTÉE par React (jamais classList : un re-rendu l'effacerait)
   const poseTuile = (id) => (n) => { if (n) tuilesRef.current.set(id, n); else tuilesRef.current.delete(id) }
   const reordonnerWidgets = (deId, versId) => {
@@ -361,9 +395,19 @@ function App() {
   // (on compense le saut de mise en page dans son transform manuel).
   const ordreCle = widgets.map((w) => `${w.id}:${w.taille || ''}`).join('|') // ordre ET taille → FLIP
   useLayoutEffect(() => {
+    // Tout changement d'ordre/taille/membres du tableau efface un tilt résiduel —
+    // AVANT le early-return, car le copilote (retrait, redimension, réordonnancement
+    // au clavier via « / ») reflue SANS mouvement de souris et ne pose pas de rects
+    // AVANT : sans ça, une tuile survolée resterait figée inclinée jusqu'au prochain
+    // pointermove.
+    resetTilt()
     const avant = rectsAvantRef.current
     rectsAvantRef.current = null
     if (!avant) return
+    // PIÈGE 1 : pendant le FLIP, le tilt du verre 3D doit se taire (transform inline
+    // qui se battrait avec l'anim). On le rétablit après (~220ms > durée 190ms).
+    flipEnCoursRef.current = true
+    setTimeout(() => { flipEnCoursRef.current = false }, 220)
     const reduce = reduitMouvement()
     const d = dragRef.current
     tuilesRef.current.forEach((el, id) => {
@@ -933,6 +977,9 @@ function App() {
         {section === 'tour' && (
           <>
           <section className="scene-tour">
+          {/* LE BANDEAU : le bloc de couleur derrière le haut de la tour. Les tuiles du
+              board (juste dessous) le CHEVAUCHENT → leur verre a de la couleur à réfracter. */}
+          <div className="bandeau" aria-hidden="true" />
           <div className="tour-corps">
           <div className="tour">
             <div className="tour-hero">
@@ -941,14 +988,6 @@ function App() {
               </h1>
               <p className="tour-accroche">Ta tour, tes outils — choisis une carte, tes vrais chiffres sont déjà dedans.</p>
             </div>
-
-            {/* 1re vue sur le primitif événement : ce qui bouge maintenant (data-aware : rien → rien).
-                depuis = dernière visite → sous-titre « depuis ta dernière visite » quand un changement est détecté. */}
-            <EvenementsSaillants events={evenementsListe} depuis={visiteRef.current} />
-
-            {/* LE HÉROS (VISION §7a·2) : le verdict du jour — la SEULE zone navy→cyan.
-                Data-aware : aucun verdict possible → rien (jamais de zéro inventé). */}
-            <VerdictDuJour verdict={verdict} />
 
             {/* La célébration d'épinglage : ta tuile vient d'être mise à jour (un fait, 6 s). */}
             {epingleFete && !mission && (
@@ -1019,7 +1058,7 @@ function App() {
                 <BoardCopilote onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesBoard(widgets, snapshot)} appris={appris} onChip={setCopiloteChip} />
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
-                <div className={`tour-board${reorganise ? ' est-reorg' : ''}`}>
+                <div className={`tour-board${reorganise ? ' est-reorg' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
                 {widgets.map((w) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
@@ -1239,6 +1278,11 @@ function App() {
                 </div>
               </div>
             )}
+
+            {/* Ce qui BOUGE maintenant + le verdict du jour : SOUS le board (le haut de
+                la tour appartient aux instruments, qui chevauchent le bandeau). */}
+            <EvenementsSaillants events={evenementsListe} depuis={visiteRef.current} />
+            <VerdictDuJour verdict={verdict} />
           </div>
           </div>
           <div className="scene-indice" aria-hidden="true">

@@ -2368,13 +2368,31 @@ svg { display: block; }
 .tour-board .tour-widget-titre { font-size: 14.5px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Les cases des blocs : joufflues, teintées de TA couleur, coins généreux. */
-.tour-board .tour-widget .card {
-  border: 2px solid color-mix(in srgb, var(--wacc) 22%, var(--surface-2));
-  border-bottom-width: 1px;
-  border-radius: 22px;
-  background: linear-gradient(165deg, color-mix(in srgb, var(--wacc) 6%, var(--surface-2)), var(--surface) 55%);
+/* La tuile RÉUTILISE .verre (theme.css) : fond, backdrop-filter, rim, arête
+   réfractée. Ici on ne garde que l'ACCENT --wacc de la tuile sur sa bordure
+   (:not(.p3d) → même spécificité que .verre pour gagner, index.css après theme.css). */
+.tour-board .tour-widget .card:not(.p3d) {
+  border-color: color-mix(in srgb, var(--wacc) 32%, var(--line-fort));
 }
 .tour-board .tour-widget .card-title svg { color: var(--wacc); }
+/* Sur la tuile : le CHIFFRE HÉROS domine (calibre .chiffre : la taille fait le
+   travail, poids 600, tabular) ; le contexte chuchote. Scopé aux TUILES — Stat
+   sert AUSSI dans « EN DIRECT » (.pv) où le calibre doit rester petit. */
+/* Le chiffre-héros de la tuile. Sa taille suit la LARGEUR de la carte (le nombre
+   d'octets à côté de la puce, pas la hauteur) : sur une tuile 1 colonne, la puce
+   de 46px + l'écart mange ~60px, il ne reste ~150px — un 46px y casserait
+   « 2 755 $ » sur deux lignes. On garde donc 30px sur 1 colonne, et on déploie
+   le grand chiffre seulement quand la tuile s'élargit à 2 colonnes (taille-l/xl). */
+.tour-board .tour-widget .stat-v {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.tour-board .tour-widget.taille-l .stat-v,
+.tour-board .tour-widget.taille-xl .stat-v { font-size: clamp(34px, 3vw, 46px); }
+.tour-board .tour-widget .stat-l { opacity: 0.82; }
 
 /* LES PEAUX : le fini de la carte, teinté de TA couleur (--wacc). Style seulement.
    On exclut .p3d (le canvas 3D sombre garde son propre monde, partout identique). */
@@ -2398,6 +2416,22 @@ svg { display: block; }
   border-bottom-width: 8px;
   box-shadow: 0 16px 34px -16px color-mix(in srgb, var(--wacc) 65%, transparent);
 }
+/* MAT (sans reflet) et RELIEF (rebord physique) ont leur PROPRE fini : on y éteint
+   le spéculaire (::before) et l'arête réfractée (::after) hérités du partage de
+   recette avec .verre. L'arête est figée sur --menthe et jurerait avec le --wacc
+   de la tuile ; sur une peau « mat » un reflet contredirait carrément l'intention.
+   On coupe aussi le backdrop-filter du verre (non redéfini par ces deux peaux) :
+   sinon un flou de 28px les givrerait alors qu'elles sont réglées plates.
+   Le défaut (Classique) et la peau Verre, eux, RESTENT du verre. */
+.tour-board .tour-widget.peau-mat .card:not(.p3d),
+.tour-board .tour-widget.peau-relief .card:not(.p3d) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.tour-board .tour-widget.peau-mat .card:not(.p3d)::before,
+.tour-board .tour-widget.peau-mat .card:not(.p3d)::after,
+.tour-board .tour-widget.peau-relief .card:not(.p3d)::before,
+.tour-board .tour-widget.peau-relief .card:not(.p3d)::after { display: none; }
 /* Les petits boutons du widget suivent le style joufflu. */
 .tour-board .tour-widget-x { border-width: 1.5px; border-bottom-width: 3px; border-radius: 12px; }
 /* Un widget mono-bloc (un seul KPI) : colonne bornée, jamais une grille à moitié vide. */

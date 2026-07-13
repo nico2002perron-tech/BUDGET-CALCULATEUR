@@ -122,7 +122,10 @@
    UNE seule source de lumière : zénithale. Le rebord joufflu de 6px est mort
    sur la donnée ; il ne survit QUE sur les boutons (.bouton-3d).
    ══════════════════════════════════════════════════════════════════════════ */
-.verre {
+/* La tuile de la tour EST une plaque de verre : elle RÉUTILISE cette recette
+   (jamais recopiée). On exclut .p3d (canvas 3D sombre = son propre monde). */
+.verre,
+.tour-board .tour-widget .card:not(.p3d) {
   position: relative;
   border-radius: var(--r-tuile);
   background: linear-gradient(150deg, var(--surface-2), var(--surface) 58%);
@@ -137,7 +140,8 @@
   transition: transform 0.5s var(--doux), border-color 0.3s;
 }
 /* le spéculaire suit le curseur (--mx/--my posés par useVerre3D) */
-.verre::before {
+.verre::before,
+.tour-board .tour-widget .card:not(.p3d)::before {
   content: '';
   position: absolute;
   inset: -1px;
@@ -152,9 +156,11 @@
   opacity: 0;
   transition: opacity 0.4s;
 }
-.verre:hover::before { opacity: 1; }
+.verre:hover::before,
+.tour-board .tour-widget .card:not(.p3d):hover::before { opacity: 1; }
 /* l'arête réfractée */
-.verre::after {
+.verre::after,
+.tour-board .tour-widget .card:not(.p3d)::after {
   content: '';
   position: absolute;
   inset: 0;
