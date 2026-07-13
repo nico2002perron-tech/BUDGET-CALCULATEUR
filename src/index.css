@@ -2370,7 +2370,7 @@ svg { display: block; }
 /* Les cases des blocs : joufflues, teintées de TA couleur, coins généreux. */
 .tour-board .tour-widget .card {
   border: 2px solid color-mix(in srgb, var(--wacc) 22%, var(--surface-2));
-  border-bottom-width: 6px;
+  border-bottom-width: 1px;
   border-radius: 22px;
   background: linear-gradient(165deg, color-mix(in srgb, var(--wacc) 6%, var(--surface-2)), var(--surface) 55%);
 }
@@ -2442,7 +2442,7 @@ svg { display: block; }
 .mis-pas:active { transform: translateY(3px); border-bottom-width: 2px; }
 .mis-champ {
   display: flex; align-items: baseline; gap: 8px;
-  background: var(--surface-2); border: 2px solid rgba(0, 180, 216, 0.35); border-bottom-width: 6px;
+  background: var(--surface-2); border: 2px solid rgba(0, 180, 216, 0.35); border-bottom-width: 1px;
   border-radius: 20px; padding: 12px 20px; min-width: 190px; justify-content: center;
 }
 .mis-input {
@@ -2605,7 +2605,7 @@ svg { display: block; }
   padding: 16px clamp(14px, 2.4vw, 26px) 22px;
   border-radius: 26px;
   border: 2px solid color-mix(in srgb, var(--wacc, var(--cyan)) 24%, var(--surface-2));
-  border-bottom-width: 6px;
+  border-bottom-width: 1px;
   background: linear-gradient(165deg, color-mix(in srgb, var(--wacc, var(--cyan)) 7%, var(--surface-2)), var(--surface-2) 60%);
   box-shadow: 0 50px 120px -34px rgba(3, 4, 94, 0.5), 0 18px 44px rgba(3, 4, 94, 0.22);
   transform-origin: 0 0;
@@ -2613,7 +2613,7 @@ svg { display: block; }
 /* Les cartes DANS le sable = les cartes des tuiles (même design, même accent). */
 .sable-scene .card {
   border: 2px solid color-mix(in srgb, var(--wacc, var(--cyan)) 22%, var(--surface-2));
-  border-bottom-width: 6px;
+  border-bottom-width: 1px;
   border-radius: 22px;
   background: linear-gradient(165deg, color-mix(in srgb, var(--wacc, var(--cyan)) 6%, var(--surface-2)), var(--surface) 55%);
 }
@@ -2935,7 +2935,7 @@ svg { display: block; }
   color: #eef2ff;
 }
 /* Sur la tour (cartes joufflues) : le rebord 3D reste, mais sombre. */
-.tour-board .tour-widget .card.p3d { border-width: 2px; border-bottom-width: 6px; border-color: var(--line-fort); }
+.tour-board .tour-widget .card.p3d { border-width: 2px; border-bottom-width: 1px; border-color: var(--line-fort); }
 .card.p3d .card-title { color: #fff; }
 .card.p3d .card-title svg { color: var(--pc); }
 .card.p3d .card-sub { color: rgba(238, 242, 255, 0.60); }
