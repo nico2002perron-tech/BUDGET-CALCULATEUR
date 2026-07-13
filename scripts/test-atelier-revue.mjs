@@ -28,7 +28,7 @@ async function page(seed, reduit = false) {
   const derniere = p.locator('.tour-widget').last()
   await derniere.scrollIntoViewIfNeeded(); await p.waitForTimeout(300)
   const vis = await derniere.evaluate((el) => { const r = el.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + 20); return top && el.contains(top) } )
-  dit(vis === true, 'M4 : la dernière tuile d’un board haut est visible et non recouverte (scene-tour non épinglée)')
+  dit(vis === true, 'M4 : la dernière tuile d’un board haut reste atteignable (board défile dans .tour-corps, tour épinglée)')
   await ctx.close()
 }
 

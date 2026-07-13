@@ -22,21 +22,26 @@ html.scene-active {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SCÈNE 1 — LA TOUR. Elle recule (--p) puis s'efface, mais elle N'EST PAS épinglée :
-   le board peut dépasser 100vh (beaucoup de tuiles) et un sticky plus haut que la
-   fenêtre, recouvert par la feuille opaque de l'atelier, rendrait les dernières
-   tuiles inatteignables. Le document défile normalement → tout reste accessible.
+   SCÈNE 1 — LA TOUR. ÉPINGLÉE : elle recule (--p) et l'atelier glisse PAR-DESSUS
+   elle (backdrop-filter → vrai flou optique). Épinglée à EXACTEMENT 100vh (jamais
+   plus : un sticky plus haut que la fenêtre ne colle pas, il défile) — et le board
+   défile À L'INTÉRIEUR de .tour-corps quand il déborde, donc la dernière tuile
+   reste toujours atteignable AVANT que l'atelier monte.
    ══════════════════════════════════════════════════════════════════════════ */
 .scene-tour {
-  position: relative;
-  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  height: 100vh; /* PAS min-height : un sticky plus haut que le viewport défile. */
   z-index: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   scroll-snap-align: start;
 }
 .tour-corps {
   flex: 1;
+  min-height: 0;          /* sans ça, l'enfant flex refuse de rétrécir et déborde */
+  overflow-y: auto;       /* le board défile ICI, pas dans le document */
   transform: translateY(calc(var(--p) * -46px)) scale(calc(1 - var(--p) * 0.05));
   opacity: calc(1 - var(--p) * 0.55);
   transform-origin: 50% 20%;
@@ -333,7 +338,10 @@ html.scene-active {
 @keyframes indiceFlotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 
 @media (max-width: 1050px) {
-  .scene-tour { min-height: auto; position: relative; }
+  /* Mobile : flux simple (pas de scroll imbriqué, plus sûr au toucher). La tour
+     défile dans le document ; l'atelier arrive dessous. */
+  .scene-tour { position: relative; height: auto; min-height: 100vh; overflow: visible; }
+  .tour-corps { overflow-y: visible; }
   .at-t { font-size: 23px; }
   .anneau-vue { height: 280px; }
 }
