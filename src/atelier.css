@@ -286,57 +286,65 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 /* ══════════════════════════════════════════════════════════════════════════
    L'ANNEAU — N plaques de verre sur un cylindre.
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   LE PRÉSENTOIR — un RAIL PLAT À CRANS (LOT 4, ex-anneau 3D). 3-4 cartes DROITES,
+   100 % lisibles à la fois ; rien ne bouge sans geste ; un clic = un sens. Le
+   défilement horizontal natif + scroll-snap font tout — zéro physique, zéro rAF.
+   ══════════════════════════════════════════════════════════════════════════ */
 .carrousel {
   position: relative; z-index: 2; flex: 0 1 auto; width: 100%; min-height: 0; margin-top: 6px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
-.anneau-vue {
-  position: relative; width: 100%; height: 320px;
-  perspective: 1250px; perspective-origin: 50% 42%;
-  cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+/* la vue = le rail, flanqué de ses deux flèches (rendues seulement s'il déborde).
+   Préfixe « pres- » (présentoir) et NON « rail- » : « .rail » est déjà la barre de
+   navigation gauche (.rail-brand/.rail-items…) — le réutiliser empilait les plaques
+   en colonne (elle héritait de flex-direction:column ; width:300px). */
+.pres-vue { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; }
+.pres-piste {
+  display: flex; gap: 14px; flex: 1; min-width: 0;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding-inline: 34px;
+  scrollbar-width: none; -ms-overflow-style: none;
+  padding: 8px 34px 16px;
 }
-.anneau-vue:active { cursor: grabbing; }
-.anneau { position: absolute; left: 50%; top: 48%; width: 0; height: 0; transform-style: preserve-3d; }
+.pres-piste::-webkit-scrollbar { display: none; }
 
+/* LA PLAQUE — une carte de verre DROITE. Plus d'inclinaison, de flou, de reflet
+   inversé ni de lustre baladeur : elle se lit d'un coup. Largeur fixe, elle
+   s'aligne au centre au cran. Le survol la soulève juste ce qu'il faut. */
 .plaque {
-  position: absolute; left: -132px; top: -112px; width: 264px; height: 224px;
+  position: relative; flex: 0 0 264px; width: 264px; height: 206px;
+  scroll-snap-align: center;
+  display: flex; flex-direction: column;
   border-radius: 22px; cursor: pointer; font-family: inherit; text-align: left;
-  padding: 15px 16px 0;
+  padding: 15px 16px 14px;
   background: linear-gradient(150deg, var(--surface-2), var(--surface) 62%);
   -webkit-backdrop-filter: blur(20px) saturate(175%); backdrop-filter: blur(20px) saturate(175%);
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim-bas), var(--sh);
-  transform-style: preserve-3d;
-  will-change: transform, opacity, filter;
-  /* LE REFLET AU SOL — la plaque se mire sous elle-même. Une ligne. */
-  -webkit-box-reflect: below 10px linear-gradient(transparent 58%, var(--reflet));
+  transition: transform 0.2s var(--doux), border-color 0.2s, box-shadow 0.2s;
 }
+.plaque:hover, .plaque:focus-visible {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--acc) 50%, transparent);
+  box-shadow: inset 0 1px 0 var(--rim),
+    0 0 0 1px color-mix(in srgb, var(--acc) 26%, transparent),
+    0 30px 66px -24px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 55%), rgba(0, 0, 0, 0.8));
+}
+/* Le FOCUS CLAVIER porte un vrai anneau (comme .tour-batir/.sable-*) — il survit au
+   Contraste élevé/forced-colors, là où le lift+glow seul disparaîtrait (WCAG 2.4.7). */
+.plaque:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
-/* LE LUSTRE — une bande de lumière FIXE DANS LA PIÈCE. La plaque la traverse en
-   tournant. --gx et --gi sont posés par la boucle physique. */
-.pl-lustre { position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit; overflow: hidden; }
-.pl-lustre::before {
-  content: ''; position: absolute; top: -30%; bottom: -30%;
-  left: var(--gx, 150%); width: 38%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.62), transparent);
-  transform: skewX(-14deg);
-  opacity: var(--gi, 0);
-  mix-blend-mode: screen;
-}
+/* L'ARÊTE réfractée — statique et discrète (le verre garde son liseré, sans
+   animation ni lumière baladeuse). */
 .pl-arete {
   position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: inherit; padding: 1px;
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.6), transparent 42%, transparent 58%,
-    color-mix(in srgb, var(--menthe) 55%, transparent));
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.55), transparent 42%, transparent 58%,
+    color-mix(in srgb, var(--acc) 40%, transparent));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0.65;
-}
-.plaque.avant {
-  border-color: color-mix(in srgb, var(--menthe) 50%, transparent);
-  box-shadow: inset 0 1px 0 var(--rim),
-    0 0 0 1px color-mix(in srgb, var(--menthe) 28%, transparent),
-    0 34px 76px -22px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 60%), rgba(0, 0, 0, 0.85));
+  opacity: 0.35;
 }
 
 .pl-tete { position: relative; z-index: 2; }
@@ -349,47 +357,61 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 }
 .pl-fait { position: relative; z-index: 2; margin: 8px 0 0; font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.45; }
 
-/* LA PLAQUE ALLUMÉE PRÉSENTE : la question CHUCHOTE, le CHIFFRE est la réponse
-   (gros), la phrase la précise, l'aperçu (le vrai bloc) passe DERRIÈRE, discret. */
-.pl-corps { position: relative; z-index: 2; height: 100%; }
+/* LA PLAQUE ALLUMÉE : la question CHUCHOTE, le CHIFFRE est la réponse, l'aperçu
+   (le vrai bloc) est une bande NETTE sous le chiffre — dans le flux, plus un
+   fond-fantôme derrière le texte. Ordre : label → chiffre → aperçu → phrase →
+   CTA (qui n'apparaît qu'au survol). */
+.pl-corps { position: relative; z-index: 2; flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
 .pl-label {
-  position: relative; z-index: 1; display: block;
+  display: block;
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--muted); opacity: 0.72; line-height: 1.25;
 }
 .pl-chiffre {
-  position: relative; z-index: 1; display: block; margin-top: 6px;
+  display: block; margin-top: 6px;
   font-size: 34px; font-weight: 600; letter-spacing: -0.035em; line-height: 1;
   color: var(--ink-fort); font-variant-numeric: tabular-nums;
 }
-.pl-phrase { position: relative; z-index: 1; margin: 7px 0 0; font-size: 11.5px; font-weight: 600; color: var(--muted); line-height: 1.4; }
-/* L'aperçu = LE VRAI BLOC, en fond discret, débordant jusqu'aux bords. */
-.pl-apercu { position: absolute; inset: 46px -8px 40px -8px; z-index: 0; opacity: 0.3; overflow: hidden; pointer-events: none; }
-.pl-apercu > * { transform: scale(0.78); transform-origin: 100% 100%; width: 128%; pointer-events: none; }
-/* KPI en PARTS (l'équilibre) : pas de chiffre unique → le graphe EST la réponse, net. */
-.pl-corps-obj .pl-apercu { inset: 30px -4px 40px -4px; opacity: 0.92; }
-.pl-corps-obj .pl-apercu > * { transform: scale(0.6); transform-origin: 0 0; width: 167%; }
+.pl-phrase { margin: 6px 0 0; font-size: 11.5px; font-weight: 600; color: var(--muted); line-height: 1.4; }
+/* L'aperçu = LE VRAI BLOC, une bande sparkline NETTE pleine largeur (elle borde à
+   -16px pour annuler le padding), sans opacité de fond. On retire l'en-tête interne
+   du bloc (titre/sous-titre) et la légende : dans la bande, seule l'IMAGE compte —
+   le titre est déjà la question de la plaque, le chiffre est déjà en gros. */
+.pl-apercu { position: relative; height: 58px; margin: 10px -16px 0; overflow: hidden; pointer-events: none; }
+.pl-apercu > * { pointer-events: none; }
+.pl-apercu :is(.card-title, .card-sub, .legend) { display: none; }
+/* KPI en PARTS (l'équilibre) : pas de chiffre unique → le graphe EST la réponse.
+   Le bloc-parts (repartition) fait ~223 px à sa taille naturelle : on le MET À
+   L'ÉCHELLE pour le faire tenir ENTIER dans la bande (sinon overflow:hidden coupait
+   une catégorie — « Épargne » disparaissait, revue nuage). Vignette lisible en
+   silhouette (les proportions), pas destinée à la lecture fine — le plein écran
+   arrive au clic. */
+.pl-corps-obj .pl-apercu { height: 104px; margin-top: 8px; }
+.pl-corps-obj .pl-apercu > * { transform: scale(0.46); transform-origin: top left; width: 217%; }
 
 .pl-ajout {
-  position: absolute; left: 16px; right: 16px; bottom: 13px; z-index: 6;
+  margin-top: 14px; z-index: 6;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   height: 33px; border-radius: 11px; font-size: 11.5px; font-weight: 800;
   color: #03212a; background: linear-gradient(135deg, var(--menthe), var(--cyan));
-  opacity: 0; transform: translateY(8px);
-  transition: opacity 0.4s, transform 0.4s var(--spring);
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.25s, transform 0.25s var(--spring);
 }
-.plaque.avant .pl-ajout { opacity: 1; transform: none; }
+.plaque:hover .pl-ajout, .plaque:focus-visible .pl-ajout { opacity: 1; transform: none; }
 [data-theme='clair'] .pl-ajout { color: #fff; background: linear-gradient(135deg, var(--accent), var(--cyan)); }
 
 /* LA PLAQUE ÉTEINTE — une donnée manque. JAMAIS cachée : elle dit CE qui manque,
    et elle est la porte vers l'endroit où le donner. Neutre (l'ambre reste réservé
    à l'exception ; une donnée absente est une invitation, pas une exception). */
-.plaque.eteinte { opacity: 0.55; border-style: dashed; }
+.plaque.eteinte { opacity: 0.62; border-style: dashed; }
 .plaque.eteinte .pl-n { color: var(--muted); }
 .pl-manque { position: relative; z-index: 2; margin: 14px 0 0; font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.5; }
-.pl-ajout.pl-aller { background: none; color: var(--ink); border: 1px solid var(--line-fort); }
+/* Le CTA d'une éteinte (« Aller la remplir ») est toujours visible — pas de survol
+   requis : elle ne s'affiche en plaque pleine que pour un nouvel usager. Elle vit
+   hors .pl-corps (contenu au fil du haut) → on la pousse au bas de la plaque. */
+.pl-ajout.pl-aller { margin-top: auto; opacity: 1; transform: none; background: none; color: var(--ink); border: 1px solid var(--line-fort); }
 
-/* LA PLAQUE « CRÉE LE TIEN » — la porte IA vit DANS l'anneau aussi. */
+/* LA PLAQUE « CRÉE LE TIEN » — la porte IA vit DANS le présentoir aussi. */
 .plaque.creer { border-style: dashed; border-color: var(--line-fort);
   background: linear-gradient(150deg, var(--surface), transparent 70%); }
 .pl-vide { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
@@ -404,44 +426,59 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 .pl-vide b { font-size: 14px; font-weight: 800; color: var(--ink-fort); }
 .pl-vide span { font-size: 11px; font-weight: 600; color: var(--muted); }
 
-/* LE SOL — la nappe de lumière sous l'anneau. Sans elle, il flotte dans le vide. */
-.sol {
-  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
-  width: 660px; height: 76px; pointer-events: none; filter: blur(28px); opacity: 0.55;
-  background: radial-gradient(ellipse 46% 100% at 50% 0%,
-    color-mix(in srgb, var(--cyan) 50%, transparent), transparent 72%);
-}
-[data-theme='clair'] .sol { opacity: 0.22; }
-
-.car-pied { display: flex; align-items: center; gap: 14px; margin-top: 6px; z-index: 3; }
+/* LES FLÈCHES — elles DÉFILENT le rail (scrollBy), elles ne tournent rien. Rendues
+   seulement si le rail déborde. Elles flanquent le rail (frères flex de .rail). */
 .car-fl {
-  width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
   cursor: pointer; font-family: inherit; font-size: 18px;
   border: 1px solid var(--line-fort); background: var(--surface); color: var(--ink);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   transition: border-color 0.2s, background 0.2s, transform 0.12s;
 }
-.car-fl:hover { border-color: var(--menthe); background: var(--surface-2); }
+.car-fl:hover { border-color: var(--acc); background: var(--surface-2); }
 .car-fl:active { transform: scale(0.93); }
-.car-pts { display: flex; gap: 6px; }
-.car-pt {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--line-fort); cursor: pointer;
-  transition: width 0.4s var(--spring), background 0.4s;
-  padding: 0; border: none;
+
+/* NAVIGATION NOMMÉE — un sommaire par domaine (Budget · Coussin · …), pas des
+   points anonymes. La chip active est marquée à l'accent. */
+.pres-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pres-nav-chip {
+  font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 12px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.car-pt.on { width: 22px; border-radius: 99px; background: linear-gradient(90deg, var(--menthe), var(--cyan)); }
-.car-aide {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
-  color: var(--muted); opacity: 0.5; margin-top: 9px; z-index: 3;
+.pres-nav-chip:hover { color: var(--ink); border-color: var(--line-fort); }
+.pres-nav-chip.on { color: var(--acc); border-color: color-mix(in srgb, var(--acc) 45%, transparent); background: color-mix(in srgb, var(--acc) 10%, var(--surface)); }
+
+/* LES ÉTEINTES — subordonnées, sous le rail : des chips « à allumer », claires sur
+   leur état (pointillé, muet), jamais des cartes pleines qui volent la vedette. */
+.pres-eteintes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.pres-eteintes-tag {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--muted); /* pas d'opacity : à 9.5px, le muet plein reste au-dessus du seuil AA */
 }
-/* LE LIEN vers l'exhaustivité — discret, HORS de l'anneau (on ne l'impose pas). */
+.chip-eteinte {
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  color: var(--muted); background: none; border: 1px dashed var(--line-fort);
+  border-radius: 999px; padding: 6px 13px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.chip-eteinte:hover { color: var(--ink); border-color: var(--acc); }
+
+/* LE LIEN vers l'exhaustivité — discret, HORS du rail (on ne l'impose pas). */
 .car-tout {
-  margin-top: 10px; z-index: 3; font-family: inherit;
+  z-index: 3; font-family: inherit;
   font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
   color: var(--muted); background: none; border: none; cursor: pointer;
   border-bottom: 1px dashed var(--line-fort); padding: 2px 2px 3px;
 }
 .car-tout:hover { color: var(--acc); border-bottom-color: var(--acc); }
+
+/* Le focus clavier des contrôles du présentoir suit la convention maison (anneau 2px
+   accent) — l'anneau UA par défaut serait perceptible mais dépareillé. */
+.pres-nav-chip:focus-visible,
+.chip-eteinte:focus-visible,
+.car-fl:focus-visible,
+.car-tout:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
 /* LA LISTE PLATE — tous les indicateurs, scrollable. Pas un anneau : l'exhaustivité
    existe, elle ne tourne pas devant toi. */
@@ -483,7 +520,6 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   .scene-tour { position: relative; height: auto; min-height: 100vh; overflow: visible; }
   .tour-corps { overflow-y: visible; }
   .at-t { font-size: 23px; }
-  .anneau-vue { height: 280px; }
 }
 /* ≤767px : .main passe à padding 14px (index.css) → la marge de plein-bleed suit,
    sinon une gouttière sombre apparaîtrait entre le bord et le bandeau. */
@@ -492,31 +528,21 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   .main > .scene-tour:first-child { margin-top: -14px; }
 }
 
-/* Mouvement réduit : l'anneau se fige à plat, le passage disparaît, tout reste
-   lisible ET cliquable. Aucune information n'est portée par le mouvement seul. */
+/* Mouvement réduit : le passage disparaît, le rail défile sans lissage. Le rail
+   étant déjà plat et statique (LOT 4), il n'y a plus de fork à gérer — le layout
+   est identique, on retire seulement le mouvement. */
 @media (prefers-reduced-motion: reduce) {
   html.scene-active { scroll-snap-type: none; scroll-behavior: auto; }
   .tour-corps { transform: none !important; opacity: 1 !important; }
   .at-bloc { opacity: 1 !important; transform: none !important; filter: none !important; }
   .scene-atelier { backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .plaque { -webkit-box-reflect: none; }
-  .pl-lustre { display: none; }
+  .pres-piste { scroll-behavior: auto; scroll-snap-type: none; }
+  .plaque { transition: none; }
   .scene-indice svg { animation: none; }
+}
 
-  /* L'ANNEAU DEVIENT UNE GRILLE (aucune 3D), tout reste lisible ET cliquable —
-     aucune information n'est portée par le mouvement seul. */
-  .anneau-vue { height: auto; perspective: none; cursor: default; overflow: visible; }
-  .anneau.plat {
-    position: static; transform: none !important; transform-style: flat;
-    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; width: 100%; padding: 6px 0;
-  }
-  .anneau.plat .plaque {
-    position: relative; left: auto; top: auto;
-    transform: none !important; opacity: 1 !important; filter: none !important;
-    -webkit-box-reflect: none; width: 240px; height: 208px;
-  }
-  .anneau.plat .plaque .pl-ajout { opacity: 1; transform: none; }
-  /* .sol est un FRÈRE de .anneau (pas un descendant) : on le cible directement.
-     La nappe de lumière n'a de sens qu'en vue 3D animée. */
-  .sol { display: none; }
+/* Au TOUCHER (pas de survol) : le CTA « + Ajouter » reste visible — sinon on ne
+   saurait pas que taper la plaque l'ajoute (le tap déclenche déjà l'ajout). */
+@media (hover: none) {
+  .pl-ajout { opacity: 1; transform: none; }
 }

@@ -1386,7 +1386,7 @@ function App() {
                 <div className="at-tete at-bloc" style={{ '--s': 0, '--e': 0.55 }}>
                   <span className="at-eyebrow">{I_VEDETTE} L&rsquo;atelier</span>
                   <h2 className="at-t">Un instrument de plus pour ta tour ?</h2>
-                  <p className="at-s">Décris ce que tu veux suivre, ou prends un modèle sur l&rsquo;anneau — tes vrais chiffres sont déjà dedans.</p>
+                  <p className="at-s">Décris ce que tu veux suivre, ou prends un modèle au présentoir — tes vrais chiffres sont déjà dedans.</p>
                 </div>
                 <form
                   className="ia-wrap at-bloc"
