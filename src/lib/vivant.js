@@ -149,12 +149,14 @@ export function usePassage(refAtelier, actif = true) {
     if (!el || !actif) {
       root.style.setProperty('--p', '0')
       root.style.setProperty('--pic', '0')
+      root.classList.remove('scene-fondue')
       return
     }
 
     if (reduit) {
       root.style.setProperty('--p', '0')
       root.style.setProperty('--pic', '0')
+      root.classList.remove('scene-fondue')
       return
     }
 
@@ -168,6 +170,10 @@ export function usePassage(refAtelier, actif = true) {
       // la couture lumineuse : elle naît à 0, explose PILE à mi-passage, meurt à 0
       const pic = Math.sin(clamp(lisse) * Math.PI)
       root.style.setProperty('--pic', (pic * pic).toFixed(3))
+      // Quand l'atelier recouvre le bandeau (≈plein passage), on met l'aurore en PAUSE :
+      // sinon elle continue d'animer un transform DERRIÈRE le backdrop-filter de l'atelier
+      // → recalcul du flou plein écran à chaque frame pour rien.
+      root.classList.toggle('scene-fondue', clamp(lisse) > 0.9)
       tick = Math.abs(brut - lisse) > 0.0005 ? requestAnimationFrame(boucle) : null
     }
     const mesurer = () => {
@@ -185,6 +191,7 @@ export function usePassage(refAtelier, actif = true) {
       cancelAnimationFrame(tick)
       root.style.removeProperty('--p')
       root.style.removeProperty('--pic')
+      root.classList.remove('scene-fondue')
     }
   }, [refAtelier, actif, reduit])
 }

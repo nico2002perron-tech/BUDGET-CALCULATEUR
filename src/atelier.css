@@ -92,6 +92,7 @@ html.scene-active .site-footer { padding: 16px 0 20px; }
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 2; /* au-dessus de l'aurore : le fondu du bas garde toujours le dernier mot */
   background: linear-gradient(180deg, transparent, transparent 46%,
     color-mix(in srgb, var(--fond) 55%, transparent) 74%, var(--fond) 100%);
 }
@@ -101,10 +102,35 @@ html.scene-active .site-footer { padding: 16px 0 20px; }
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 3; /* le grain reste la couche du dessus */
   opacity: var(--grain);
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
 }
+/* L'AURORE VIVANTE — une nappe de lumière qui DÉRIVE lentement sur le bandeau.
+   Transform seul (composité, aucun repaint) ; soft-light → elle éclaircit la couleur
+   sans la salir. Confinée au haut (le fondu ::before la recouvre en bas). */
+.bandeau-lueur {
+  position: absolute;
+  inset: -30% -15% 30% -15%;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  background: radial-gradient(42% 68% at 26% 38%, rgba(255, 255, 255, 0.3), transparent 70%);
+  mix-blend-mode: soft-light;
+  animation: aurore 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes aurore {
+  from { transform: translate3d(-6%, -5%, 0) scale(1); }
+  to { transform: translate3d(36%, 12%, 0) scale(1.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bandeau-lueur { animation: none; }
+}
+/* Atelier déployé (--p≈1) : l'aurore est masquée derrière son verre dépoli → on la
+   met en pause (posé par usePassage) pour ne pas ré-évaluer le flou plein écran. */
+html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    SCÈNE 2 — L'ATELIER. Plein écran. Une feuille de verre qui glisse par-dessus.

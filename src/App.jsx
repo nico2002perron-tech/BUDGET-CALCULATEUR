@@ -154,7 +154,13 @@ function App() {
   const iaRef = useRef(null)
   const [iaTexte, setIaTexte] = useState('')
   usePassage(refAtelier, section === 'tour')
-  const focusIA = () => iaRef.current && iaRef.current.focus()
+  // Focalise la barre IA de l'atelier (le focus fait défiler la scène jusqu'à elle).
+  // Si une mission/le studio occupe l'atelier (iaRef absent), on y DESCEND quand même
+  // plutôt que de ne rien faire (bouton muet).
+  const focusIA = () => {
+    if (iaRef.current) { iaRef.current.focus(); return }
+    if (refAtelier.current) refAtelier.current.scrollIntoView({ behavior: reduitMouvement() ? 'auto' : 'smooth' })
+  }
   // PIÈGE A : le scroll-snap ne vit QUE sur l'écran tour (sinon la SAISIE DE DONNÉES
   // se calerait bizarrement). On (dé)pose la classe sur <html> selon la section.
   useEffect(() => {
@@ -245,6 +251,21 @@ function App() {
   // Les départs tappables (data-aware) — calculés UNE fois par rendu (fonction PURE) ;
   // réutilisés par la barre-copilote compacte ET le strip d'onboarding.
   const perchesTour = perchesBoard(widgets, snapshot)
+  // LA CASCADE D'ARRIVÉE : à l'entrée sur « Ma tour », les tuiles se posent une à une
+  // (chorégraphie d'accueil, éphémère ~1,5s). La classe tombe ensuite : le FLIP, le
+  // pulse « a bougé » et la pose du copilote gardent leurs propres animations.
+  // État SEMÉ à true si on démarre sur la tour → la 1re frame peinte porte déjà la
+  // cascade (pas de flash « board complet » avant qu'un effet passif l'arme). useLayout
+  // (pas useEffect) : le setCascade(true) au retour sur la tour est flushé AVANT peinture.
+  const [cascade, setCascade] = useState(() => section === 'tour')
+  useLayoutEffect(() => {
+    if (section !== 'tour') return
+    setCascade(true)
+    // 1200ms couvre la dernière tuile (--casc plafonné à 8 → 560ms de délai + 550ms
+    // d'anim ≈ 1110ms) ; on ne prolonge pas l'état non-interactif inutilement.
+    const id = setTimeout(() => setCascade(false), 1200)
+    return () => { clearTimeout(id); setCascade(false) }
+  }, [section])
   // Une salve du copilote a une chip « Annuler » en cours → garder le tableau
   // (et donc la barre + la chip) monté même si la salve a VIDÉ le board, sinon
   // l'Annuler se démonterait avec lui.
@@ -981,7 +1002,7 @@ function App() {
           <section className="scene-tour">
           {/* LE BANDEAU : le bloc de couleur derrière le haut de la tour. Les tuiles du
               board (juste dessous) le CHEVAUCHENT → leur verre a de la couleur à réfracter. */}
-          <div className="bandeau" aria-hidden="true" />
+          <div className="bandeau" aria-hidden="true"><i className="bandeau-lueur" /></div>
           <div className="tour-corps">
           <div className="tour">
             {/* L'EN-TÊTE — UNE barre SUR le bandeau : salutation à gauche, barre-copilote
@@ -1045,8 +1066,8 @@ function App() {
               <div className="tour-tableau">
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
-                <div className={`tour-board${reorganise ? ' est-reorg' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
-                {widgets.map((w) => {
+                <div className={`tour-board${reorganise ? ' est-reorg' : ''}${cascade ? ' est-arrivee' : ''}${widgets.length <= 2 ? ' est-naissant' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
+                {widgets.map((w, idx) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
                   const rAff = recetteAffichee(w) // la forme suit la taille de la tuile
@@ -1070,7 +1091,7 @@ function App() {
                       className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
-                      style={w.accent ? { '--wacc': w.accent } : undefined}
+                      style={{ ...(w.accent ? { '--wacc': w.accent } : null), '--casc': Math.min(idx, 8) }}
                       onPointerDown={reorganise ? (e) => surTuilePointerDown(e, w.id) : undefined}
                     >
                       <div className="tour-widget-tete">
@@ -1262,6 +1283,18 @@ function App() {
                     </section>
                   )
                 })}
+                {/* LA TUILE « À BÂTIR » : la prochaine pièce de la tour, en pointillés.
+                    Tape → la barre IA de l'atelier se focalise (le focus fait défiler la
+                    scène jusqu'à elle). Retirée en Réorganiser (elle n'est pas déplaçable). */}
+                {!reorganise && (
+                  <button type="button" className="tour-batir" style={{ '--casc': Math.min(widgets.length, 9) }} onClick={() => { sons.tap(); focusIA() }}>
+                    <span className="batir-plus" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                    </span>
+                    <span className="batir-t">À bâtir</span>
+                    <span className="batir-s">Décris ton prochain indicateur</span>
+                  </button>
+                )}
                 </div>
                 {/* LA BARRE D'OUTILS DU TABLEAU — SOUS le board (hors de la couture du
                     bandeau) : le voyant « en service », Réorganiser et les sons. */}
@@ -1294,6 +1327,18 @@ function App() {
                     )}
                   </button>
                 </div>
+                )}
+                {/* LES DÉPARTS RESTANTS — « Ajouter à ta tour » : data-aware (chaque chip
+                    s'éteint quand son indicateur existe ; plus rien à offrir → rien). */}
+                {perchesTour.length > 0 && (
+                  <div className="tour-departs est-suite">
+                    <span className="tour-departs-l">Ajouter à ta tour</span>
+                    <div className="tour-departs-liste">
+                      {perchesTour.map((p) => (
+                        <button key={p.label} type="button" className="cop-perche" onClick={() => appliquerBoard(p.actions)}>{p.label}</button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}

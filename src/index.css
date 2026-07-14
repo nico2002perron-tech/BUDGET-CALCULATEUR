@@ -845,6 +845,74 @@ svg { display: block; }
 .tour-widget.taille-m { grid-row: span 2; }
 .tour-widget.taille-l { grid-column: span 2; grid-row: span 2; }
 .tour-widget.taille-xl { grid-column: span 2; grid-row: span 4; }
+
+/* LA TOUR NAISSANTE (≤2 indicateurs, classe posée par React) : les pistes sont
+   PLAFONNÉES (460px) — une tuile seule ne s'étire plus sur tout l'écran (jauge
+   perdue dans une boîte géante). ⚠️ Ce plafond ne peut PAS vivre dans la grille de
+   base : avec auto-fit, le NOMBRE de colonnes se calcule sur le max (spec) → un
+   board garni retomberait à 2 colonnes avec une colonne morte à droite. */
+.tour-board.est-naissant { grid-template-columns: repeat(auto-fit, minmax(280px, 460px)); }
+
+/* LA TUILE « À BÂTIR » — la prochaine pièce, en pointillés : elle invite sans crier.
+   Verre discret (en 1re rangée elle réfracte le bandeau), plus vive au survol. */
+.tour-batir {
+  grid-column: span 1;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--r-tuile);
+  border: 1.5px dashed var(--line-fort);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: border-color 0.2s, background 0.2s, transform 0.25s var(--doux);
+}
+.tour-batir:hover {
+  border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--cyan) 7%, var(--surface));
+  transform: translateY(-3px);
+}
+.tour-batir:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.batir-plus {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--line-fort);
+  color: var(--acc);
+  transition: transform 0.25s var(--doux), border-color 0.2s;
+}
+.tour-batir:hover .batir-plus { transform: rotate(90deg); border-color: color-mix(in srgb, var(--cyan) 55%, transparent); }
+.batir-plus svg { width: 20px; height: 20px; }
+.batir-t { font-size: 14px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.batir-s { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+
+/* LA CASCADE D'ARRIVÉE : à l'entrée sur la tour, chaque tuile se pose (délai par
+   index --casc, plafonné côté JS). La classe est ÉPHÉMÈRE (~1,5s) — ensuite
+   l'animation disparaît et FLIP / pulse / tilt reprennent leurs droits.
+   :not(.is-anime) → une tuile FRAÎCHEMENT posée garde SA pose (widget-pose) et ne
+   la redémarre pas à la chute de la classe (sinon double entrée, la cascade étant
+   plus courte que la pose). pointer-events:none → pas de tilt/tap/clic sur une tuile
+   invisible (opacity:0) en plein vol ; l'interactivité revient avec la classe. */
+.tour-board.est-arrivee { pointer-events: none; }
+.tour-board.est-arrivee .tour-widget:not(.is-anime),
+.tour-board.est-arrivee .tour-batir {
+  animation: tuileArrive 0.55s var(--spring) both;
+  animation-delay: calc(var(--casc, 0) * 70ms);
+}
+@keyframes tuileArrive {
+  from { opacity: 0; transform: translateY(26px) scale(0.965); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-board.est-arrivee .tour-widget:not(.is-anime),
+  .tour-board.est-arrivee .tour-batir { animation: none; }
+}
 /* Une seule colonne possible (écran étroit) → les larges retombent à 1 colonne. */
 @media (max-width: 700px) {
   .tour-widget.taille-l, .tour-widget.taille-xl { grid-column: span 1; }
@@ -2907,6 +2975,9 @@ svg { display: block; }
 .tour-departs { position: relative; z-index: 1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-top: 72px; }
 .tour-departs-l { font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
 .tour-departs-liste { --wacc: var(--cyan); display: flex; flex-wrap: wrap; gap: 8px; }
+/* La variante « suite » : SOUS le board (le gap du tableau fait l'espacement — le
+   72px ne vaut que pour l'onboarding, où le strip doit passer sous le bandeau). */
+.tour-departs.est-suite { margin-top: 0; }
 
 /* Mobile : l'en-tête empile la salutation puis la barre pleine largeur. */
 @media (max-width: 700px) {
