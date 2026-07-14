@@ -20,6 +20,16 @@ html.scene-active {
      navigation « retour » du navigateur (trackpad). */
   overscroll-behavior-x: contain;
 }
+/* Sur l'écran tour DESKTOP (>1050px : deux scènes collantes de 100vh), on retire le
+   rembourrage bas de main : sinon le pied de page + ces 80px laissaient DÉPASSER le
+   défilement au-delà de l'atelier collant → son haut se faisait rogner. On le SCOPE au
+   desktop : à ≤1050px la tour repasse en flux simple (aucun dépassement), et à ≤767px
+   ces 92px réservent la place de la barre de nav FIXE du bas — les retirer cacherait
+   l'avertissement de conformité derrière elle. */
+@media (min-width: 1051px) {
+  html.scene-active .main { padding-bottom: 0; }
+}
+html.scene-active .site-footer { padding: 16px 0 20px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    SCÈNE 1 — LA TOUR. ÉPINGLÉE : elle recule (--p) et l'atelier glisse PAR-DESSUS
@@ -104,11 +114,15 @@ html.scene-active {
   z-index: 2;
   min-height: 100vh;
   scroll-snap-align: start;
+  /* On CALE l'arrêt de défilement ici : la scène ne peut plus être dépassée à
+     moitié (le haut se faisait rogner quand le pied de page tirait le scroll). */
+  scroll-snap-stop: always;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px 34px;
+  gap: 4px;
+  padding: 34px 34px;
   overflow: hidden;
   border-radius: 40px 40px 0 0;
   background: linear-gradient(180deg, var(--feuille) 0%, var(--fond-2) 22%, var(--fond-2) 100%);
@@ -186,8 +200,10 @@ html.scene-active {
   border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
   border-radius: 12px; padding: 9px 14px;
 }
-/* La zone de l'anneau prend toute la place restante de la scène. */
-.at-anneau { flex: 1; width: 100%; min-height: 0; display: flex; z-index: 2; }
+/* La zone de l'anneau prend sa hauteur NATURELLE et se centre avec le reste (plutôt
+   que de s'étirer sur toute la place, ce qui faisait flotter l'anneau au milieu d'un
+   grand vide). Tout le contenu de l'atelier devient un bloc centré et cohérent. */
+.at-anneau { flex: 0 1 auto; width: 100%; min-height: 0; display: flex; z-index: 2; }
 
 /* MES VUES — les modèles sauvés par l'usager, re-posables ici (leur seule porte). */
 .at-mesvues { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 720px; margin-top: 6px; z-index: 3; }
@@ -245,7 +261,7 @@ html.scene-active {
    L'ANNEAU — N plaques de verre sur un cylindre.
    ══════════════════════════════════════════════════════════════════════════ */
 .carrousel {
-  position: relative; z-index: 2; flex: 1; width: 100%; min-height: 0; margin-top: 6px;
+  position: relative; z-index: 2; flex: 0 1 auto; width: 100%; min-height: 0; margin-top: 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .anneau-vue {
