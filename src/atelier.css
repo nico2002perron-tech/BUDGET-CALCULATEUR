@@ -37,7 +37,16 @@ html.scene-active {
   flex-direction: column;
   overflow: hidden;
   scroll-snap-align: start;
+  /* PLEIN-BLEED DANS <main> : on annule le padding LATÉRAL de main (38px) pour que le
+     BANDEAU épouse le bord droit du rail (couture nette) et le bord droit de l'écran.
+     Le contenu (hero/board) reprend sa gouttière via le padding de .tour. Le rail garde
+     son fond + un z-index supérieur : la couleur s'arrête PILE à sa droite. */
+  margin: 0 -38px 0;
 }
+/* L'annulation du padding HAUT (−28px) n'a de sens que si la scène est le PREMIER
+   enfant de main. Si l'alerte de sauvegarde la précède, ce tirage la ferait recouvrir
+   par le bandeau opaque → on le réserve au 1er enfant. */
+.main > .scene-tour:first-child { margin-top: -28px; }
 .tour-corps {
   flex: 1;
   min-height: 0;          /* sans ça, l'enfant flex refuse de rétrécir et déborde */
@@ -58,6 +67,11 @@ html.scene-active {
   height: 240px;
   z-index: 0;
   pointer-events: none;
+  /* ISOLATION : sans elle, le grain (::after, mix-blend-mode:overlay) se compose
+     contre le fond SOMBRE de la page (qui traverse quand l'opacité du bandeau vaut
+     1) → un overlay contre du quasi-noir s'annule, grain invisible. En isolant, le
+     grain ne blende QUE contre le dégradé cyan du bandeau → texture argentique visible. */
+  isolation: isolate;
   opacity: calc(var(--bandeau-op) * (1 - var(--p) * 0.9));
   background:
     radial-gradient(120% 150% at 8% -30%, color-mix(in srgb, var(--menthe) 70%, #fff), transparent 48%),
@@ -421,10 +435,19 @@ html.scene-active {
 @media (max-width: 1050px) {
   /* Mobile : flux simple (pas de scroll imbriqué, plus sûr au toucher). La tour
      défile dans le document ; l'atelier arrive dessous. */
+  /* La marge latérale de base (−38px) reste valable de 768 à 1050px : .main garde son
+     padding 38px jusqu'à ≤767px (voir plus bas). On ne touche donc PAS la marge ici,
+     seulement la mécanique du passage (flux simple au toucher). */
   .scene-tour { position: relative; height: auto; min-height: 100vh; overflow: visible; }
   .tour-corps { overflow-y: visible; }
   .at-t { font-size: 23px; }
   .anneau-vue { height: 280px; }
+}
+/* ≤767px : .main passe à padding 14px (index.css) → la marge de plein-bleed suit,
+   sinon une gouttière sombre apparaîtrait entre le bord et le bandeau. */
+@media (max-width: 767px) {
+  .scene-tour { margin: 0 -14px 0; }
+  .main > .scene-tour:first-child { margin-top: -14px; }
 }
 
 /* Mouvement réduit : l'anneau se fige à plat, le passage disparaît, tout reste

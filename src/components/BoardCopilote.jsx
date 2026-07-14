@@ -15,7 +15,7 @@ function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function BoardCopilote({ onPiloter, onPerche, perches = [], appris = [], onChip }) {
+export default function BoardCopilote({ onPiloter, onPerche, perches = [], appris = [], onChip, compact = false }) {
   const [texte, setTexte] = useState('')
   const [charge, setCharge] = useState(false)
   const [note, setNote] = useState(null)
@@ -93,7 +93,7 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
   }
 
   return (
-    <div className="board-copilote">
+    <div className={`board-copilote${compact ? ' est-compact' : ''}`}>
       <form className="sable-ia" onSubmit={soumettre}>
         <input
           ref={inputRef}
@@ -109,8 +109,9 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
         </button>
       </form>
       {/* La tour tend des DÉPARTS tappables (data-aware) + réassurance. Visibles
-          même sous une note : le dead-end devient une redirection. */}
-      {!fait && perches.length > 0 && (
+          même sous une note : le dead-end devient une redirection. En mode COMPACT
+          (barre d'en-tête, sur le bandeau), les départs vivent SOUS le bandeau — pas ici. */}
+      {!compact && !fait && perches.length > 0 && (
         <div className="cop-perches">
           <span className="cop-perches-l">Pour commencer :</span>
           {perches.map((p) => (

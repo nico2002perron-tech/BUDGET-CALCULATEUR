@@ -242,10 +242,12 @@ function App() {
   // (une tuile ajoutée pendant le fetch n'est jamais écrasée). Cf. sable A2.
   const widgetsRef = useRef(widgets)
   widgetsRef.current = widgets
+  // Les départs tappables (data-aware) — calculés UNE fois par rendu (fonction PURE) ;
+  // réutilisés par la barre-copilote compacte ET le strip d'onboarding.
+  const perchesTour = perchesBoard(widgets, snapshot)
   // Une salve du copilote a une chip « Annuler » en cours → garder le tableau
   // (et donc la barre + la chip) monté même si la salve a VIDÉ le board, sinon
   // l'Annuler se démonterait avec lui.
-  const [copiloteChip, setCopiloteChip] = useState(false)
 
   // ── MODE « RÉORGANISER » : glisser pour réordonner (pointer events maison,
   // zéro dépendance). La tuile tirée suit le doigt (style direct, pas de
@@ -982,12 +984,31 @@ function App() {
           <div className="bandeau" aria-hidden="true" />
           <div className="tour-corps">
           <div className="tour">
-            <div className="tour-hero">
-              <h1 className="tour-bonjour">
-                {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
-              </h1>
-              <p className="tour-accroche">Ta tour, tes outils — choisis une carte, tes vrais chiffres sont déjà dedans.</p>
+            {/* L'EN-TÊTE — UNE barre SUR le bandeau : salutation à gauche, barre-copilote
+                à droite (margin-left:auto). Tout ce qui repose sur la couleur cyan est en
+                BLANC EN DUR (le bandeau est cyan dans LES DEUX peaux). */}
+            <div className="tour-entete">
+              <div className="tour-hero">
+                <h1 className="tour-bonjour">
+                  {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
+                </h1>
+                <p className="tour-accroche">Tes vrais chiffres sont déjà dedans — demande, ou choisis une carte.</p>
+              </div>
+              <BoardCopilote compact onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesTour} appris={appris} />
             </div>
+            {/* LES DÉPARTS (onboarding) : SOUS le bandeau, seulement quand la tour est vide.
+                Ils disparaissent dès qu'un indicateur existe (choix explicite : le board
+                straddle le bandeau juste dessous, aucune place pour eux au-dessus). */}
+            {widgets.length === 0 && perchesTour.length > 0 && (
+              <div className="tour-departs">
+                <span className="tour-departs-l">Pour commencer</span>
+                <div className="tour-departs-liste">
+                  {perchesTour.map((p) => (
+                    <button key={p.label} type="button" className="cop-perche" onClick={() => appliquerBoard(p.actions)}>{p.label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* La célébration d'épinglage : ta tuile vient d'être mise à jour (un fait, 6 s). */}
             {epingleFete && !mission && (
@@ -1020,42 +1041,8 @@ function App() {
             {/* LE TABLEAU : les indicateurs déjà créés (persistants). En-tête façon
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
                 en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
-            {(widgets.length > 0 || copiloteChip) && (
+            {widgets.length > 0 && (
               <div className="tour-tableau">
-                {widgets.length > 0 && (
-                <div className="tour-board-tete">
-                  <span className="tb-voyant" aria-hidden="true" />
-                  <span className="tb-label">Tes indicateurs</span>
-                  <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
-                  <button
-                    type="button"
-                    className={`tb-reorg${reorganise ? ' est-actif' : ''}`}
-                    aria-pressed={reorganise}
-                    onClick={() => { sons.tap(); setReorganise((v) => !v) }}
-                  >
-                    {reorganise ? 'Terminé' : 'Réorganiser'}
-                  </button>
-                  {/* Les sons discrets : activés par défaut, coupables d'un tap. */}
-                  <button
-                    type="button"
-                    className="tb-sons"
-                    aria-pressed={store.sons !== false}
-                    aria-label="Sons"
-                    title={store.sons !== false ? 'Sons : activés' : 'Sons : coupés'}
-                    onClick={() => setStore((s) => ({ ...s, sons: s.sons === false }))}
-                  >
-                    {store.sons !== false ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M16 9l5 6M21 9l-5 6" /></svg>
-                    )}
-                  </button>
-                </div>
-                )}
-                {/* LA BARRE-COPILOTE : parle à ton tableau (créer, répondre, retirer…).
-                    perches = départs tappables (data-aware) ; onChip garde le tableau
-                    monté tant qu'une salve est annulable. */}
-                <BoardCopilote onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesBoard(widgets, snapshot)} appris={appris} onChip={setCopiloteChip} />
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
@@ -1276,6 +1263,38 @@ function App() {
                   )
                 })}
                 </div>
+                {/* LA BARRE D'OUTILS DU TABLEAU — SOUS le board (hors de la couture du
+                    bandeau) : le voyant « en service », Réorganiser et les sons. */}
+                {widgets.length > 0 && (
+                <div className="tour-board-tete">
+                  <span className="tb-voyant" aria-hidden="true" />
+                  <span className="tb-label">Tes indicateurs</span>
+                  <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
+                  <button
+                    type="button"
+                    className={`tb-reorg${reorganise ? ' est-actif' : ''}`}
+                    aria-pressed={reorganise}
+                    onClick={() => { sons.tap(); setReorganise((v) => !v) }}
+                  >
+                    {reorganise ? 'Terminé' : 'Réorganiser'}
+                  </button>
+                  {/* Les sons discrets : activés par défaut, coupables d'un tap. */}
+                  <button
+                    type="button"
+                    className="tb-sons"
+                    aria-pressed={store.sons !== false}
+                    aria-label="Sons"
+                    title={store.sons !== false ? 'Sons : activés' : 'Sons : coupés'}
+                    onClick={() => setStore((s) => ({ ...s, sons: s.sons === false }))}
+                  >
+                    {store.sons !== false ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" /><path d="M16 9l5 6M21 9l-5 6" /></svg>
+                    )}
+                  </button>
+                </div>
+                )}
               </div>
             )}
 
