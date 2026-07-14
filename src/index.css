@@ -368,17 +368,8 @@ svg { display: block; }
    (sinon le halo lavande voile le coin droit de la seule zone foncée). Le rythme vertical
    vient du gap de .tour — pas de marge qui s'y cumulerait. */
 .verdict { position: relative; z-index: 1; }
-/* La CONSOLE vit : un balayage lumineux lent traverse la bande (subtil, jamais criard).
-   Le ::before est libre (le halo occupe ::after) ; overflow:hidden de .band le contient. */
-.verdict.band::before {
-  content: '';
-  position: absolute; top: -40%; bottom: -40%; left: -30%; width: 26%;
-  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.09), transparent);
-  transform: skewX(-18deg);
-  animation: bandSheen 7.5s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes bandSheen { 0%, 52% { left: -30%; } 88%, 100% { left: 126%; } }
+/* (LOT couvre-feu) le balayage lumineux qui traversait la bande a été retiré :
+   une phrase factuelle ne doit pas scintiller. */
 .verdict-tag {
   display: inline-flex; align-items: center; gap: 7px;
   font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
@@ -386,12 +377,7 @@ svg { display: block; }
 }
 .verdict-tag::before {
   content: ''; width: 7px; height: 7px; border-radius: 999px;
-  background: #7fe9ff; box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.22);
-  animation: voyantVerdict 2.6s ease-in-out infinite; /* le voyant EN DIRECT du poste */
-}
-@keyframes voyantVerdict {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.22); }
-  50% { box-shadow: 0 0 0 7px rgba(127, 233, 255, 0.09); }
+  background: #7fe9ff; box-shadow: 0 0 0 4px rgba(127, 233, 255, 0.22); /* voyant FIXE */
 }
 /* ambre RÉSERVÉ à l'exception (déficit) — même ton que .band-erreur (VISION §12) */
 .band-verdict b.neg { color: #ffd9b0; }
@@ -403,21 +389,7 @@ svg { display: block; }
 .vr-titre { font-size: 11.5px; font-weight: 700; color: #bfe4f3; }
 .vr-detail { font-size: 11.5px; font-weight: 700; color: rgba(255, 255, 255, 0.85); text-align: right; }
 .vr-piste { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); }
-/* Le balayage radar : une lueur traverse la piste par intervalles (poste de commande).
-   Course bornée à la piste (pas d'overflow:hidden — il rognerait curseur et points). */
-.vr-piste::after {
-  content: '';
-  position: absolute; top: 0; bottom: 0; left: 0; width: 42px; border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  opacity: 0;
-  animation: vrScan 5.4s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes vrScan {
-  0%, 42% { left: 0; opacity: 0; }
-  56% { opacity: 0.9; }
-  84%, 100% { left: calc(100% - 42px); opacity: 0; }
-}
+/* (LOT couvre-feu) le balayage radar de la piste a été retiré. */
 .vr-ecoule {
   position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px;
   background: rgba(255, 255, 255, 0.5); /* plus opaque que la piste : lire l'axe « argent sorti » jusque sur le bout cyan */
@@ -700,8 +672,9 @@ svg { display: block; }
 /* La scène-tour est plein-bleed (bandeau bord-à-bord) ; le CONTENU reprend ici sa
    gouttière latérale de 38px (le padding annulé au niveau de main). */
 .tour { position: relative; display: flex; flex-direction: column; gap: 22px; padding: 0 38px; }
-/* Brume immersive : deux halos cyan + lavande très diffus qui dérivent lentement —
-   le socle lumineux sur lequel le verre dépoli vient briller. */
+/* Brume immersive : deux halos cyan + lavande très diffus — le socle lumineux sur
+   lequel le verre dépoli brille. STATIQUES (LOT couvre-feu) : sur la tour, une seule
+   lumière VIT (l'aurore du bandeau) ; le reste se pose. */
 .tour::before, .tour::after {
   content: '';
   position: absolute;
@@ -709,22 +682,17 @@ svg { display: block; }
   pointer-events: none;
   border-radius: 50%;
   filter: blur(66px);
-  will-change: transform;
 }
 .tour::before {
   top: -130px; left: -50px;
   width: 560px; height: 440px;
-  background: radial-gradient(ellipse at center, rgba(0, 180, 216, 0.20), transparent 70%);
-  animation: brumeA 24s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at center, rgba(0, 180, 216, 0.18), transparent 70%);
 }
 .tour::after {
   top: -70px; right: -60px;
   width: 520px; height: 430px;
-  background: radial-gradient(ellipse at center, rgba(123, 155, 232, 0.17), transparent 72%);
-  animation: brumeB 30s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at center, rgba(123, 155, 232, 0.15), transparent 72%);
 }
-@keyframes brumeA { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(48px, 36px, 0); } }
-@keyframes brumeB { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-42px, 30px, 0); } }
 
 /* DÉFAUT 3 — L'EN-TÊTE EST UNE BARRE, pas un bloc centré. Salutation à gauche,
    barre-copilote poussée à droite (margin-left:auto), sur UNE ligne, SUR le bandeau.
@@ -1001,12 +969,7 @@ svg { display: block; }
 .tour-board-tete::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(3, 4, 94, 0.16), transparent); }
 .tb-voyant {
   width: 9px; height: 9px; border-radius: 999px; flex: none;
-  background: var(--cyan); box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.16);
-  animation: voyantTour 2.4s ease-in-out infinite;
-}
-@keyframes voyantTour {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.16); }
-  50% { box-shadow: 0 0 0 8px rgba(0, 180, 216, 0.07); }
+  background: var(--cyan); box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.16); /* voyant FIXE (LOT couvre-feu) */
 }
 .tb-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-fort); }
 .tb-etat { font-size: 12px; font-weight: 700; color: var(--muted); }
@@ -1667,10 +1630,10 @@ svg { display: block; }
 .donnees-wrap { position: relative; width: 100%; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 /* Même brume immersive que la tour, pour que le verre des cartes ait de quoi briller. */
 .donnees-wrap::before, .donnees-wrap::after {
-  content: ''; position: absolute; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(66px); will-change: transform;
+  content: ''; position: absolute; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(66px);
 }
-.donnees-wrap::before { top: -120px; left: -70px; width: 520px; height: 420px; background: radial-gradient(ellipse at center, rgba(0, 180, 216, 0.16), transparent 70%); animation: brumeA 26s ease-in-out infinite alternate; }
-.donnees-wrap::after { top: 60px; right: -80px; width: 480px; height: 430px; background: radial-gradient(ellipse at center, rgba(123, 155, 232, 0.14), transparent 72%); animation: brumeB 32s ease-in-out infinite alternate; }
+.donnees-wrap::before { top: -120px; left: -70px; width: 520px; height: 420px; background: radial-gradient(ellipse at center, rgba(0, 180, 216, 0.16), transparent 70%); }
+.donnees-wrap::after { top: 60px; right: -80px; width: 480px; height: 430px; background: radial-gradient(ellipse at center, rgba(123, 155, 232, 0.14), transparent 72%); }
 .donnees-wrap > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .donnees-wrap::before, .donnees-wrap::after { animation: none; } }
 .donnees-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
@@ -2661,9 +2624,29 @@ svg { display: block; }
 }
 .tour-tap-hint svg { width: 13px; height: 13px; }
 .tour-rendu.est-tappable:hover .tour-tap-hint { opacity: 1; transform: none; }
-/* Sur tactile (pas de survol) : l'indice reste visible, discret. */
-@media (hover: none) { .tour-tap-hint { opacity: 0.85; transform: none; } }
+/* (LOT couvre-feu) sur tactile — pas de survol — l'indice ne s'affiche QUE sur la
+   1re tuile ET tant que le sable n'a pas été ouvert une fois (classe --apprend, posée
+   par App). Un indice qui a fait son travail se tait ; fini les 8 pastilles identiques. */
+@media (hover: none) { .tour-tap-hint--apprend { opacity: 0.85; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tour-widget-retouche:active { transform: none; } }
+
+/* (LOT couvre-feu) LE CHROME AU SURVOL : Retoucher + × ne s'affichent qu'au survol/focus
+   de la tuile — au repos le board respire, la donnée parle seule. Hors mode Réorganiser
+   (là, la poignée/taille gouvernent). Sur tactile : visibles (pas de survol possible).
+   Jamais display:none → focus clavier préservé. Le médaillon ✓ de statut reste, lui. */
+.tour-board:not(.est-reorg) .tour-widget-retouche,
+.tour-board:not(.est-reorg) .tour-widget-x {
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.tour-board:not(.est-reorg) .tour-widget:hover .tour-widget-retouche,
+.tour-board:not(.est-reorg) .tour-widget:hover .tour-widget-x,
+.tour-board:not(.est-reorg) .tour-widget:focus-within .tour-widget-retouche,
+.tour-board:not(.est-reorg) .tour-widget:focus-within .tour-widget-x { opacity: 1; }
+@media (hover: none) {
+  .tour-board:not(.est-reorg) .tour-widget-retouche,
+  .tour-board:not(.est-reorg) .tour-widget-x { opacity: 1; }
+}
 
 /* ============================================================================
    CRÉER SON KPI — la cible, l'icône et le nom rejoignent la forme et la couleur.

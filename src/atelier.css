@@ -471,7 +471,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   color: var(--muted); opacity: calc(0.6 - var(--p) * 0.6); pointer-events: none;
   transition: opacity 0.3s;
 }
-.scene-indice svg { width: 18px; height: 18px; animation: indiceFlotte 2.4s ease-in-out infinite; }
+.scene-indice svg { width: 18px; height: 18px; animation: indiceFlotte 2.4s ease-in-out 3; } /* 3 flottements puis immobile (LOT couvre-feu) */
 @keyframes indiceFlotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 
 @media (max-width: 1050px) {

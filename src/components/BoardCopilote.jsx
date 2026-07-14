@@ -20,16 +20,19 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
   const [charge, setCharge] = useState(false)
   const [note, setNote] = useState(null)
   const [fait, setFait] = useState(null) // { resume, refus, annuler }
-  const [phIdx, setPhIdx] = useState(0) // l'exemple qui TOURNE dans le placeholder
+  const [phIdx, setPhIdx] = useState(0) // l'exemple montré dans le placeholder
+  const [actif, setActif] = useState(false) // input focalisé ?
   const inputRef = useRef(null)
   const timerRef = useRef(0)
 
   useEffect(() => () => clearTimeout(timerRef.current), [])
+  // (LOT couvre-feu) l'exemple ne DÉFILE que quand l'input a le focus : au repos, un
+  // seul exemple figé — la barre ne clignote plus dans le coin de l'œil.
   useEffect(() => {
-    if (reduitMouvement()) return
+    if (!actif || reduitMouvement()) return
     const id = setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS_BOARD.length), 4000)
     return () => clearInterval(id)
-  }, [])
+  }, [actif])
   // Signaler à la tour qu'une chip est en cours (elle garde le tableau monté →
   // l'Annuler survit même si la salve a vidé le board). false au démontage.
   useEffect(() => { if (onChip) onChip(!!(fait && fait.annuler)) }, [fait, onChip])
@@ -102,6 +105,8 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
           placeholder={`demande à ta tour — ${PLACEHOLDERS_BOARD[phIdx]} · touche /`}
           value={texte}
           onChange={(e) => setTexte(e.target.value)}
+          onFocus={() => setActif(true)}
+          onBlur={() => setActif(false)}
           aria-label="Demander une action à ta tour"
         />
         <button type="submit" className="sable-ia-go" disabled={charge || !texte.trim()}>

@@ -1067,7 +1067,11 @@ function App() {
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}${cascade ? ' est-arrivee' : ''}${widgets.length <= 2 ? ' est-naissant' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
-                {widgets.map((w, idx) => {
+                {(() => {
+                  // La 1re tuile SABLE-ABLE (KPI héros connu) porte l'indice d'apprentissage
+                  // tactile — pas forcément l'index 0 (une carte_entite/objectif n'a pas de sable).
+                  const premierSableIdx = widgets.findIndex((w) => { const k = heroKPI(w.recette); return !!(k && kpiPourId(k.KPI)) })
+                  return widgets.map((w, idx) => {
                   const anime = w.id === nouveauWidget
                   const kb = heroKPI(w.recette)
                   const rAff = recetteAffichee(w) // la forme suit la taille de la tuile
@@ -1255,13 +1259,15 @@ function App() {
                                 const el = tuilesRef.current.get(w.id)
                                 const r = el ? el.getBoundingClientRect() : null
                                 setSable({ id: w.id, rect: r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null })
+                                // Le sable a été découvert une fois → l'indice tactile se tait pour toujours.
+                                if (!store.sableVu) setStore((s) => (s.sableVu ? s : { ...s, sableVu: true }))
                               }
                             : undefined
                         }
                       >
                         <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} />
                         {kpiSable && (
-                          <span className="tour-tap-hint" aria-hidden="true">
+                          <span className={`tour-tap-hint${idx === premierSableIdx && !store.sableVu ? ' tour-tap-hint--apprend' : ''}`} aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>
                             tape&nbsp;: carré de sable
                           </span>
@@ -1282,7 +1288,8 @@ function App() {
                       )}
                     </section>
                   )
-                })}
+                })
+                })()}
                 {/* LA TUILE « À BÂTIR » : la prochaine pièce de la tour, en pointillés.
                     Tape → la barre IA de l'atelier se focalise (le focus fait défiler la
                     scène jusqu'à elle). Retirée en Réorganiser (elle n'est pas déplaçable). */}
