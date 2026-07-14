@@ -59,7 +59,7 @@ function prefersReduce() {
 // `projecteur` : true dans le CARRÉ DE SABLE seulement — le tap-qui-fige et les
 // cibles clavier du survol vivant y vivent ; sur une TUILE du board, le tap
 // reste UN seul geste (ouvrir le sable), jamais une double action.
-export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false, apercu = false }) {
+export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false, apercu = false, delta = null }) {
   const r = validerRecette(recette)
   // Un emplacement à CANDIDATS → on rend le bloc `choisi` (repli sûr si invalide ; un
   // `choisi` inconnu ne peut jamais atteindre le rendu). Puis : seuls les types CONNUS,
@@ -106,6 +106,11 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
   // La grille (1 ou 2 colonnes) se décide sur la recette ENTIÈRE → pas de saut de mise
   // en page pendant que la colonne de droite se remplit.
   const aSide = blocs.some((b) => { const c = BLOCS[b.type]; return c && c.taille === 'compacte' })
+  // LE DELTA (LOT 3) ne concerne QUE le KPI héros — le 1er bloc porteur d'un KPI. On ne
+  // le passe jamais à un second bloc-KPI : il porterait l'écart du héros, mal étiqueté
+  // « depuis ta dernière visite » (revue nuage — latent aujourd'hui, mais un import forgé
+  // ou une future recette à deux KPI l'exposerait). Un seul chiffre héros, un seul delta.
+  const heroIdx = blocs.findIndex((b) => b && b.kpi)
   const mains = []
   const sides = []
   blocs.forEach((bloc, i) => {
@@ -193,7 +198,7 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
     const Composant = composantPour(bloc.type)
     const el = (
       <div className={sequence ? 'bloc-reveal' : undefined} key={i}>
-        <Composant params={paramsBloc} data={data} kpi={kpi} projecteur={projecteur} />
+        <Composant params={paramsBloc} data={data} kpi={kpi} projecteur={projecteur} delta={i === heroIdx ? delta : null} />
       </div>
     )
     if (cfg && cfg.taille === 'compacte') sides.push(el)

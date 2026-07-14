@@ -20,7 +20,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission, MISSIONS } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, candidatsKPI, resoudreForme } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, deltaKPI, candidatsKPI, resoudreForme } from './recettes/bibliotheque-kpis.js'
 import { composerVueObjectif } from './recettes/vue-objectif.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
@@ -1099,6 +1099,14 @@ function App() {
                   // LE VIVANT : ce KPI a-t-il bougé depuis ta dernière visite ? (pulse d'accueil,
                   // pas sur une tuile qu'on vient de créer). 1re visite → aucun repère → rien.
                   const aBouge = !anime && kb ? kpiABouge(kb.KPI, baselineRef.current, snapshot, kb.params || {}) : false
+                  // LA TENDANCE (LOT 3) : l'écart chiffré depuis la dernière visite, affiché en
+                  // permanence sous le chiffre (le pulse a-bouge est le signal d'arrivée, le delta
+                  // la trace). null pour un KPI non scalaire / donnée absente / 1re visite.
+                  // ET null si une DÉRIVÉE est active (« en % de ton revenu ») : le chiffre affiché
+                  // change alors d'unité (%), mais deltaKPI mesure la valeur BRUTE ($) — afficher
+                  // « +275 $ » sous un « 46 % » serait un fait incohérent (revue nuage, majeur).
+                  const derActive = !!(kbAff && kbAff.params && kbAff.params.derivation && kbAff.params.derivation !== 'brut')
+                  const deltaW = !anime && kbAff && !derActive ? deltaKPI(kbAff.KPI, baselineRef.current, snapshot, kbAff.params || {}) : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
@@ -1277,7 +1285,7 @@ function App() {
                             : undefined
                         }
                       >
-                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} />
+                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} delta={deltaW} />
                         {kpiSable && (
                           <span className={`tour-tap-hint${idx === premierSableIdx && !store.sableVu ? ' tour-tap-hint--apprend' : ''}`} aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>

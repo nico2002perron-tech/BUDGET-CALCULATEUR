@@ -173,7 +173,9 @@
     rgba(255, 255, 255, 0.5),
     transparent 40%,
     transparent 60%,
-    color-mix(in srgb, var(--menthe) 45%, transparent)
+    /* LOT 3 — l'arête réfractée suit l'accent de LA tuile (--wacc), pas une menthe
+       figée qui jurait avec sa couleur. Repli menthe hors tuile (.verre général). */
+    color-mix(in srgb, var(--wacc, var(--menthe)) 35%, transparent)
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);

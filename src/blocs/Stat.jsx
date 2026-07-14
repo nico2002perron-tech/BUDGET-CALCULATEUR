@@ -26,7 +26,7 @@ function reduceMotion() {
   )
 }
 
-export default function Stat({ params = {}, data = {}, kpi = null }) {
+export default function Stat({ params = {}, data = {}, kpi = null, delta = null }) {
   // Mode KPI : on AFFICHE la valeur résolue par la bibliothèque (jamais recalculée ici).
   const enKpi = !!kpi
   const dispoKpi = enKpi && typeof kpi.valeur === 'number' && isFinite(kpi.valeur)
@@ -64,6 +64,19 @@ export default function Stat({ params = {}, data = {}, kpi = null }) {
         <div>
           <div className="stat-v">{enKpi ? (dispoKpi ? formatKPI(n, kpi.unite) : '—') : formatCAD(n)}</div>
           <div className="stat-l">{enKpi ? kpi.texteFactuel || (dispoKpi ? '' : 'Pas encore de donnée pour ça.') : data.label || ''}</div>
+          {/* LA TENDANCE FACTUELLE (LOT 3) : l'écart depuis la dernière visite — un FAIT,
+              jamais un jugement. On NE pose PAS de classe par sens (--hausse/--baisse) :
+              ce serait un crochet muet invitant un futur dev à recolorer par valence et
+              à briser la neutralité AMF. La DIRECTION vit dans la flèche (choisie ici en
+              JSX), la couleur reste NEUTRE dans les deux sens. Jamais d'ambre. */}
+          {delta && enKpi && dispoKpi && (
+            <div className="stat-delta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {delta.sens === 'hausse' ? <path d="M7 17L17 7M9 7h8v8" /> : <path d="M7 7l10 10M17 9v8H9" />}
+              </svg>
+              <span>{(delta.delta > 0 ? '+' : '−') + formatKPI(Math.abs(delta.delta), delta.unite)} depuis ta dernière visite</span>
+            </div>
+          )}
         </div>
       </div>
     </section>

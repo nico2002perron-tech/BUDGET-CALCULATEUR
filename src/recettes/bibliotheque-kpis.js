@@ -456,6 +456,24 @@ export function kpiABouge(kpiId, snapAvant, snapApres, ctx = {}) {
   return a.valeur !== b.valeur
 }
 
+/** L'ÉCART FACTUEL d'un KPI entre deux snapshots (la baseline = dernière visite → l'état
+ *  actuel). Retourne { delta, unite, sens } ou null. PUR, mêmes gardes que kpiABouge :
+ *  seulement des valeurs NUMÉRIQUES finies des DEUX côtés (jamais un objet, jamais une
+ *  chaîne, jamais une donnée absente). Un delta est un FAIT, jamais un jugement — le
+ *  signe ne dit rien de « bien/mal » (à charge de la vue de ne PAS colorer en ambre). */
+export function deltaKPI(kpiId, snapAvant, snapApres, ctx = {}) {
+  if (!snapAvant || !snapApres || !kpiPourId(kpiId)) return null
+  const a = resolveKPI(kpiId, snapAvant, ctx)
+  const b = resolveKPI(kpiId, snapApres, ctx)
+  if (!a || !b || !a.disponible || !b.disponible) return null
+  const na = a.valeur
+  const nb = b.valeur
+  if (typeof na !== 'number' || !Number.isFinite(na) || typeof nb !== 'number' || !Number.isFinite(nb)) return null
+  const delta = nb - na
+  if (delta === 0) return null
+  return { delta, unite: b.unite || null, sens: delta > 0 ? 'hausse' : 'baisse' }
+}
+
 // ≤ max points, premiers/derniers inclus (les projections longues restent
 // lisibles). `ancres` = indices à inclure COÛTE QUE COÛTE (l'année de retraite,
 // l'année de rupture) : le fait daté du héros a toujours son point sur la courbe.

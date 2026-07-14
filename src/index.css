@@ -2443,7 +2443,13 @@ svg { display: block; }
 /* En-tête COMPACT d'une tuile de grille : UNE ligne (l'en-tête haut de 2 lignes
    volait la moitié d'une tuile S), titre en ellipse, Retoucher icône-seule. */
 .tour-board .tour-widget-tete { gap: 8px; margin-bottom: 0; flex-wrap: nowrap; min-width: 0; }
-.tour-board .tour-widget-ic { width: 30px; height: 30px; border-radius: 10px; }
+/* LOT 3 — icône CALME (une seule source de lumière par tuile) : fond plat teinté,
+   glyphe --wacc, plus de dégradé ni d'ombre colorée. Le chiffre porte la lumière. */
+.tour-board .tour-widget-ic {
+  width: 30px; height: 30px; border-radius: 10px;
+  background: color-mix(in srgb, var(--wacc) 15%, var(--surface-2));
+  color: var(--wacc); box-shadow: none;
+}
 .tour-board .tour-widget-ic svg { width: 17px; height: 17px; }
 .tour-board .tour-widget-retouche { font-size: 0; gap: 0; padding: 7px; }
 .tour-board .tour-widget-retouche svg { width: 15px; height: 15px; }
@@ -2467,21 +2473,51 @@ svg { display: block; }
 /* Sur la tuile : le CHIFFRE HÉROS domine (calibre .chiffre : la taille fait le
    travail, poids 600, tabular) ; le contexte chuchote. Scopé aux TUILES — Stat
    sert AUSSI dans « EN DIRECT » (.pv) où le calibre doit rester petit. */
-/* Le chiffre-héros de la tuile. Sa taille suit la LARGEUR de la carte (le nombre
-   d'octets à côté de la puce, pas la hauteur) : sur une tuile 1 colonne, la puce
-   de 46px + l'écart mange ~60px, il ne reste ~150px — un 46px y casserait
-   « 2 755 $ » sur deux lignes. On garde donc 30px sur 1 colonne, et on déploie
-   le grand chiffre seulement quand la tuile s'élargit à 2 colonnes (taille-l/xl). */
+/* LOT 3 — LE CHIFFRE HÉROS domine. La puce du bloc Stat rétrécit (34px, sans ombre
+   colorée) pour ne plus voler la vedette, et le chiffre grossit.
+   TAILLE PAR LARGEUR DE TUILE (la grille : span 1 = 1 colonne ~280px ; span 2 =
+   taille-l/xl = 2 colonnes). Sur 1 colonne on plafonne à 32px : un grand montant
+   (« 1 234 567 $ » d'une valeur nette) doit tenir sur UNE ligne même à la largeur
+   minimale — 38px le cassait en deux (revue nuage, confirmé). La grandeur héroïque
+   (jusqu'à 46px) est réservée aux tuiles 2 colonnes, qui ont la largeur pour elle.
+   (Pas de container-query : `container-type:inline-size` écrasait à 0 la hauteur des
+   blocs qui remplissent la carte — jauge, courbes.) */
+.tour-board .stat-ic { width: 34px; height: 34px; box-shadow: none; }
+.tour-board .stat-ic svg { width: 17px; height: 17px; }
 .tour-board .tour-widget .stat-v {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
 .tour-board .tour-widget.taille-l .stat-v,
-.tour-board .tour-widget.taille-xl .stat-v { font-size: clamp(34px, 3vw, 46px); }
+.tour-board .tour-widget.taille-xl .stat-v { font-size: clamp(38px, 3vw, 46px); }
 .tour-board .tour-widget .stat-l { opacity: 0.82; }
+/* LA TENDANCE (LOT 3) : l'écart depuis la dernière visite. Un delta est un FAIT,
+   jamais un verdict — la FLÈCHE porte la direction (posée en JSX), la couleur reste
+   NEUTRE dans les deux sens. Colorer la hausse en accent impliquerait « monter =
+   bien », or ça dépend du KPI (coût qui monte = mauvais, épargne qui monte = bon).
+   Neutre + discret : le delta chuchote sous le chiffre héros. Jamais d'ambre. */
+.stat-delta { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--ink) 72%, transparent); }
+.stat-delta svg { width: 13px; height: 13px; flex: none; }
+
+/* LOT 3 — EN-TÊTE UNIQUE : en tuile, seul le TITRE interne d'un bloc (« Où tu en es »)
+   disparaît — il double l'en-tête de tuile. On GARDE le sous-titre (.card-sub =
+   texteFactuel) : sur une tuile-graphique (Courbe, Bandes, Beignet…) c'est le SEUL
+   énoncé factuel de la donnée, écrit nulle part ailleurs (revue nuage — le masquer
+   privait la tuile de sa lecture). Le BoutonRejouer vit DANS le .card-title → il
+   passe donc au carré de sable seulement sur le board (intentionnel : on rejoue là
+   où on analyse). La légende ne se cache qu'en taille-s (où la forme est de toute
+   façon dégradée en stat) : à taille-m un vrai graphique de comparaison garde sa clé
+   de couleurs, sinon il devient illisible (revue nuage, confirmé). */
+.tour-board .tour-rendu .card-title,
+.tour-board .taille-s .legend { display: none; }
+/* LOT 3 — un seul reflet, discret : le spéculaire du verre baissé sur le board (le
+   bandeau et le chiffre portent la lumière, la tuile la reçoit). */
+.tour-board .tour-widget .card:not(.p3d)::before {
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.12), transparent 55%);
+}
 
 /* LES PEAUX : le fini de la carte, teinté de TA couleur (--wacc). Style seulement.
    On exclut .p3d (le canvas 3D sombre garde son propre monde, partout identique). */
