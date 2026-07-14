@@ -199,7 +199,7 @@ svg { display: block; }
 
 /* En-têtes de section */
 .section-tete { padding: 4px 2px 0; }
-.section-titre { font-size: 22px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; }
+.section-titre { font-size: 22px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; }
 .section-sous { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 4px; max-width: 560px; line-height: 1.5; }
 .placeholder-card { text-align: center; color: var(--muted); font-weight: 600; padding: 44px 24px; }
 
@@ -428,7 +428,7 @@ svg { display: block; }
    ========================================================================== */
 .galerie { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; }
 .gal-tete { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding-top: 4px; }
-.gal-titre { font-size: 25px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; margin: 0; }
+.gal-titre { font-size: 25px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; margin: 0; }
 
 /* La barre « décris-le » : ronde et lumineuse. */
 .gal-chat {
@@ -494,7 +494,7 @@ svg { display: block; }
 .gal-famille.is-eteinte { border-style: dashed; border-bottom-width: 2px; background: var(--surface-2); opacity: 0.85; }
 .gal-famille.is-eteinte .gal-ic { background: color-mix(in srgb, var(--acc) 22%, var(--surface-2)); color: var(--acc); box-shadow: none; }
 .gal-famille-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.gal-famille-l { font-size: 16.5px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.01em; }
+.gal-famille-l { font-size: 16.5px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.01em; }
 .gal-famille-s { font-size: 12px; font-weight: 700; color: var(--acc); }
 .gal-famille.is-eteinte .gal-famille-s { color: var(--muted); }
 .gal-chev { flex: none; width: 18px; height: 18px; color: color-mix(in srgb, var(--acc) 65%, var(--muted)); }
@@ -519,7 +519,7 @@ svg { display: block; }
 .gal-carte-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .gal-q { margin: 0; font-size: 16px; font-weight: 800; color: var(--ink-fort); line-height: 1.25; }
 .gal-fait { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.4; }
-.gal-valeur { flex: none; font-size: 22px; font-weight: 900; letter-spacing: -0.02em; color: var(--acc); font-variant-numeric: tabular-nums; }
+.gal-valeur { flex: none; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--acc); font-variant-numeric: tabular-nums; }
 .gal-cat { align-self: flex-start; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--surface-2)); padding: 3px 9px; border-radius: 999px; }
 .gal-deja { position: absolute; top: -9px; right: 14px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #fff; background: #0f8a5f; padding: 3px 9px; border-radius: 999px; box-shadow: 0 4px 10px -4px rgba(15, 138, 95, 0.6); }
 
@@ -569,7 +569,7 @@ svg { display: block; }
 
 /* L'en-tête d'une famille (étape 1) : ← retour + pastille + titre. */
 .gal-etape-tete { display: flex; align-items: center; gap: 12px; max-width: 600px; width: 100%; margin: 0 auto; }
-.gal-etape-titre { margin: 0; font-size: 20px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.01em; }
+.gal-etape-titre { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.01em; }
 .gal-retour {
   width: 42px; height: 42px; flex: none; border-radius: 14px; cursor: pointer;
   border: 2px solid var(--line); border-bottom-width: 4px; background: var(--surface-2); color: var(--ink-fort);
@@ -595,12 +595,12 @@ svg { display: block; }
   border: 2px dashed color-mix(in srgb, var(--acc) 40%, var(--surface-2));
   border-radius: 24px; padding: 30px 22px;
 }
-.gal-eteinte-titre { margin: 4px 0 0; font-size: 17px; font-weight: 900; color: var(--ink-fort); }
+.gal-eteinte-titre { margin: 4px 0 0; font-size: 17px; font-weight: 800; color: var(--ink-fort); }
 .gal-eteinte-sous { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 
 /* Le gros bouton d'action : joufflu, 3D, il s'enfonce. */
 .gal-ajouter {
-  font-family: inherit; font-size: 15px; font-weight: 900; letter-spacing: 0.01em; color: #fff;
+  font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.01em; color: #fff;
   background: linear-gradient(135deg, var(--acc, var(--cyan)), color-mix(in srgb, var(--acc, var(--cyan)) 60%, var(--navy)));
   border: none; border-bottom: 5px solid color-mix(in srgb, var(--acc, var(--cyan)) 55%, #000);
   border-radius: 18px; padding: 14px 26px; cursor: pointer;
@@ -622,7 +622,7 @@ svg { display: block; }
 }
 @keyframes galEssai { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .gal-essai-tete { display: flex; align-items: center; gap: 10px; }
-.gal-essai-titre { font-size: 15px; font-weight: 900; color: var(--ink-fort); }
+.gal-essai-titre { font-size: 15px; font-weight: 800; color: var(--ink-fort); }
 .gal-essai-x { margin-left: auto; width: 32px; height: 32px; flex: none; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; } /* LOT 5 — plat */
 .gal-essai-corps { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
 .gal-essai-choix { display: flex; flex-direction: column; gap: 9px; }
@@ -737,7 +737,7 @@ svg { display: block; }
    texte BLANC EN DUR, jamais var(--ink-fort)/var(--muted) (qui virent navy en clair).
    Le scrim ci-dessus fait le contraste (WCAG) ; les text-shadows serrées assoient les
    glyphes sur la couleur (confort de lecture, non crédité WCAG mais réel). */
-.tour-bonjour { font-size: 32px; font-weight: 900; color: #fff; letter-spacing: -0.03em; line-height: 1.1; text-shadow: 0 1px 2px rgba(3, 18, 26, 0.6), 0 2px 22px rgba(3, 24, 32, 0.4); }
+.tour-bonjour { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.03em; line-height: 1.1; text-shadow: 0 1px 2px rgba(3, 18, 26, 0.6), 0 2px 22px rgba(3, 24, 32, 0.4); }
 .tour-accroche { font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, 0.95); max-width: 560px; line-height: 1.45; text-shadow: 0 1px 10px rgba(3, 22, 30, 0.5); }
 /* LA LIGNE D'ÉTAT (LOT 2) — le verdict du jour, lu sans défiler. Blanc EN DUR sur le
    bandeau (le scrim de l'en-tête assure le contraste) ; montants en cyan-soft, exception
@@ -961,7 +961,7 @@ svg { display: block; }
 .tw-taille {
   position: absolute; right: 8px; bottom: 8px; z-index: 7;
   min-width: 44px; height: 44px; padding: 0 10px; border-radius: 13px; cursor: pointer;
-  font-family: inherit; font-size: 12px; font-weight: 900; letter-spacing: 0.05em;
+  font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.05em;
   color: var(--accent); background: var(--surface-2);
   border: 1.5px solid rgba(0, 119, 182, 0.32); border-bottom-width: 3px;
   box-shadow: 0 8px 18px -8px rgba(3, 4, 94, 0.3);
@@ -1000,7 +1000,7 @@ svg { display: block; }
 .tour-widget { position: relative; }
 .tour-widget-tete { display: flex; align-items: center; gap: 10px; }
 .tour-widget-tag { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: rgba(0, 119, 182, 0.09); padding: 4px 10px; border-radius: 999px; }
-.tour-widget-titre { font-size: 16.5px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.01em; }
+.tour-widget-titre { font-size: 16.5px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.01em; }
 /* LE BADGE DE RÉUSSITE : un fait — la cible est atteinte. Petit médaillon en
    TON accent (jamais d'ambre, jamais de jugement) ; affiché seulement quand
    atteint (le « pas encore » vit déjà dans le texte factuel de la carte). */
@@ -1028,7 +1028,7 @@ svg { display: block; }
 .tour-creation { display: flex; flex-direction: column; gap: 14px; }
 .tour-creation.card { border-color: color-mix(in srgb, var(--accent) 24%, var(--line)); }
 .tour-creation-tete { display: flex; align-items: center; justify-content: space-between; }
-.tour-creation-t { font-size: 16px; font-weight: 900; color: var(--ink-fort); }
+.tour-creation-t { font-size: 16px; font-weight: 800; color: var(--ink-fort); }
 .tour-creation-x { width: 30px; height: 30px; flex: none; border-radius: 9px; border: none; background: var(--surface-2); color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .tour-creation-step { display: flex; flex-direction: column; gap: 14px; }
 .tour-creation-q { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.5; }
@@ -1290,7 +1290,7 @@ svg { display: block; }
   border-radius: 12px;
   padding: 11px 14px;
 }
-.revenu-calc b { color: var(--ink-fort); font-size: 16px; font-weight: 900; }
+.revenu-calc b { color: var(--ink-fort); font-size: 16px; font-weight: 800; }
 
 @media (max-width: 560px) {
   .freq-cards { grid-template-columns: repeat(2, 1fr); }
@@ -1311,13 +1311,13 @@ svg { display: block; }
 }
 .champ-box-hero:focus-within { border-color: var(--cyan); box-shadow: inset 0 1px 0 var(--rim), 0 0 0 4px rgba(0, 180, 216, 0.16); }
 .champ-box-hero .champ-prefix { font-size: 18px; color: var(--accent); }
-.champ-box-hero .champ-input { flex: 0 1 auto; max-width: 150px; font-size: 26px; font-weight: 900; text-align: center; color: var(--ink-fort); letter-spacing: -0.02em; }
+.champ-box-hero .champ-input { flex: 0 1 auto; max-width: 150px; font-size: 26px; font-weight: 800; text-align: center; color: var(--ink-fort); letter-spacing: -0.02em; }
 .champ-box-hero .champ-suffix { font-size: 13px; }
 
 /* Le résumé EN ÉVIDENCE : le net mensuel est l'info clé (gros, accent). */
 .rev-resume { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 12px 0 2px; padding: 11px 16px; border-radius: 14px; background: linear-gradient(135deg, rgba(0, 180, 216, 0.10), rgba(0, 119, 182, 0.05)); border: 1px solid rgba(0, 180, 216, 0.18); }
 .rev-resume-main { font-size: 15px; font-weight: 700; color: var(--muted); }
-.rev-resume-main b { font-size: 26px; font-weight: 900; color: var(--accent); letter-spacing: -0.01em; }
+.rev-resume-main b { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.01em; }
 .rev-resume-u { font-size: 13px; font-weight: 700; color: var(--muted); }
 .rev-resume-an { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--muted); }
 
@@ -1355,7 +1355,7 @@ svg { display: block; }
 .dep-sec-txt b { font-size: 14.5px; font-weight: 800; color: var(--ink-fort); }
 .dep-sec-sous { font-size: 11px; font-weight: 600; color: var(--muted); }
 .dep-sec-r { display: inline-flex; align-items: center; gap: 10px; flex: none; }
-.dep-sec-tot { font-size: 14.5px; font-weight: 900; color: var(--ink-fort); font-variant-numeric: tabular-nums; }
+.dep-sec-tot { font-size: 14.5px; font-weight: 800; color: var(--ink-fort); font-variant-numeric: tabular-nums; }
 .dep-sec-mo { font-size: 11px; font-weight: 600; color: var(--muted); }
 .dep-sec-chev { width: 18px; height: 18px; color: var(--muted); transition: transform 0.25s ease, color 0.2s; }
 .dep-sec.is-open .dep-sec-chev { transform: rotate(180deg); color: var(--accent); }
@@ -1496,7 +1496,7 @@ svg { display: block; }
 .ech-vide { font-size: 13px; font-weight: 600; color: var(--muted); padding: 10px 0; }
 
 /* ---- Bloc solde ---- */
-.solde-num { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; margin: 8px 0 2px; }
+.solde-num { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 2px; }
 .solde-num.pos { color: #0f8a5f; }
 .solde-num.neg { color: var(--amber); }
 .solde-lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -1520,7 +1520,7 @@ svg { display: block; }
 .bgt-svg { width: 168px; height: 168px; flex: 0 0 auto; }
 /* le centre est une LECTURE (jamais une cible de pointeur : il recouvrirait
    les portions au survol) */
-.bgt-centre-n { font-size: 20px; font-weight: 900; fill: var(--navy); pointer-events: none; }
+.bgt-centre-n { font-size: 20px; font-weight: 800; fill: var(--navy); pointer-events: none; }
 .bgt-centre-l { font-size: 9.5px; font-weight: 700; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; pointer-events: none; }
 .bgt-legende { list-style: none; margin: 0; padding: 0; flex: 1 1 170px; display: flex; flex-direction: column; gap: 8px; min-width: 160px; }
 .bgt-legende li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
@@ -1542,7 +1542,7 @@ svg { display: block; }
 
 /* ---- Bloc fonds d'urgence (jauge à zones) ---- */
 .cou-num { font-size: 26px; font-weight: 800; color: var(--muted); margin: 6px 0 12px; }
-.cou-num b { font-size: 34px; font-weight: 900; color: var(--ink-fort); }
+.cou-num b { font-size: 34px; font-weight: 800; color: var(--ink-fort); }
 .cou-barre { position: relative; display: flex; gap: 3px; height: 30px; margin-bottom: 10px; }
 .cou-zone { position: relative; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
 .cou-zone-l { font-size: 10.5px; font-weight: 800; color: rgba(3, 4, 94, 0.45); }
@@ -1554,7 +1554,7 @@ svg { display: block; }
 /* ---- Anatomie du dollar (réutilise .bgt-* du beignet) ---- */
 .ana-pct { color: var(--muted); font-size: 11.5px; font-weight: 700; min-width: 34px; text-align: right; }
 .ana-net { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; }
-.ana-net b { color: #0f8a5f; font-weight: 900; }
+.ana-net b { color: #0f8a5f; font-weight: 800; }
 
 /* ---- Dollar imposé (réutilise .emp-barre/.emp-seg) ---- */
 .imp-stats { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; font-size: 12.5px; color: var(--muted); }
@@ -1590,14 +1590,14 @@ svg { display: block; }
   box-shadow: var(--sh-md), inset 0 1px 0 var(--rim);
 }
 .hz-total { font-size: 16px; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
-.hz-total b { font-size: 30px; font-weight: 900; color: var(--ink-fort); }
+.hz-total b { font-size: 30px; font-weight: 800; color: var(--ink-fort); }
 .hz-gain { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-bottom: 14px; min-height: 16px; }
 .hz-range { width: 100%; accent-color: var(--cyan); height: 6px; cursor: pointer; }
 .hz-echelle { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 5px; }
 .hz-note { margin-top: 12px; font-size: 11px; font-weight: 500; color: var(--muted); }
 
 /* ---- Bloc composition (valeur nette) ---- */
-.comp-net { font-size: 30px; font-weight: 900; color: var(--ink-fort); margin: 6px 0 2px; }
+.comp-net { font-size: 30px; font-weight: 800; color: var(--ink-fort); margin: 6px 0 2px; }
 .comp-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
 .comp-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .comp-ligne { display: grid; grid-template-columns: 11px auto 1fr auto; align-items: center; gap: 9px; }
@@ -1689,7 +1689,7 @@ svg { display: block; }
 .rail-sous-ic { display: inline-flex; flex: none; }
 .rail-sous-ic svg { width: 15px; height: 15px; }
 .rail-sous-l { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rail-sous-ok { font-size: 11px; font-weight: 900; color: var(--green); flex: none; }
+.rail-sous-ok { font-size: 11px; font-weight: 800; color: var(--green); flex: none; }
 .rail-sous-tot { font-size: 9.5px; font-weight: 800; color: var(--accent); flex: none; }
 .rail-sous-soon { font-size: 8.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--surface); padding: 2px 5px; border-radius: 999px; flex: none; }
 .rail-sous.is-bientot:not(.is-active) { opacity: 0.5; }
@@ -1728,7 +1728,7 @@ svg { display: block; }
 .ss-bientot-ic { width: 52px; height: 52px; border-radius: 15px; flex: none; display: inline-flex; align-items: center; justify-content: center; background: rgba(0, 180, 216, 0.1); color: var(--accent); }
 .ss-bientot-ic svg { width: 26px; height: 26px; }
 .ss-bientot-badge { font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: rgba(0, 119, 182, 0.09); padding: 4px 11px; border-radius: 999px; }
-.ss-bientot-t { font-size: 19px; font-weight: 900; color: var(--ink-fort); }
+.ss-bientot-t { font-size: 19px; font-weight: 800; color: var(--ink-fort); }
 .ss-bientot-p { font-size: 13px; font-weight: 500; color: var(--muted); max-width: 430px; line-height: 1.55; }
 
 /* ---- Panneau KPI « En direct » ---- */
@@ -1753,7 +1753,7 @@ svg { display: block; }
 .pv-reste.is-pos { background: linear-gradient(160deg, rgba(15, 138, 95, 0.07), rgba(0, 180, 216, 0.05)); border-color: rgba(15, 138, 95, 0.28); }
 .pv-reste.is-neg { background: linear-gradient(160deg, rgba(214, 69, 69, 0.08), rgba(214, 69, 69, 0.03)); border-color: rgba(214, 69, 69, 0.32); }
 .pv-reste-l { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-.pv-reste-v { font-size: 30px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; color: var(--ink-fort); font-variant-numeric: tabular-nums; }
+.pv-reste-v { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--ink-fort); font-variant-numeric: tabular-nums; }
 .pv-reste.is-neg .pv-reste-v { color: #c63d3d; }
 .pv-reste-mo { font-size: 13px; font-weight: 700; color: var(--muted); }
 .pv-reste-s { font-size: 11.5px; font-weight: 600; color: var(--muted); }
@@ -1913,7 +1913,7 @@ svg { display: block; }
 .grid-side { display: flex; flex-direction: column; gap: 16px; }
 
 /* ---- Bloc jauge (arc) ---- */
-.gauge-num { font-size: 30px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; text-align: center; line-height: 1; }
+.gauge-num { font-size: 30px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; text-align: center; line-height: 1; }
 .gauge-lbl { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; margin-top: 4px; }
 
 /* ---- Bloc stat (gros chiffre) ---- */
@@ -1995,7 +1995,7 @@ svg { display: block; }
   animation-delay: calc(var(--i, 0) * 110ms);
 }
 .chaine-noeud-l { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.chaine-noeud-v { font-size: 25px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; line-height: 1.05; }
+.chaine-noeud-v { font-size: 25px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; line-height: 1.05; }
 .chaine-noeud-u { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 /* La flèche entre les maillons, posée dans le gap (desktop : → ) */
 .chaine-noeud:not(:last-child)::after {
@@ -2005,7 +2005,7 @@ svg { display: block; }
   top: 50%;
   transform: translateY(-50%);
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cyan);
   z-index: 1;
 }
@@ -2049,11 +2049,11 @@ svg { display: block; }
 .bp-rang b { color: var(--ink-fort); font-weight: 800; }
 .bp-piste { height: 12px; border-radius: 999px; background: var(--surface); overflow: hidden; }
 .bp-rempli { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--cyan)); transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.bp-pct { font-size: 22px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; margin-top: 8px; }
+.bp-pct { font-size: 22px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; margin-top: 8px; }
 .bp-pct span { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
 
 /* ---- Bloc chronologie (compte à rebours) ---- */
-.chrono-num { font-size: 38px; font-weight: 900; color: var(--cyan); letter-spacing: -0.03em; line-height: 1; margin-top: 6px; }
+.chrono-num { font-size: 38px; font-weight: 800; color: var(--cyan); letter-spacing: -0.03em; line-height: 1; margin-top: 6px; }
 .chrono-unite { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
 
 /* ---- Bloc comparaison (deux valeurs du même KPI + écart) ---- */
@@ -2061,7 +2061,7 @@ svg { display: block; }
    angle n'est pas une alerte). La 2e barre est une teinte plus douce pour distinguer. */
 .cmp-rang { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 10px 0 4px; }
 .cmp-l { font-size: 12.5px; font-weight: 700; color: var(--muted); }
-.cmp-v { font-size: 19px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; }
+.cmp-v { font-size: 19px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; }
 .cmp-piste { height: 12px; border-radius: 999px; background: var(--surface); overflow: hidden; }
 .cmp-rempli { display: block; height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .cmp-a { background: linear-gradient(90deg, var(--accent), var(--cyan)); }
@@ -2162,7 +2162,7 @@ svg { display: block; }
 .ce-rempli { display: block; height: 100%; border-radius: 999px; background: var(--ce-accent, var(--cyan)); transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .ce-rang { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 8px; }
 .ce-rang b { color: var(--ink-fort); font-weight: 800; }
-.ce-pct { font-weight: 900; color: var(--ce-accent, var(--cyan)); font-size: 14px; }
+.ce-pct { font-weight: 800; color: var(--ce-accent, var(--cyan)); font-size: 14px; }
 .ce-horizon { margin-top: 12px; font-size: 14px; font-weight: 800; color: var(--ink-fort); }
 .ce-scenario { margin: 4px 0 0; font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.4; }
 
@@ -2573,7 +2573,7 @@ svg { display: block; }
 }
 .mis-compte { flex: none; font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
 .mis-corps { display: flex; flex-direction: column; gap: 14px; animation: galCascade 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.mis-question { margin: 10px 0 0; text-align: center; font-size: 23px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em; line-height: 1.25; }
+.mis-question { margin: 10px 0 0; text-align: center; font-size: 23px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em; line-height: 1.25; }
 .mis-sous { margin: -6px 0 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); }
 
 /* Les choix : gros boutons joufflus qui s'enfoncent. */
@@ -2603,7 +2603,7 @@ svg { display: block; }
 }
 .mis-input {
   width: 130px; border: none; outline: none; background: transparent; text-align: center;
-  font-family: inherit; font-size: 34px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.02em;
+  font-family: inherit; font-size: 34px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .mis-input::placeholder { color: #c3cfe4; }
@@ -2625,7 +2625,7 @@ svg { display: block; }
   border-radius: 20px; padding: 12px 16px;
 }
 .tour-allume-txt { font-size: 14.5px; font-weight: 700; color: var(--ink-fort); }
-.tour-allume-txt b { color: var(--accent); font-weight: 900; }
+.tour-allume-txt b { color: var(--accent); font-weight: 800; }
 
 /* ============================================================================
    LES CARTES QUI RÉPONDENT — tape la carte : elle se métamorphose ; retouche :
@@ -2719,7 +2719,7 @@ svg { display: block; }
 .gal-cible-pas { width: 42px; height: 42px; font-size: 22px; }
 .gal-cible-val {
   min-width: 96px; text-align: center;
-  font-size: 26px; font-weight: 900; color: var(--acc); letter-spacing: -0.02em;
+  font-size: 26px; font-weight: 800; color: var(--acc); letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--acc) 30%, var(--surface-2)); /* LOT 5 — plat */
   border-radius: 16px; padding: 8px 14px;
@@ -2808,11 +2808,11 @@ svg { display: block; }
 .sable-retour:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .sable-retour svg { width: 20px; height: 20px; }
 .sable-tete-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.sable-titre { font-size: 18px; font-weight: 900; color: var(--ink-fort); letter-spacing: -0.01em; line-height: 1.2; }
+.sable-titre { font-size: 18px; font-weight: 800; color: var(--ink-fort); letter-spacing: -0.01em; line-height: 1.2; }
 /* LE TITRE ÉDITABLE : ressemble au titre, révèle son édition au survol/focus. */
 .sable-titre-champ { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .sable-titre-input {
-  font-family: inherit; font-size: 18px; font-weight: 900; color: var(--ink-fort);
+  font-family: inherit; font-size: 18px; font-weight: 800; color: var(--ink-fort);
   letter-spacing: -0.01em; line-height: 1.2; min-width: 0; width: 100%;
   border: none; background: transparent; padding: 2px 4px; margin: -2px -4px;
   border-radius: 8px; border-bottom: 2px solid transparent; cursor: text;
@@ -2910,7 +2910,7 @@ svg { display: block; }
   background: var(--wacc, var(--cyan));
   border-color: color-mix(in srgb, var(--wacc, var(--cyan)) 70%, var(--navy));
 }
-.sable-chip-x { margin-left: 8px; font-weight: 900; }
+.sable-chip-x { margin-left: 8px; font-weight: 800; }
 .sable-ia { display: flex; gap: 8px; flex: 1; min-width: 260px; }
 .sable-ia-input {
   flex: 1; min-height: 44px; padding: 10px 16px; border-radius: 999px; outline: none;
@@ -3100,7 +3100,7 @@ svg { display: block; }
 .persona-avatar {
   width: 40px; height: 40px; flex: none; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 900; color: #fff; letter-spacing: 0.02em;
+  font-size: 13px; font-weight: 800; color: #fff; letter-spacing: 0.02em;
   background: linear-gradient(135deg, var(--accent), var(--navy));
 }
 .persona-photo {
@@ -3108,7 +3108,7 @@ svg { display: block; }
   background-size: cover; background-position: center;
   border: 2px solid var(--pacc, var(--cyan));
 }
-.persona-init { background: linear-gradient(135deg, color-mix(in srgb, var(--pacc, var(--cyan)) 80%, var(--surface-2)), var(--pacc, var(--cyan))); font-size: 16px; font-weight: 900; }
+.persona-init { background: linear-gradient(135deg, color-mix(in srgb, var(--pacc, var(--cyan)) 80%, var(--surface-2)), var(--pacc, var(--cyan))); font-size: 16px; font-weight: 800; }
 .persona-corps { display: flex; flex-direction: column; gap: 9px; min-width: 0; flex: 1; }
 .persona-texte { font-size: 13.5px; font-weight: 500; color: var(--ink); line-height: 1.45; margin-top: 8px; }
 .persona-corps .persona-texte { margin-top: 0; }
@@ -3171,7 +3171,7 @@ svg { display: block; }
 /* La pastille de tuile porte la PERSONNALITÉ épinglée (photo / initiales). */
 .tour-widget-ic .twic-photo { position: absolute; inset: 0; border-radius: inherit; background-size: cover; background-position: center; }
 .tour-widget-ic { position: relative; overflow: hidden; }
-.tour-widget-ic .twic-init { font-size: 13px; font-weight: 900; color: #fff; letter-spacing: 0.02em; }
+.tour-widget-ic .twic-init { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
 
 @media (max-width: 767px) {
   .sable-titre, .sable-titre-input { font-size: 16px; }

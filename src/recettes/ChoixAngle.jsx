@@ -19,7 +19,7 @@ import { formesPourKPI, pourquoiForme, nomForme } from './bibliotheque-kpis.js'
 // Mini-schémas SVG : chaque forme se reconnaît d'un coup d'œil (chiffre, arc, rebours,
 // maillons, deux barres, barre). Présentation seulement.
 const GLYPHE = {
-  stat: <svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="17" textAnchor="middle" fontSize="14" fontWeight="900" fill="currentColor">12</text></svg>,
+  stat: <svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="17" textAnchor="middle" fontSize="14" fontWeight="800" fill="currentColor">12</text></svg>,
   jauge: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0" strokeLinecap="round" /><path d="M12 17l4-4" strokeLinecap="round" /></svg>,
   chronologie: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="13" r="7" /><path d="M12 9v4l2.5 1.5" strokeLinecap="round" /></svg>,
   chaine: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="5" cy="12" r="2.5" /><circle cx="19" cy="12" r="2.5" /><path d="M7.5 12h9" /></svg>,
