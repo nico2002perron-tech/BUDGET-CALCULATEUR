@@ -623,7 +623,7 @@ svg { display: block; }
 @keyframes galEssai { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .gal-essai-tete { display: flex; align-items: center; gap: 10px; }
 .gal-essai-titre { font-size: 15px; font-weight: 900; color: var(--ink-fort); }
-.gal-essai-x { margin-left: auto; width: 32px; height: 32px; flex: none; border-radius: 10px; border: 1.5px solid var(--line); border-bottom-width: 3px; background: var(--surface-2); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; }
+.gal-essai-x { margin-left: auto; width: 32px; height: 32px; flex: none; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; } /* LOT 5 — plat */
 .gal-essai-corps { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
 .gal-essai-choix { display: flex; flex-direction: column; gap: 9px; }
 .gal-essai-l { font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
@@ -784,11 +784,11 @@ svg { display: block; }
 .tour-chat:focus-within {
   box-shadow: 0 24px 58px rgba(0, 119, 182, 0.26), 0 0 0 3px rgba(0, 180, 216, 0.28);
 }
-/* Verre lumineux : translucide + flou + reflet du bord supérieur. */
+/* LOT 5 — CONTRÔLE, pas surface de donnée : plus de verre (flou). Fond plat
+   var(--surface), la profondeur vient de la bordure et d'une ombre légère. Le verre
+   reste réservé aux tuiles du board, aux plaques du présentoir et à la feuille d'atelier. */
 .chat.tour-chat {
-  background: var(--surface-2);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
+  background: var(--surface);
   border: 1px solid var(--line-fort);
   border-radius: 20px;
   box-shadow: 0 26px 60px -18px rgba(3, 4, 94, 0.30), inset 0 1px 0 var(--rim);
@@ -803,12 +803,11 @@ svg { display: block; }
 
 /* La vue composée : cartes qui LÉVITENT (coins très arrondis, ombres généreuses) */
 .tour-vues { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 18px; }
-/* Cartes en VERRE DÉPOLI : translucide + flou + reflet bord supérieur ; elles
-   flottent nettement au-dessus de la brume (ombre généreuse). */
+/* LOT 5 — cartes de la vue composée : fond plat var(--surface) (plus de flou). Elles
+   flottent par l'ombre généreuse, pas par le verre — réservé aux surfaces de donnée
+   du board. */
 .tour-vues .card {
-  background: var(--surface-2);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  backdrop-filter: blur(22px) saturate(150%);
+  background: var(--surface);
   border: 1px solid var(--line-fort);
   border-radius: 24px;
   box-shadow: 0 30px 60px -20px rgba(3, 4, 94, 0.22), 0 12px 30px -16px rgba(3, 4, 94, 0.12), inset 0 1px 0 var(--rim);
@@ -861,9 +860,7 @@ svg { display: block; }
   cursor: pointer;
   border-radius: var(--r-tuile);
   border: 1.5px dashed var(--line-fort);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  background: var(--surface); /* LOT 5 — contrôle : fond plat, plus de flou (verre réservé aux tuiles de donnée) */
   transition: border-color 0.2s, background 0.2s, transform 0.25s var(--doux);
 }
 .tour-batir:hover {
@@ -2557,8 +2554,8 @@ svg { display: block; }
 .tour-board .tour-widget.peau-mat .card:not(.p3d)::after,
 .tour-board .tour-widget.peau-relief .card:not(.p3d)::before,
 .tour-board .tour-widget.peau-relief .card:not(.p3d)::after { display: none; }
-/* Les petits boutons du widget suivent le style joufflu. */
-.tour-board .tour-widget-x { border-width: 1.5px; border-bottom-width: 3px; border-radius: 12px; }
+/* LOT 5 — les petits boutons du widget sont PLATS (le joufflu reste au CTA primaire). */
+.tour-board .tour-widget-x { border-width: 1.5px; border-radius: 12px; }
 /* Un widget mono-bloc (un seul KPI) : colonne bornée, jamais une grille à moitié vide. */
 .grid-solo { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
 
@@ -2638,21 +2635,22 @@ svg { display: block; }
   display: inline-flex; align-items: center; gap: 6px;
   font-family: inherit; font-size: 12px; font-weight: 800; color: var(--wacc);
   background: color-mix(in srgb, var(--wacc) 8%, var(--surface-2));
-  border: 1.5px solid color-mix(in srgb, var(--wacc) 30%, var(--surface-2)); border-bottom-width: 3px;
+  border: 1.5px solid color-mix(in srgb, var(--wacc) 30%, var(--surface-2)); /* LOT 5 — plat (joufflu réservé au CTA primaire) */
   border-radius: 12px; padding: 7px 12px; cursor: pointer;
-  transition: transform 0.09s, border-bottom-width 0.09s, background 0.15s;
+  transition: transform 0.09s, background 0.15s;
 }
-.tour-widget-retouche:active { transform: translateY(2px); border-bottom-width: 1.5px; }
+.tour-widget-retouche:active { transform: translateY(1px); } /* le ressenti survit sans l'épaisseur */
 .tour-widget-retouche.is-ouverte { background: var(--wacc); color: #fff; border-color: transparent; }
 .tour-widget-retouche svg { width: 15px; height: 15px; }
 
+/* LOT 5 — NIVEAU 2 (flottant) : un panneau COUVRE, il ne laisse pas transparaître.
+   Fond OPAQUE (var(--surface-plein)) + grande ombre (var(--sh-haut)), plus de flou. */
 .retouche {
   display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-start;
-  background: var(--surface-2);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
-  border: 2px solid color-mix(in srgb, var(--wacc) 30%, var(--surface-2));
+  background: var(--surface-plein);
+  border: 2px solid color-mix(in srgb, var(--wacc) 30%, var(--surface-plein));
   border-radius: 20px; padding: 14px 18px; margin: 10px 0 4px;
+  box-shadow: var(--sh-haut);
 }
 .retouche-bloc { display: flex; flex-direction: column; gap: 8px; }
 /* DUPLIQUER / SAUVER : des actions à part (pleine largeur du panneau), discrètes mais claires. */
@@ -2662,10 +2660,11 @@ svg { display: block; }
   align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
   font-family: inherit; font-size: 12.5px; font-weight: 800; color: var(--wacc);
   background: color-mix(in srgb, var(--wacc) 8%, var(--surface-2));
-  border: 1.5px solid color-mix(in srgb, var(--wacc) 28%, var(--surface-2)); border-bottom-width: 3px;
+  border: 1.5px solid color-mix(in srgb, var(--wacc) 28%, var(--surface-2)); /* LOT 5 — plat */
   border-radius: 12px; padding: 8px 14px; cursor: pointer;
-  transition: transform 0.09s, border-bottom-width 0.09s, background 0.15s;
+  transition: transform 0.09s, background 0.15s;
 }
+.retouche-dupli:active { transform: translateY(1px); }
 .retouche-dupli svg { width: 15px; height: 15px; }
 .retouche-dupli:hover { background: color-mix(in srgb, var(--wacc) 14%, var(--surface-2)); }
 .retouche-dupli:active { transform: translateY(2px); border-bottom-width: 1.5px; }
@@ -2722,7 +2721,7 @@ svg { display: block; }
   min-width: 96px; text-align: center;
   font-size: 26px; font-weight: 900; color: var(--acc); letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--acc) 30%, var(--surface-2)); border-bottom-width: 5px;
+  background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--acc) 30%, var(--surface-2)); /* LOT 5 — plat */
   border-radius: 16px; padding: 8px 14px;
   display: inline-flex; align-items: baseline; justify-content: center; gap: 6px;
 }
@@ -2734,11 +2733,11 @@ svg { display: block; }
   width: 42px; height: 42px; flex: none; border-radius: 13px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--muted); background: var(--surface-2);
-  border: 2px solid var(--line); border-bottom-width: 4px;
-  transition: transform 0.09s, border-bottom-width 0.09s, color 0.15s, border-color 0.15s, background 0.15s;
+  border: 2px solid var(--line); /* LOT 5 — plat */
+  transition: transform 0.09s, color 0.15s, border-color 0.15s, background 0.15s;
 }
 .gal-icone svg { width: 21px; height: 21px; }
-.gal-icone:active { transform: translateY(2px); border-bottom-width: 2px; }
+.gal-icone:active { transform: translateY(1px); }
 .gal-icone.is-choisie {
   color: #fff; border-color: transparent;
   background: linear-gradient(135deg, color-mix(in srgb, var(--acc) 80%, var(--surface-2)), var(--acc) 60%, color-mix(in srgb, var(--acc) 70%, var(--navy)));
@@ -2749,7 +2748,7 @@ svg { display: block; }
 .gal-nom {
   width: 100%; max-width: 340px;
   font-family: inherit; font-size: 14.5px; font-weight: 800; color: var(--ink-fort);
-  background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--acc) 28%, var(--line)); border-bottom-width: 4px;
+  background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--acc) 28%, var(--line)); /* LOT 5 — plat */
   border-radius: 14px; padding: 11px 14px; outline: none;
   transition: border-color 0.15s, box-shadow 0.2s;
 }
@@ -2998,8 +2997,7 @@ svg { display: block; }
   background: rgba(255, 255, 255, 0.94);
   border-color: rgba(255, 255, 255, 0.55);
   color: #06323d;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  /* LOT 5 — contrôle : la pastille est déjà opaque (elle porte l'AA), pas de flou. */
 }
 .board-copilote.est-compact .sable-ia-input::placeholder { color: rgba(6, 50, 61, 0.6); }
 .board-copilote.est-compact .sable-ia-input:focus-visible { border-color: var(--accent); }
@@ -3010,7 +3008,7 @@ svg { display: block; }
    opaque → le blanc reste lisible dans LES DEUX peaux. */
 .board-copilote.est-compact .sable-ia-note { color: #fff; background: rgba(3, 24, 32, 0.64); padding: 6px 11px; border-radius: 10px; }
 .board-copilote.est-compact .cop-prochain-l { color: rgba(255, 255, 255, 0.92); }
-.board-copilote.est-compact .sable-fait { background: rgba(3, 24, 32, 0.64); border-color: rgba(255, 255, 255, 0.22); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.board-copilote.est-compact .sable-fait { background: rgba(3, 24, 32, 0.64); border-color: rgba(255, 255, 255, 0.22); }
 .board-copilote.est-compact .cop-prochain { background: rgba(3, 24, 32, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); padding: 6px 11px; border-radius: 12px; }
 .board-copilote.est-compact .sable-fait-t { color: #fff; }
 .board-copilote.est-compact .sable-fait-r { color: rgba(255, 255, 255, 0.85); }

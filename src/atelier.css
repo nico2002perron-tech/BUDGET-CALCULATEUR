@@ -259,10 +259,12 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   box-shadow: inset 0 1px 0 var(--rim), var(--sh);
   transition: border-color 0.3s, box-shadow 0.3s;
 }
+/* LOT 5 — le FOCUS est un état interactif : il parle CYAN (--acc), pas menthe (la
+   menthe reste au décor : le halo, la couture). Une couleur = un sens. */
 .ia-barre:focus-within {
-  border-color: var(--menthe);
+  border-color: var(--acc);
   box-shadow: inset 0 1px 0 var(--rim),
-    0 0 0 3px color-mix(in srgb, var(--menthe) 22%, transparent), var(--sh);
+    0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent), var(--sh);
 }
 .ia-etincelle { flex: none; width: 20px; height: 20px; color: var(--menthe); }
 [data-theme='clair'] .ia-etincelle { color: var(--accent); }
@@ -494,7 +496,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   background: var(--surface); border: 1px solid var(--line);
   transition: border-color 0.15s, background 0.15s;
 }
-.al-item:hover { border-color: color-mix(in srgb, var(--menthe) 45%, transparent); background: var(--surface-2); }
+.al-item:hover { border-color: color-mix(in srgb, var(--acc) 45%, transparent); background: var(--surface-2); } /* LOT 5 — survol interactif = cyan, pas menthe */
 .al-item.eteinte { border-style: dashed; opacity: 0.72; }
 .al-q { font-size: 13px; font-weight: 700; color: var(--ink-fort); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .al-item.eteinte .al-q { color: var(--muted); }
