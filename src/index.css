@@ -382,34 +382,43 @@ svg { display: block; }
 /* ambre RÉSERVÉ à l'exception (déficit) — même ton que .band-erreur (VISION §12) */
 .band-verdict b.neg { color: #ffd9b0; }
 
-/* Le rythme du mois : piste blanche translucide, portion écoulée, points de
-   sortie (à venir = cyan clair, passé = éteint), curseur « aujourd'hui ». */
-.vr { position: relative; margin-top: 16px; }
+/* LA CARTE « LE RYTHME DU MOIS » (LOT 2) — carte de tokens CALME (fond surface +
+   liseré cyan), plus le dégradé navy→cyan qui criait. Colonne de lecture bornée. */
+.rythme-carte {
+  position: relative; z-index: 1; max-width: 760px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cyan);
+  border-radius: var(--r);
+  padding: 15px 20px 17px;
+}
+.rythme-note { margin: 11px 0 0; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+/* Le rythme du mois : piste, portion écoulée, points de sortie (à venir / passé),
+   curseur « aujourd'hui » — recolorés en tokens (LOT 2, plus de blanc-sur-dégradé). */
 .vr-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 9px; }
-.vr-titre { font-size: 11.5px; font-weight: 700; color: #bfe4f3; }
-.vr-detail { font-size: 11.5px; font-weight: 700; color: rgba(255, 255, 255, 0.85); text-align: right; }
-.vr-piste { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); }
-/* (LOT couvre-feu) le balayage radar de la piste a été retiré. */
+.vr-titre { font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; color: var(--ink); }
+.vr-detail { font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: right; }
+.vr-piste { position: relative; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--cyan) 14%, var(--surface-2)); }
 .vr-ecoule {
   position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.5); /* plus opaque que la piste : lire l'axe « argent sorti » jusque sur le bout cyan */
+  background: color-mix(in srgb, var(--cyan) 55%, transparent);
   transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .vr-pt {
   position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 999px;
-  background: #7fe9ff; box-shadow: 0 0 0 2.5px rgba(3, 4, 94, 0.55); /* anneau foncé : le point reste lisible sur le bout cyan du dégradé */
+  background: var(--cyan); box-shadow: 0 0 0 2.5px var(--surface); /* anneau de la carte : le point reste net sur la portion écoulée */
   transform: translate(-50%, -50%);
 }
-.vr-pt.is-passe { background: rgba(255, 255, 255, 0.42); box-shadow: none; }
+.vr-pt.is-passe { background: var(--muted); box-shadow: 0 0 0 2.5px var(--surface); }
 .vr-auj {
   position: absolute; top: -4px; width: 3px; height: 18px; border-radius: 2px;
-  background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+  background: var(--ink-fort); box-shadow: 0 0 6px color-mix(in srgb, var(--ink-fort) 40%, transparent);
   transform: translateX(-50%);
   pointer-events: none; /* décoratif — ne doit jamais intercepter le survol d'un marqueur dû aujourd'hui */
 }
-.vr-bornes { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.vr-bornes { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; font-weight: 600; color: var(--muted); }
 @media (max-width: 767px) {
-  .verdict.band { padding: 18px 18px 20px; }
+  .rythme-carte { padding: 14px 16px 16px; }
 }
 
 /* ============================================================================
@@ -718,7 +727,10 @@ svg { display: block; }
   inset: -30px -38px 0 -38px;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(96deg, rgba(3, 22, 30, 0.74), rgba(3, 22, 30, 0.36) 44%, transparent 62%);
+  /* Étendu (LOT 2) : couvre aussi la LIGNE D'ÉTAT (verdict) qui va plus à droite que
+     l'ancienne accroche — sinon les montants (cyan-soft) tombaient hors du voile, pâles
+     en peau claire. Reste sous la barre-copilote (droite), qui a son propre fond opaque. */
+  background: linear-gradient(96deg, rgba(3, 22, 30, 0.78), rgba(3, 22, 30, 0.5) 44%, rgba(3, 22, 30, 0.22) 66%, transparent 80%);
 }
 .tour-hero { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 /* DÉFAUT 2 — le hero REPOSE sur le bandeau cyan (identique dans les DEUX peaux) :
@@ -727,6 +739,20 @@ svg { display: block; }
    glyphes sur la couleur (confort de lecture, non crédité WCAG mais réel). */
 .tour-bonjour { font-size: 32px; font-weight: 900; color: #fff; letter-spacing: -0.03em; line-height: 1.1; text-shadow: 0 1px 2px rgba(3, 18, 26, 0.6), 0 2px 22px rgba(3, 24, 32, 0.4); }
 .tour-accroche { font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, 0.95); max-width: 560px; line-height: 1.45; text-shadow: 0 1px 10px rgba(3, 22, 30, 0.5); }
+/* LA LIGNE D'ÉTAT (LOT 2) — le verdict du jour, lu sans défiler. Blanc EN DUR sur le
+   bandeau (le scrim de l'en-tête assure le contraste) ; montants en cyan-soft, exception
+   négative en ambre. Bornée à 2 lignes. */
+.tour-verdict-ligne {
+  margin: 0; max-width: 640px;
+  font-size: 14px; font-weight: 500; line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 10px rgba(3, 22, 30, 0.5);
+  /* clamp à 3 (pas 2) : sur écran étroit la phrase passe à 3 lignes — à 2, le DERNIER
+     segment (le montant clé, en fin de phrase) se faisait couper. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tour-verdict-ligne b { color: var(--cyan-soft); font-weight: 800; }
+.tour-verdict-ligne b.neg { color: #ffd9b0; } /* ambre RÉSERVÉ à l'exception négative */
 
 .tour-chatwrap { position: relative; width: 100%; max-width: 760px; margin-top: 28px; }
 .tour-halo {
@@ -2079,7 +2105,9 @@ svg { display: block; }
 /* ---- Tour : « Ce qui bouge » (1re vue sur le primitif événement) ---- */
 /* Couleur = sens (VISION §12) : exception = ambre (réservé), attention = cyan, info = neutre. */
 /* z-index : devant la brume .tour::after (patron .tour-hero) ; rythme vertical = gap de .tour. */
-.evts { position: relative; z-index: 1; }
+/* Colonne de lecture bornée + coupure nette après le board (LOT 2) : « Ce qui bouge »
+   et la carte rythme ne s'étirent plus sur toute la largeur, elles cadrent la lecture. */
+.evts { position: relative; z-index: 1; max-width: 760px; margin-top: 32px; }
 .evts-tete { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 10px; }
 .evts-ic { width: 20px; height: 20px; margin-top: 1px; color: var(--cyan); flex: none; }
 .evts-ic svg { width: 100%; height: 100%; }
@@ -2919,6 +2947,7 @@ svg { display: block; }
    dans LES DEUX peaux). Tout texte y est blanc EN DUR — jamais un token navy.
    ══════════════════════════════════════════════════════════════════════════ */
 .tour-entete .board-copilote.est-compact {
+  position: relative; /* ancre du panneau de perches (LOT 2) */
   margin: 0 0 0 auto;
   flex: 0 1 auto;
   width: min(380px, 42vw);
@@ -2950,7 +2979,29 @@ svg { display: block; }
 .board-copilote.est-compact .sable-fait-t { color: #fff; }
 .board-copilote.est-compact .sable-fait-r { color: rgba(255, 255, 255, 0.85); }
 .board-copilote.est-compact .sable-fait-annul { background: rgba(255, 255, 255, 0.94); color: var(--accent); border-color: transparent; }
-.board-copilote.est-compact .cop-perche { color: #fff; background: rgba(3, 24, 32, 0.55); border-color: rgba(255, 255, 255, 0.26); }
+/* LE PANNEAU DE PERCHES (LOT 2) — en compact, les départs ne s'ouvrent qu'au FOCUS de
+   la barre, ancrés dessous, en surface OPAQUE (il COUVRE le bandeau, pas de transparence)
+   → les perches y reprennent leur teinte cyan normale, lisible dans les deux peaux. */
+.cop-perches--panneau {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: min(360px, 86vw); z-index: 20;
+  flex-direction: column; align-items: stretch; gap: 8px;
+  padding: 12px 13px;
+  background: var(--surface-plein);
+  border: 1px solid var(--line-fort);
+  border-radius: var(--r);
+  box-shadow: var(--sh-haut);
+  animation: copPanneau 0.16s ease-out;
+}
+.cop-perches--panneau .cop-perches-l { color: var(--muted); }
+.board-copilote.est-compact .cop-perches--panneau .cop-perche {
+  color: var(--acc); text-align: left;
+  background: color-mix(in srgb, var(--cyan) 9%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--cyan) 26%, transparent);
+}
+.cop-perches--panneau .cop-aide { flex-basis: auto; color: var(--muted); }
+@keyframes copPanneau { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .cop-perches--panneau { animation: none; } }
 
 /* ── LES DÉPARTS (onboarding) : SOUS le bandeau, quand la tour n'a AUCUN indicateur.
    margin-top les fait descendre sous la couleur (bandeau 240px) ; ils vivent alors

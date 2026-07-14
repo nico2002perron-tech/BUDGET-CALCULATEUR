@@ -21,11 +21,18 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
   const [note, setNote] = useState(null)
   const [fait, setFait] = useState(null) // { resume, refus, annuler }
   const [phIdx, setPhIdx] = useState(0) // l'exemple montré dans le placeholder
-  const [actif, setActif] = useState(false) // input focalisé ?
+  const [actif, setActif] = useState(false) // le focus est-il DANS la barre (input ou perche) ?
   const inputRef = useRef(null)
   const timerRef = useRef(0)
+  const blurRef = useRef(0)
 
-  useEffect(() => () => clearTimeout(timerRef.current), [])
+  // Focus suivi au niveau du CONTENEUR (focusin/focusout bubblent) → le panneau de
+  // perches reste ouvert tant qu'on est DEDANS (input OU une perche). Le blur ferme
+  // avec un court délai : un clic de perche (qui blure l'input) a le temps d'atterrir.
+  const surFocusIn = () => { clearTimeout(blurRef.current); setActif(true) }
+  const surFocusOut = () => { clearTimeout(blurRef.current); blurRef.current = setTimeout(() => setActif(false), 140) }
+
+  useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(blurRef.current) }, [])
   // (LOT couvre-feu) l'exemple ne DÉFILE que quand l'input a le focus : au repos, un
   // seul exemple figé — la barre ne clignote plus dans le coin de l'œil.
   useEffect(() => {
@@ -96,7 +103,7 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
   }
 
   return (
-    <div className={`board-copilote${compact ? ' est-compact' : ''}`}>
+    <div className={`board-copilote${compact ? ' est-compact' : ''}`} onFocus={surFocusIn} onBlur={surFocusOut}>
       <form className="sable-ia" onSubmit={soumettre}>
         <input
           ref={inputRef}
@@ -105,19 +112,17 @@ export default function BoardCopilote({ onPiloter, onPerche, perches = [], appri
           placeholder={`demande à ta tour — ${PLACEHOLDERS_BOARD[phIdx]} · touche /`}
           value={texte}
           onChange={(e) => setTexte(e.target.value)}
-          onFocus={() => setActif(true)}
-          onBlur={() => setActif(false)}
           aria-label="Demander une action à ta tour"
         />
         <button type="submit" className="sable-ia-go" disabled={charge || !texte.trim()}>
           {charge ? '…' : 'IA'}
         </button>
       </form>
-      {/* La tour tend des DÉPARTS tappables (data-aware) + réassurance. Visibles
-          même sous une note : le dead-end devient une redirection. En mode COMPACT
-          (barre d'en-tête, sur le bandeau), les départs vivent SOUS le bandeau — pas ici. */}
-      {!compact && !fait && perches.length > 0 && (
-        <div className="cop-perches">
+      {/* Les DÉPARTS tappables (data-aware). En mode COMPACT (en-tête), ils ne
+          s'ouvrent qu'au FOCUS de la barre, en panneau ancré dessous — une seule porte
+          d'ajout, jamais une rangée de pilules permanente (LOT 2). */}
+      {(!compact || actif) && !fait && perches.length > 0 && (
+        <div className={`cop-perches${compact ? ' cop-perches--panneau' : ''}`}>
           <span className="cop-perches-l">Pour commencer :</span>
           {perches.map((p) => (
             <button key={p.label} type="button" className="cop-perche" onClick={() => taperPerche(p.actions)}>

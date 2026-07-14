@@ -1013,7 +1013,19 @@ function App() {
                 <h1 className="tour-bonjour">
                   {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
                 </h1>
-                <p className="tour-accroche">Tes vrais chiffres sont déjà dedans — demande, ou choisis une carte.</p>
+                {/* LA LIGNE D'ÉTAT (LOT 2) : le verdict du jour se lit ICI, sans défiler.
+                    Blanc EN DUR (bandeau cyan) ; montants en cyan-soft, exception négative
+                    en ambre. À défaut de verdict, l'accroche-slogan — mais seulement quand
+                    la tour est encore vide (une tour habitée n'a plus à se vendre). */}
+                {verdict && Array.isArray(verdict.phrase) && verdict.phrase.length > 0 ? (
+                  <p className="tour-verdict-ligne">
+                    {verdict.phrase.map((s, i) => (s.fort
+                      ? <b key={i} className={s.sens === 'neg' ? 'neg' : undefined}>{s.texte}</b>
+                      : <span key={i}>{s.texte}</span>))}
+                  </p>
+                ) : widgets.length === 0 ? (
+                  <p className="tour-accroche">Tes vrais chiffres sont déjà dedans — demande, ou choisis une carte.</p>
+                ) : null}
               </div>
               <BoardCopilote compact onPiloter={piloterBoard} onPerche={appliquerBoard} perches={perchesTour} appris={appris} />
             </div>
@@ -1303,9 +1315,10 @@ function App() {
                   </button>
                 )}
                 </div>
-                {/* LA BARRE D'OUTILS DU TABLEAU — SOUS le board (hors de la couture du
-                    bandeau) : le voyant « en service », Réorganiser et les sons. */}
-                {widgets.length > 0 && (
+                {/* LA BARRE D'OUTILS DU TABLEAU — SOUS le board (sur le fond nu, lisible dans
+                    les deux peaux) : le voyant « en service », Réorganiser et les sons. On la
+                    garde ICI : au-dessus, elle tombait sur le bandeau fadé et perdait l'AA en
+                    peau sombre, et elle mangeait le chevauchement des tuiles. */}
                 <div className="tour-board-tete">
                   <span className="tb-voyant" aria-hidden="true" />
                   <span className="tb-label">Tes indicateurs</span>
@@ -1334,19 +1347,6 @@ function App() {
                     )}
                   </button>
                 </div>
-                )}
-                {/* LES DÉPARTS RESTANTS — « Ajouter à ta tour » : data-aware (chaque chip
-                    s'éteint quand son indicateur existe ; plus rien à offrir → rien). */}
-                {perchesTour.length > 0 && (
-                  <div className="tour-departs est-suite">
-                    <span className="tour-departs-l">Ajouter à ta tour</span>
-                    <div className="tour-departs-liste">
-                      {perchesTour.map((p) => (
-                        <button key={p.label} type="button" className="cop-perche" onClick={() => appliquerBoard(p.actions)}>{p.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
