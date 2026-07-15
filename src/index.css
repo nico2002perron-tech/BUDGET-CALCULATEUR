@@ -1517,6 +1517,12 @@ svg { display: block; }
 .cal-pt { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 .cal-in { background: var(--cyan); }
 .cal-out { background: var(--amber-2); }
+/* K6 — le marqueur KPI : point plein (date RÉELLE, ex. paie) / anneau pointillé
+   (date PROJETÉE « à ton rythme »). La journée marquée porte un liseré discret. */
+.cal-pt.cal-kpi { background: var(--lav); box-sizing: border-box; }
+.cal-pt.cal-kpi.est-projete { background: none; border: 1.5px dashed var(--lav); }
+.cal-cell.marque { border-color: color-mix(in srgb, var(--lav) 45%, transparent); }
+.cal-kpi-item .cal-detail-l { color: var(--lav); font-weight: 700; }
 
 .cal-pied { margin-top: 12px; min-height: 50px; }
 .cal-resume { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-size: var(--fs-s); font-weight: 700; color: var(--ink); padding: 10px 0; }
@@ -2555,6 +2561,21 @@ svg { display: block; }
   border-radius: 999px; cursor: pointer; box-shadow: var(--sh-sm);
   transition: color 0.15s, border-color 0.15s;
 }
+/* K6 — LA LIGNE DE DATE : même pilule que l'âge, mais tournée vers l'action (cyan
+   discret) — elle mène au calendrier. */
+.tour-board .tour-widget-date {
+  position: absolute; left: 12px; bottom: 8px; z-index: 6;
+  display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 24px);
+  padding: 3px 8px; font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
+  line-height: 1.2; text-align: left;
+  color: var(--acc); background: var(--surface-plein);
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, var(--line)); border-radius: 999px;
+  cursor: pointer; box-shadow: var(--sh-sm); transition: border-color 0.15s, background 0.15s;
+}
+.tour-board .tour-widget-date svg { width: 12px; height: 12px; flex: none; }
+.tour-board .tour-widget-date span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tour-board .tour-widget-date:hover { background: color-mix(in srgb, var(--acc) 10%, var(--surface-plein)); border-color: color-mix(in srgb, var(--acc) 50%, var(--line)); }
+.tour-board .tour-widget-date:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .tour-board .tour-widget-age svg { width: 12px; height: 12px; flex: none; opacity: 0.75; }
 .tour-board .tour-widget-age span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tour-board .tour-widget-age:hover { color: var(--acc); border-color: color-mix(in srgb, var(--acc) 40%, var(--line)); }

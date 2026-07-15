@@ -32,6 +32,16 @@ export default function Calendrier({ params = {}, data = {} }) {
   entrees.forEach((e) => { const s = slot(e.jour); s.entree += e.montant; s.items.push({ ...e, sens: 'entree' }) })
   sorties.forEach((x) => { const s = slot(x.jour); s.sortie += x.montant; s.items.push({ ...x, sens: 'sortie' }) })
 
+  // K6 — LES MARQUEURS KPI : les dates que TES tuiles projettent (paie, cible « à ton
+  // rythme », jour de libération…), posées sur le mois affiché. Une projection se dit
+  // toujours « à ton rythme » — le label le porte déjà (filtré AMF à la source).
+  const marqueursParJour = {}
+  for (const mk of Array.isArray(params.marqueurs) ? params.marqueurs : []) {
+    if (!mk || typeof mk.date !== 'string') continue
+    const [yy, mm, dd] = mk.date.split('-').map(Number)
+    if (yy === y && mm === m + 1 && dd >= 1) (marqueursParJour[dd] = marqueursParJour[dd] || []).push(mk)
+  }
+
   const startDow = (new Date(y, m, 1).getDay() + 6) % 7 // lundi = 0
   const cellules = []
   for (let i = 0; i < startDow; i++) cellules.push(null)
@@ -51,6 +61,7 @@ export default function Calendrier({ params = {}, data = {} }) {
 
   const aller = (pas) => { setOffset((o) => o + pas); setSel(null) }
   const jourSel = sel != null ? parJour[sel] : null
+  const marqueursSel = sel != null ? marqueursParJour[sel] : null
 
   return (
     <section className="card cal">
@@ -80,14 +91,15 @@ export default function Calendrier({ params = {}, data = {} }) {
             <button
               type="button"
               key={d}
-              className={`cal-cell ${s ? 'plein' : ''} ${isToday(d) ? 'today' : ''} ${proche === d ? 'proche' : ''} ${actif ? 'sel' : ''}`}
+              className={`cal-cell ${s ? 'plein' : ''} ${marqueursParJour[d] ? 'marque' : ''} ${isToday(d) ? 'today' : ''} ${proche === d ? 'proche' : ''} ${actif ? 'sel' : ''}`}
               onClick={() => setSel(actif ? null : d)}
-              aria-label={`${d} ${MOIS_LONG[m]}${s ? '' : ' — rien'}`}
+              aria-label={`${d} ${MOIS_LONG[m]}${s ? '' : ' — rien'}${marqueursParJour[d] ? ` — ${marqueursParJour[d].map((k) => k.label).join(', ')}` : ''}`}
             >
               <span className="cal-cell-d">{d}</span>
               <span className="cal-cell-pts">
                 {s && s.entree > 0 && <span className="cal-pt cal-in" />}
                 {s && s.sortie > 0 && <span className="cal-pt cal-out" />}
+                {marqueursParJour[d] && <span className={`cal-pt cal-kpi${marqueursParJour[d].every((k) => k.type === 'projetee') ? ' est-projete' : ''}`} />}
               </span>
             </button>
           )
@@ -95,14 +107,20 @@ export default function Calendrier({ params = {}, data = {} }) {
       </div>
 
       <div className="cal-pied">
-        {jourSel ? (
+        {jourSel || marqueursSel ? (
           <div className="cal-detail">
             <div className="cal-detail-tete">{sel} {MOIS_LONG[m]}</div>
             <ul className="cal-detail-liste">
-              {jourSel.items.map((it, k) => (
+              {(jourSel ? jourSel.items : []).map((it, k) => (
                 <li key={k} className={it.sens === 'entree' ? 'in' : 'out'}>
                   <span className="cal-detail-l">{it.label}</span>
                   <span className="cal-detail-m">{it.sens === 'entree' ? '+' : '−'}{formatCAD(it.montant)}</span>
+                </li>
+              ))}
+              {/* K6 — les repères KPI de ce jour (une projection reste une projection). */}
+              {(marqueursSel || []).map((mk, k) => (
+                <li key={`mk${k}`} className="cal-kpi-item">
+                  <span className="cal-detail-l">{mk.label}</span>
                 </li>
               ))}
             </ul>

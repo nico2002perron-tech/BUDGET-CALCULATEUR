@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission, MISSIONS } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, deltaKPI, candidatsKPI, resoudreForme, expliqueKPI } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, deltaKPI, candidatsKPI, resoudreForme, expliqueKPI, datesKPI } from './recettes/bibliotheque-kpis.js'
 import { composerVueObjectif } from './recettes/vue-objectif.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
@@ -145,6 +145,30 @@ function normaliser(store) {
     // « Mes vues » : des modèles de tuile réutilisables (structure seulement) —
     // gardé Array + entrées valides (un silo importé hostile repart propre).
     mesVues: Array.isArray(store.mesVues) ? store.mesVues.filter((v) => v && v.recette && Array.isArray(v.recette.blocs)) : [],
+  }
+}
+
+// K6 — LE CALENDRIER VIVANT. La date la plus proche (≤ 45 j) qu'un KPI projette,
+// formatée court pour la micro-ligne de tuile (« Ta prochaine paie : jeu. 16 juil. »).
+// PUR : le « maintenant » vient de snapshot.meta.generatedAt. null si aucune.
+const JOURS_SEM = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.']
+const MOIS_AB = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+function prochaineDateTuile(kpiId, snapshot, params) {
+  const now = snapshot && snapshot.meta && snapshot.meta.generatedAt ? new Date(snapshot.meta.generatedAt) : new Date()
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  let best = null
+  for (const d of datesKPI(kpiId, snapshot, params || {})) {
+    const dt = new Date(d.date + 'T00:00:00')
+    const j = Math.round((dt - base) / 86400000)
+    if (j < 0 || j > 45) continue
+    if (!best || j < best.j) best = { ...d, dt, j }
+  }
+  if (!best) return null
+  const quand = `${JOURS_SEM[best.dt.getDay()]} ${best.dt.getDate()} ${MOIS_AB[best.dt.getMonth()]}`
+  return {
+    texte: best.type === 'reelle' ? `${best.label} : ${quand}` : best.label,
+    date: best.date, type: best.type, kpiId,
+    mois: `${best.dt.getFullYear()}-${String(best.dt.getMonth() + 1).padStart(2, '0')}`,
   }
 }
 
@@ -305,6 +329,14 @@ function App() {
   }).filter(Boolean), [store.tourWidgets])
   const fiab = useMemo(() => fiabiliteTour(snapshot, requiertBoard), [snapshot, requiertBoard])
   const [fiabOuverte, setFiabOuverte] = useState(false)
+  // K6 — LES MARQUEURS DU CALENDRIER : toutes les dates que les KPIs du board projettent
+  // (paie, cible « à ton rythme », jour de libération…). Le bloc calendrier les pose sur
+  // le mois → le calendrier devient la carte du temps de ta tour.
+  const marqueursCalendrier = useMemo(() => (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).flatMap((w) => {
+    const kb = w && w.recette && Array.isArray(w.recette.blocs) ? w.recette.blocs.find((b) => b && b.KPI) : null
+    return kb && kpiPourId(kb.KPI) ? datesKPI(kb.KPI, snapshot, kb.params) : []
+  }), [store.tourWidgets, snapshot])
+  const recetteCalendrier = useMemo(() => ({ ...RECETTE_CALENDRIER, blocs: [{ type: 'calendrier', params: { marqueurs: marqueursCalendrier } }] }), [marqueursCalendrier])
   // (Pas de « célébration » à la traversée de 100 % : elle se déclenchait aussi en
   //  RETIRANT une tuile périmée — récompense non méritée — et empilait un 3e mouvement
   //  au moment clé. La moisson + l'indice qui monte SUFFISENT comme récompense. Revue nuage.)
@@ -1195,12 +1227,15 @@ function App() {
                   // LE REPÈRE (K4) : la balise usuelle qui répond au « et alors ? ». Servi à la
                   // tuile Stat (sous la phrase). Pas sous une dérivée (la valeur change d'unité).
                   const repereW = kbAff && !derActive ? (expliqueKPI(kbAff.KPI) || {}).repere : null
+                  // LA DATE (K6) : la prochaine échéance/projection ≤ 45 j de ce KPI → une
+                  // micro-ligne « Ta prochaine paie : jeu. 16 » qui ouvre le calendrier au bon mois.
+                  const dateW = kb && kpiPourId(kb.KPI) ? prochaineDateTuile(kb.KPI, snapshot, kb.params) : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${fraicheurW && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${w.style && w.style.encre === 'accent' ? ' encre-accent' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(dateW || fraicheurW) && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${w.style && w.style.encre === 'accent' ? ' encre-accent' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={{ ...(w.accent ? { '--wacc': w.accent } : null), '--casc': Math.min(idx, 8) }}
@@ -1401,10 +1436,24 @@ function App() {
                         )}
                       </div>
 
+                      {/* LA DATE (K6) : la prochaine échéance ≤ 45 j → un pont vers le calendrier.
+                          Prioritaire sur l'âge (une date à venir invite à AGIR ; l'âge à remplir). */}
+                      {dateW && !reorganise && (
+                        <button
+                          type="button"
+                          className="tour-widget-date"
+                          onClick={() => allerSection('calendrier')}
+                          title="Voir dans le calendrier"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v4M16 3v4" /></svg>
+                          <span>{dateW.texte}</span>
+                        </button>
+                      )}
+
                       {/* LA LIGNE D'ÂGE (K2) : la tuile dit calmement quand sa matière date, et
                           ouvre la saisie du silo concerné. Discrète, muette, JAMAIS d'ambre —
                           l'âge d'une donnée est un fait, pas une alarme. Rien tant que c'est frais. */}
-                      {fraicheurW && !reorganise && (
+                      {fraicheurW && !dateW && !reorganise && (
                         <button
                           type="button"
                           className="tour-widget-age"
@@ -1629,7 +1678,7 @@ function App() {
               <p className="section-sous">Ton journal de bord : l&rsquo;argent qui rentre et qui sort, jour par jour.</p>
             </div>
             {snapshot.calendrier ? (
-              <MoteurRendu recette={RECETTE_CALENDRIER} snapshot={snapshot} />
+              <MoteurRendu recette={recetteCalendrier} snapshot={snapshot} />
             ) : (
               <div className="card placeholder-card">
                 <p>Ajoute un revenu, ou une dépense fixe avec son jour, dans « Mes données » — ton calendrier se remplit tout seul.</p>
