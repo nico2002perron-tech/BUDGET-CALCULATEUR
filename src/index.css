@@ -997,6 +997,53 @@ svg { display: block; }
 .tb-label { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-fort); }
 .tb-etat { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
 
+/* K3 — L'INDICE DE FIABILITÉ : la fraîcheur agrégée, un fait qui monte. Tap → le
+   détail par silo (popover NIVEAU 2, opaque). */
+.tb-fiab-wrap { position: relative; display: inline-flex; }
+.tb-fiab {
+  display: inline-flex; align-items: center; gap: 6px; font-family: inherit;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--muted);
+  background: none; border: none; cursor: pointer; padding: 3px 6px; border-radius: var(--r-s);
+  transition: color 0.15s, background 0.15s;
+}
+.tb-fiab:hover { color: var(--ink); background: var(--surface); }
+.tb-fiab:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.tb-fiab-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 14%, transparent); }
+.tb-fiab-scrim { position: fixed; inset: 0; z-index: 40; background: none; border: none; cursor: default; }
+.tb-fiab-pop {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 41; width: 268px; max-width: 80vw;
+  display: flex; flex-direction: column; gap: 3px; padding: 12px; text-align: left;
+  background: var(--surface-plein); border: 1px solid var(--line-fort);
+  border-radius: var(--r); box-shadow: var(--sh-haut);
+}
+.tb-fiab-pop-t { margin: 0 0 4px; font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.tb-fiab-silo {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-family: inherit; font-size: var(--fs-s); font-weight: 700; color: var(--ink);
+  background: none; border: none; border-radius: var(--r-s); padding: 7px 8px; cursor: pointer; text-align: left;
+  transition: background 0.14s;
+}
+.tb-fiab-silo:hover { background: var(--surface); }
+.tb-fiab-silo:focus-visible { outline: 2px solid var(--acc); outline-offset: -1px; }
+.tb-fiab-silo-age { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
+.tb-fiab-silo.est-frais .tb-fiab-silo-age { color: var(--green); }
+.tb-fiab-pop-n { margin: 6px 2px 0; font-size: var(--fs-micro); font-weight: 600; color: var(--muted); line-height: 1.4; }
+
+/* K3 — L'ACCUEIL (moisson / rituel de retour) : un fait qui fait du bien, calme et
+   éphémère. Cyan discret (c'est bon signe, mais ça ne crie pas). Jamais d'ambre. */
+.tour-accueil {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  margin: 0 0 2px; padding: 8px 14px;
+  font-size: var(--fs-s); font-weight: 700; color: var(--ink); line-height: 1.35;
+  background: color-mix(in srgb, var(--cyan) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--cyan) 30%, var(--line));
+  border-radius: 999px;
+  animation: accueilEntre 0.4s var(--spring) both;
+}
+.tour-accueil svg { width: 15px; height: 15px; flex: none; color: var(--acc); }
+@keyframes accueilEntre { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tour-accueil { animation: none; } }
+
 .tour-widget { position: relative; }
 .tour-widget-tete { display: flex; align-items: center; gap: 10px; }
 .tour-widget-tag { font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: rgba(0, 119, 182, 0.09); padding: 4px 10px; border-radius: 999px; }

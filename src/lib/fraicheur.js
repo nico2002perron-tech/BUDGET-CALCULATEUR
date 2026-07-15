@@ -84,3 +84,43 @@ export function etatFraicheur(snapshot, requiert, now = new Date()) {
     datee: pire.jours >= def.seuil * 2,
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   K3 — LA FIABILITÉ DE LA TOUR. La fraîcheur AGRÉGÉE des silos que TES tuiles
+   requièrent : un % qui MONTE quand tu mets tes données à jour. La fiabilité EST
+   la récompense (pas un streak, pas un badge). Un FAIT de fraîcheur, jamais une
+   note de comportement. ════════════════════════════════════════════════════════ */
+
+// Le score de fraîcheur d'un silo : 1 (frais) → 0 (à 2× le seuil), linéaire entre.
+function scoreSilo(iso, seuil, now) {
+  const j = joursDepuis(iso, now)
+  if (j == null) return null
+  if (j <= seuil) return 1
+  if (j >= seuil * 2) return 0
+  return 1 - (j - seuil) / seuil
+}
+
+/** La fiabilité agrégée + le détail par silo (pour le popover). null si aucun silo
+ *  horodaté (tour vide / pas de donnée). PUR.
+ *  @param requiertParTuile  un tableau de `requiert` (un par tuile-KPI du board).
+ *  @returns {null | { pct, silos: [{ silo, section, nom, jours, frais, texte }] }} */
+export function fiabiliteTour(snapshot, requiertParTuile, now = new Date()) {
+  const fr = snapshot && snapshot.meta && snapshot.meta.freshness
+  if (!fr || !Array.isArray(requiertParTuile) || !requiertParTuile.length) return null
+  const silos = [...new Set(requiertParTuile.flatMap((r) => silosDe(r)))]
+  const details = []
+  let somme = 0
+  for (const silo of silos) {
+    const def = SILOS[silo]
+    if (!def) continue
+    const sc = scoreSilo(fr[silo], def.seuil, now)
+    if (sc == null) continue
+    const j = joursDepuis(fr[silo], now)
+    const nomCap = def.nom.charAt(0).toUpperCase() + def.nom.slice(1)
+    details.push({ silo, section: def.section, nom: nomCap, jours: j, frais: j < def.seuil, texte: ageEnMots(j) })
+    somme += sc
+  }
+  if (!details.length) return null
+  details.sort((a, b) => b.jours - a.jours) // le plus vieux d'abord (à rafraîchir en premier)
+  return { pct: Math.round((somme / details.length) * 100), silos: details }
+}

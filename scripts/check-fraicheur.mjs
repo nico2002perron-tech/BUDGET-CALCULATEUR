@@ -7,7 +7,7 @@
      - texte compact + jamais d'ambre (juste un fait).
    Lance : node scripts/check-fraicheur.mjs
    ========================================================================== */
-import { etatFraicheur, ageEnMots, silosDe, SILOS } from '../src/lib/fraicheur.js'
+import { etatFraicheur, ageEnMots, silosDe, SILOS, fiabiliteTour } from '../src/lib/fraicheur.js'
 import { touchSilo } from '../src/lib/storage.js'
 
 let fail = 0
@@ -48,6 +48,15 @@ const frais = touchSilo({ ...stale, depenses: [{ montant: 2 }] }, 'depenses')
 ok(etatFraicheur({ meta: { freshness: frais.meta.majSilos } }, ['depenses']) === null, 'après touchSilo(depenses) → ligne effacée (silo frais dans l’ÉTAT)')
 ok(frais.meta.majSilos.depenses !== stale.meta.majSilos.depenses, 'touchSilo pose une nouvelle estampille')
 ok(touchSilo({ revenus: 1 }, 'revenus').meta.majSilos.revenus, 'touchSilo crée meta.majSilos si absent (jamais d’erreur)')
+
+console.log('\n— K3 : la fiabilité de la tour (fraîcheur agrégée) —')
+ok(fiabiliteTour(snap({ revenus: jadis(2), depenses: jadis(2), patrimoine: jadis(2) }), [['capacite'], ['patrimoine']], NOW).pct === 100, 'tous frais → 100 %')
+ok(fiabiliteTour(snap({ depenses: jadis(200) }), [['depenses']], NOW).pct === 0, 'un silo à ≥ 2× le seuil → 0 %')
+const fi = fiabiliteTour(snap({ revenus: jadis(2), depenses: jadis(48), patrimoine: jadis(150) }), [['capacite'], ['patrimoine']], NOW)
+ok(fi && fi.pct > 0 && fi.pct < 100, `mélange → ${fi && fi.pct} % (entre 0 et 100)`)
+ok(fi && fi.silos[0].jours >= fi.silos[fi.silos.length - 1].jours, 'silos triés du plus VIEUX au plus frais (à rafraîchir d’abord)')
+ok(fiabiliteTour(snap({}), [], NOW) === null, 'board vide → null (pas d’indice)')
+ok(fiabiliteTour(null, [['depenses']], NOW) === null, 'snapshot null → null')
 
 console.log('\n— Le mot d’âge est compact et calme —')
 for (const j of [3, 12, 45, 200, 400]) console.log(`      ${String(j).padStart(3)} j → "${ageEnMots(j)}"`)

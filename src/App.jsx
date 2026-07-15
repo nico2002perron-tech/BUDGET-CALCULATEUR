@@ -9,7 +9,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline, touchSilo, SILOS_HORODATES } from './lib/storage.js'
-import { etatFraicheur } from './lib/fraicheur.js'
+import { etatFraicheur, fiabiliteTour } from './lib/fraicheur.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
@@ -32,9 +32,9 @@ import SaisiePatrimoine from './components/SaisiePatrimoine.jsx'
 import PanneauVivant from './components/PanneauVivant.jsx'
 import SousSectionBientot from './components/SousSectionBientot.jsx'
 import { totalDepensesVie } from './lib/depenses.js'
-import { formatCAD } from './lib/format.js'
+import { formatCAD, formatKPI } from './lib/format.js'
 import { routerMessage } from './recettes/routeur.js'
-import { tailleWidget } from './recettes/schema.js'
+import { tailleWidget, filtrerFait } from './recettes/schema.js'
 import { construireEntite, PALETTE_ACCENTS, photoBornee } from './lib/entites.js'
 import StudioConversation from './components/StudioConversation.jsx'
 import CarreDeSable from './components/CarreDeSable.jsx'
@@ -251,12 +251,63 @@ function App() {
       document.removeEventListener('visibilitychange', surVisibilite)
     }
   }, [])
+
+  // K3 — L'ACCUEIL : un fait éphémère au-dessus du board. Deux déclencheurs :
+  //  · LA MOISSON — au RETOUR de la saisie, combien d'indicateurs se sont recalculés
+  //    (compte via kpiABouge contre une PHOTO de session, pas une 2e baseline) ;
+  //  · LE RITUEL DE RETOUR — au 1er montage après ≥ 7 jours d'absence, les 2 plus
+  //    gros deltas depuis la dernière visite (deltaKPI + baseline existants).
+  const [accueil, setAccueil] = useState(null) // { texte } ou null
+  const snapAvantSaisieRef = useRef(null)
+  const kpisDuBoard = () => (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).map((w) => {
+    const kb = w && w.recette && Array.isArray(w.recette.blocs) ? w.recette.blocs.find((b) => b && b.KPI) : null
+    return kb && kpiPourId(kb.KPI) ? { kb, titre: (w.recette && w.recette.titre) || '' } : null
+  }).filter(Boolean)
+  useEffect(() => {
+    if (section === 'donnees') { snapAvantSaisieRef.current = snapshotRef.current; return }
+    if (section !== 'tour' || !snapAvantSaisieRef.current) return
+    const avant = snapAvantSaisieRef.current
+    snapAvantSaisieRef.current = null
+    const n = kpisDuBoard().filter(({ kb }) => kpiABouge(kb.KPI, avant, snapshotRef.current, kb.params || {})).length
+    if (n > 0) {
+      const f = filtrerFait(`${n} indicateur${n > 1 ? 's' : ''} recalculé${n > 1 ? 's' : ''} avec tes nouvelles données.`)
+      setAccueil({ texte: f.ok && f.texte ? f.texte : `${n} indicateurs recalculés.` })
+    }
+  }, [section]) // eslint-disable-line react-hooks/exhaustive-deps -- déclenché par le changement de section seulement
+  const rituelFait = useRef(false)
+  useEffect(() => {
+    if (rituelFait.current) return
+    rituelFait.current = true
+    const bl = loadBaseline()
+    if (!bl || !bl.visitedAt || section !== 'tour') return
+    if (Math.floor((Date.now() - new Date(bl.visitedAt).getTime()) / 86400000) < 7) return
+    const deltas = kpisDuBoard().map(({ kb, titre }) => { const d = deltaKPI(kb.KPI, bl.snapshot, snapshotRef.current, kb.params || {}); return d ? { titre, d } : null })
+      .filter(Boolean).sort((a, b) => Math.abs(b.d.delta) - Math.abs(a.d.delta)).slice(0, 2)
+    if (!deltas.length) return
+    const parts = deltas.map((x) => `${x.titre} ${x.d.delta > 0 ? '+' : '−'}${formatKPI(Math.abs(x.d.delta), x.d.unite)}`)
+    const f = filtrerFait(`Depuis ta dernière visite : ${parts.join(', ')}.`)
+    if (f.ok && f.texte) setAccueil({ texte: f.texte })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- au montage seulement
+  useEffect(() => { if (!accueil) return undefined; const id = setTimeout(() => setAccueil(null), 8000); return () => clearTimeout(id) }, [accueil])
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
   // Ref des tuiles la PLUS RÉCENTE → le copilote applique contre l'état FRAIS
   // (une tuile ajoutée pendant le fetch n'est jamais écrasée). Cf. sable A2.
   const widgetsRef = useRef(widgets)
   widgetsRef.current = widgets
+  // LA FIABILITÉ DE LA TOUR (K3) : la fraîcheur agrégée des silos que TES tuiles
+  // requièrent. Elle MONTE quand tu mets tes données à jour — la fiabilité est la
+  // récompense. null si la tour n'a aucune donnée horodatée (rien à afficher).
+  const requiertBoard = useMemo(() => (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).map((w) => {
+    const kb = w && w.recette && Array.isArray(w.recette.blocs) ? w.recette.blocs.find((b) => b && b.KPI) : null
+    const def = kb && kpiPourId(kb.KPI)
+    return def ? def.requiert : null
+  }).filter(Boolean), [store.tourWidgets])
+  const fiab = useMemo(() => fiabiliteTour(snapshot, requiertBoard), [snapshot, requiertBoard])
+  const [fiabOuverte, setFiabOuverte] = useState(false)
+  // (Pas de « célébration » à la traversée de 100 % : elle se déclenchait aussi en
+  //  RETIRANT une tuile périmée — récompense non méritée — et empilait un 3e mouvement
+  //  au moment clé. La moisson + l'indice qui monte SUFFISENT comme récompense. Revue nuage.)
   // Les départs tappables (data-aware) — calculés UNE fois par rendu (fonction PURE) ;
   // réutilisés par la barre-copilote compacte ET le strip d'onboarding.
   const perchesTour = perchesBoard(widgets, snapshot)
@@ -1081,6 +1132,15 @@ function App() {
             {/* LA FABRICATION (barre IA + anneau de modèles, ou la mission/le studio
                 guidés) vit dans la SCÈNE-ATELIER plus bas — atteinte en DESCENDANT. */}
 
+            {/* K3 — L'ACCUEIL éphémère : la moisson d'une saisie, ou le rituel de retour.
+                Un fait qui fait du bien, jamais un « bravo » ni un « tu devrais ». */}
+            {accueil && (
+              <p className="tour-accueil" role="status">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                <span>{accueil.texte}</span>
+              </p>
+            )}
+
             {/* LE TABLEAU : les indicateurs déjà créés (persistants). En-tête façon
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
                 en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
@@ -1359,6 +1419,31 @@ function App() {
                   <span className="tb-voyant" aria-hidden="true" />
                   <span className="tb-label">Tes indicateurs</span>
                   <span className="tb-etat">{widgets.length > 1 ? `${widgets.length} en service` : '1 en service'}</span>
+                  {/* LA FIABILITÉ (K3) : la fraîcheur agrégée de tes données. Un FAIT qui monte
+                      quand tu mets à jour — la récompense. Tap → le détail par silo + sa porte. */}
+                  {fiab && (
+                    <div className="tb-fiab-wrap">
+                      <button type="button" className="tb-fiab" onClick={() => setFiabOuverte((v) => !v)} aria-expanded={fiabOuverte} title="La fraîcheur de tes données">
+                        <span className="tb-fiab-dot" style={{ background: `color-mix(in srgb, var(--acc) ${fiab.pct}%, var(--muted))` }} aria-hidden="true" />
+                        fiabilité {fiab.pct}&nbsp;%
+                      </button>
+                      {fiabOuverte && (
+                        <>
+                          <button type="button" className="tb-fiab-scrim" aria-label="Fermer" onClick={() => setFiabOuverte(false)} />
+                          <div className="tb-fiab-pop" role="dialog" aria-label="La fraîcheur de tes données">
+                            <p className="tb-fiab-pop-t">La fraîcheur de tes données</p>
+                            {fiab.silos.map((s) => (
+                              <button key={s.silo} type="button" className={`tb-fiab-silo${s.frais ? ' est-frais' : ''}`} onClick={() => { setFiabOuverte(false); allerSection('donnees'); allerSaisie(s.section) }}>
+                                <span className="tb-fiab-silo-nom">{s.nom}</span>
+                                <span className="tb-fiab-silo-age">{s.frais ? 'à jour' : s.texte}</span>
+                              </button>
+                            ))}
+                            <p className="tb-fiab-pop-n">La fiabilité monte quand tes données sont récentes.</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <button
                     type="button"
                     className={`tb-reorg${reorganise ? ' est-actif' : ''}`}
