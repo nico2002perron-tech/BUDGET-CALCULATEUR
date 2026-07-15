@@ -18,6 +18,7 @@ import EvenementsSaillants from './components/EvenementsSaillants.jsx'
 import { genererEvenements, evenementsSaillants, cibleEvenement } from './lib/evenements.js'
 import { suggestionsKPI, moisDeSnapshot } from './lib/signaux-kpi.js'
 import { promesseKPI } from './lib/promesse.js'
+import { INTENTIONS, kpisPourIntention } from './recettes/intentions.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import MissionAllumage from './components/MissionAllumage.jsx'
@@ -195,12 +196,14 @@ function App() {
   const iaRef = useRef(null)
   const [iaTexte, setIaTexte] = useState('')
   const [atelierOuvert, setAtelierOuvert] = useState(false)
+  const [intentionCreation, setIntentionCreation] = useState(null) // P4 — l'intention « Ta question » choisie (null = la liste des 6)
   const ouvreurRef = useRef(null) // l'élément à re-focaliser à la fermeture (a11y)
   // Ouvrir la surcouche : on ne retient l'ouvreur QUE lors d'une vraie ouverture (fermé →
   // ouvert) — jamais depuis un élément déjà INTERNE à la modale (revue nuage : sinon le
   // focus reviendrait sur un nœud démonté). Le focus de la barre IA est posé par un effet.
   const ouvrirAtelier = () => {
     if (!atelierOuvert && typeof document !== 'undefined') ouvreurRef.current = document.activeElement
+    setErreur(null) // repart propre : une erreur d'action passée (ex. « déjà cette vue ») ne colle pas à la réouverture
     setAtelierOuvert(true)
   }
   // Focaliser la barre IA (le présentoir « Crée le tien », déjà DANS la surcouche, ne
@@ -253,7 +256,8 @@ function App() {
   // l'atelier (MissionAllumage rend null) → repli sur « revenus ».
   const allerSaisie = (sousSec) => setMission(MISSIONS[sousSec] ? sousSec : 'revenus')
   // P1 — fermer la surcouche : la referme ET annule toute mission/studio en cours.
-  const fermerAtelier = () => { setAtelierOuvert(false); setMission(null); setStudio(null) }
+  // P4 — et repart de « Ta question » à la prochaine ouverture (pas d'intention collée).
+  const fermerAtelier = () => { setAtelierOuvert(false); setMission(null); setStudio(null); setIntentionCreation(null) }
   // La surcouche est PRÉSENTE quand on l'a ouverte OU qu'une mission/le studio l'occupe
   // (ils ne se lancent que depuis elle → cohérent).
   const atelierPresent = atelierOuvert || !!mission || !!studio
@@ -263,10 +267,10 @@ function App() {
     const id = setTimeout(() => { if (iaRef.current) iaRef.current.focus() }, 60)
     return () => clearTimeout(id)
   }, [atelierOuvert, mission, studio])
-  // Modale (a11y) : Échap ferme · le fond ne défile pas · le focus revient à l'ouvreur.
-  // Le fond (rail + scène-tour) est rendu `inert` (cf. rendu) → pas de piège de focus à
-  // gérer ici, et un changement de section passe par allerSection → fermerAtelier, donc
-  // l'effet se rejoue et restaure body.overflow (jamais coincé « verrouillé + invisible »).
+  // Modale (a11y) : Échap ferme · le focus revient à l'ouvreur. Le fond (rail + scène-tour)
+  // est rendu `inert` (cf. rendu) → pas de piège de focus à gérer ici. Le verrou de défilement
+  // vit dans son PROPRE effet (verrouScroll) — unifié avec le sable pour ne jamais se
+  // chevaucher pendant la transition atelier→sable (revue nuage P4).
   useEffect(() => {
     if (!atelierPresent) {
       const el = ouvreurRef.current
@@ -274,11 +278,9 @@ function App() {
       if (el && typeof el.focus === 'function' && document.contains(el)) el.focus()
       return undefined
     }
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     const onKey = (e) => { if (e.key === 'Escape') fermerAtelier() }
     window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow }
+    return () => window.removeEventListener('keydown', onKey)
   }, [atelierPresent]) // eslint-disable-line react-hooks/exhaustive-deps -- fermerAtelier stable (setters)
   // P0 — une mission écrit un silo horodaté (placements → patrimoine). L'estamper ici,
   // comme les 3 setters de saisie, ferme la couture « mission → fraîcheur » : la pilule
@@ -380,6 +382,30 @@ function App() {
   }, [snapshot]) // eslint-disable-line react-hooks/exhaustive-deps -- une photo par mois, idempotent
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
+  // Le CONTENU réel du sable : un brouillon (création/suggestion) ou la tuile du board
+  // (édition). null si le sable pointe une tuile disparue (session restaurée) OU un KPI
+  // HORS registre (vieux silo / import : CarreDeSable rendrait null via actif=false). On
+  // s'aligne EXACTEMENT sur la condition d'activation du sable (kb connu du registre) pour
+  // que le verrou de défilement ne se pose JAMAIS sans overlay rendu (revue nuage P4 #2).
+  const sableTrouve = sable ? (sable.brouillon || widgets.find((x) => x.id === sable.id)) : null
+  const sableKb = sableTrouve && sableTrouve.recette && Array.isArray(sableTrouve.recette.blocs) ? sableTrouve.recette.blocs.find((b) => b && b.KPI) : null
+  const sableW = sableKb && kpiPourId(sableKb.KPI) ? sableTrouve : null
+  // VERROU DE DÉFILEMENT — UNE seule source de vérité pour la surcouche ET le sable (revue
+  // nuage P4). Sans cela, passer de l'atelier au sable dans le MÊME commit (creerDepuisIntention
+  // ferme l'atelier ET ouvre le sable) faisait se chevaucher deux verrous : le fond défilait
+  // derrière le sable, puis restait FIGÉ après fermeture. Ici `verrouScroll` reste vrai pendant
+  // toute la transition atelier→sable → aucun cycle pose/dépose, aucun gel. LAYOUT effect +
+  // gouttière compensée : cacher la barre ne décale ni le board visible ni la mesure du FLIP.
+  const verrouScroll = atelierPresent || !!sableW
+  useLayoutEffect(() => {
+    if (!verrouScroll) return undefined
+    const gouttiere = window.innerWidth - document.documentElement.clientWidth
+    const prevOverflow = document.body.style.overflow
+    const prevPad = document.body.style.paddingRight
+    document.body.style.overflow = 'hidden'
+    if (gouttiere > 0) document.body.style.paddingRight = `${gouttiere}px`
+    return () => { document.body.style.overflow = prevOverflow; document.body.style.paddingRight = prevPad }
+  }, [verrouScroll])
   // Ref des tuiles la PLUS RÉCENTE → le copilote applique contre l'état FRAIS
   // (une tuile ajoutée pendant le fetch n'est jamais écrasée). Cf. sable A2.
   const widgetsRef = useRef(widgets)
@@ -772,6 +798,18 @@ function App() {
   // La recette d'APERÇU d'une suggestion (mini-tuile vivante, jamais posée tant que non épinglée) —
   // MÊME forme résolue que la tuile épinglée, pour un vrai coup d'œil de ce qu'on prend.
   const apercuSuggestion = (kpiId) => ({ situation: `apercu_${kpiId}`, titre: '', blocs: [{ KPI: kpiId, forme: resoudreForme(kpiId, 'stat', snapshot, {}), params: {} }] })
+  // P4 — CRÉER depuis une intention (« Ta question ») : on ferme la surcouche et on ouvre le
+  // KPI choisi dans le carré de sable en mode CRÉATION (brouillon) → même flux que suggestion.
+  const creerDepuisIntention = (kpiId, question) => {
+    const brouillon = { id: 'crea_' + kpiId, recette: { situation: `kpi_${kpiId}`, titre: question, blocs: [{ KPI: kpiId, forme: resoudreForme(kpiId, 'stat', snapshot, {}), params: {} }] } }
+    // On passe la main du focus au sable : sans ça, fermer l'atelier rejouerait l'effet de
+    // restauration et RE-focaliserait le bouton « + » du board DERRIÈRE le scrim (revue nuage
+    // P4). En vidant l'ouvreur, cet effet ne refocalise rien → le sable garde le focus.
+    ouvreurRef.current = null
+    setAtelierOuvert(false)
+    setIntentionCreation(null)
+    setSable({ id: brouillon.id, rect: null, mode: 'creation', brouillon })
+  }
 
   // PRÉ-REMPLISSAGE (VISION §8 : « réarranger un dashboard VIDE est un piège — le
   // bon truc doit déjà être à la bonne place »). Au TOUT premier chargement où des
@@ -1762,36 +1800,76 @@ function App() {
               <StudioConversation snapshot={snapshot} onFini={(c) => { materialiserEntite(c); setAtelierOuvert(false) }} onAnnuler={() => setStudio(null)} />
             ) : (
               <>
+                {/* ÉTAPE 1 — TA QUESTION (P4, mode création) : une seule décision. Une intention
+                    (mots de tous les jours) → des indicateurs RÉSOLUBLES de son domaine, dont on
+                    choisit un pour l'ouvrir dans le sable. « Une question libre » → la barre IA. */}
                 <div className="at-tete at-bloc" style={{ '--s': 0, '--e': 0.55 }}>
                   <span className="at-eyebrow">{I_VEDETTE} L&rsquo;atelier</span>
-                  <h2 className="at-t">Un instrument de plus pour ta tour ?</h2>
-                  <p className="at-s">Décris ce que tu veux suivre, ou prends un modèle au présentoir — tes vrais chiffres sont déjà dedans.</p>
+                  <h2 className="at-t">{intentionCreation ? ((INTENTIONS.find((i) => i.id === intentionCreation) || {}).label || 'Ta question') : 'Qu’aimerais-tu mieux comprendre ?'}</h2>
+                  <p className="at-s">{intentionCreation ? 'Choisis un indicateur — tes vrais chiffres sont déjà dedans.' : 'Choisis une piste, ou décris ta propre question.'}</p>
                 </div>
-                <form
-                  className="ia-wrap at-bloc"
-                  style={{ '--s': 0.1, '--e': 0.6 }}
-                  onSubmit={(e) => { e.preventDefault(); const t = iaTexte.trim(); if (t) { demanderIA(t); setIaTexte('') } }}
-                >
-                  <div className="ia-halo" aria-hidden="true" />
-                  <div className="ia-barre">
-                    <span className="ia-etincelle" aria-hidden="true">{I_VEDETTE}</span>
-                    <input
-                      ref={iaRef}
-                      className="ia-input"
-                      value={iaTexte}
-                      onChange={(e) => setIaTexte(e.target.value)}
-                      placeholder="Décris un indicateur — ex. « combien il me reste ce mois-ci »"
-                      aria-label="Décris l&rsquo;indicateur à créer"
-                    />
-                    <button type="submit" className="ia-go" disabled={chargement || !iaTexte.trim()} aria-label="Composer l&rsquo;indicateur">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                    </button>
-                  </div>
-                </form>
+                {intentionCreation ? (() => {
+                  // Parité avec les suggestions (revue nuage P4) : on retire les KPI DÉJÀ sur la
+                  // tour — sinon « Épingler » un doublon échouait en silence (l'anti-doublon
+                  // d'ajouterWidget rejette, mais l'atelier est déjà fermé → message invisible).
+                  const brut = kpisPourIntention(intentionCreation, snapshot)
+                  const dejaB = new Set(kpisDuBoard().map(({ kb }) => kb.KPI))
+                  const kpis = brut.filter((k) => !dejaB.has(k.kpiId))
+                  return (
+                    <div className="at-kpis at-bloc" style={{ '--s': 0.06, '--e': 0.6 }}>
+                      <button type="button" className="at-retour" onClick={() => setIntentionCreation(null)}>‹ Une autre piste</button>
+                      {kpis.length > 0 ? (
+                        <div className="at-kpi-liste">
+                          {kpis.map((k) => (
+                            <button key={k.kpiId} type="button" className="at-kpi-carte" onClick={() => creerDepuisIntention(k.kpiId, k.question)}>
+                              <span className="at-kpi-q">{k.question}</span>
+                              <div className="at-kpi-apercu" aria-hidden="true"><MoteurRendu recette={apercuSuggestion(k.kpiId)} snapshot={snapshot} apercu /></div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : brut.length > 0 ? (
+                        <p className="at-kpi-vide">Tu as déjà sur ta tour tout ce que cette piste propose. <button type="button" className="at-kpi-lien" onClick={() => setIntentionCreation(null)}>Une autre piste →</button></p>
+                      ) : (
+                        <p className="at-kpi-vide">Aucun indicateur ici tant que la donnée manque. <button type="button" className="at-kpi-lien" onClick={() => { setAtelierOuvert(false); allerSection('donnees') }}>Ajoute tes données →</button></p>
+                      )}
+                    </div>
+                  )
+                })() : (
+                  <>
+                    <div className="at-intentions at-bloc" style={{ '--s': 0.06, '--e': 0.58 }}>
+                      {INTENTIONS.map((it) => (
+                        <button key={it.id} type="button" className={`at-intention${it.libre ? ' at-intention--libre' : ''}`} onClick={() => (it.studio ? (setStudio({}), setErreur(null)) : it.libre ? focusIA() : setIntentionCreation(it.id))}>
+                          {it.label}
+                        </button>
+                      ))}
+                    </div>
+                    <form
+                      className="ia-wrap at-bloc"
+                      style={{ '--s': 0.1, '--e': 0.6 }}
+                      onSubmit={(e) => { e.preventDefault(); const t = iaTexte.trim(); if (t) { demanderIA(t); setIaTexte('') } }}
+                    >
+                      <div className="ia-halo" aria-hidden="true" />
+                      <div className="ia-barre">
+                        <span className="ia-etincelle" aria-hidden="true">{I_VEDETTE}</span>
+                        <input
+                          ref={iaRef}
+                          className="ia-input"
+                          value={iaTexte}
+                          onChange={(e) => setIaTexte(e.target.value)}
+                          placeholder="Décris un indicateur — ex. « combien il me reste ce mois-ci »"
+                          aria-label="Décris l&rsquo;indicateur à créer"
+                        />
+                        <button type="submit" className="ia-go" disabled={chargement || !iaTexte.trim()} aria-label="Composer l&rsquo;indicateur">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
                 {erreur && <p className="at-erreur at-bloc" role="alert" style={{ '--s': 0.1, '--e': 0.6 }}>{erreur}</p>}
-                {/* MES VUES : les modèles que l'usager a sauvés — re-posables ici (leur
-                    seule porte de sortie, sinon le tiroir serait en écriture seule). */}
-                {Array.isArray(store.mesVues) && store.mesVues.length > 0 && (
+                {/* MES VUES + le présentoir de modèles : seulement dans la vue des intentions
+                    (la vue « KPI d'une intention » reste focalisée sur ses cartes). */}
+                {!intentionCreation && Array.isArray(store.mesVues) && store.mesVues.length > 0 && (
                   <div className="at-mesvues at-bloc" style={{ '--s': 0.14, '--e': 0.7 }}>
                     <span className="at-mesvues-l">Mes vues</span>
                     <div className="at-mesvues-liste">
@@ -1806,9 +1884,11 @@ function App() {
                     </div>
                   </div>
                 )}
-                <div className="at-bloc at-anneau" style={{ '--s': 0.2, '--e': 0.85 }}>
-                  <AnneauModeles snapshot={snapshot} widgets={widgets} onAjouter={ajouterWidget} onAllerSaisie={allerSaisie} onCreer={focusIA} />
-                </div>
+                {!intentionCreation && (
+                  <div className="at-bloc at-anneau" style={{ '--s': 0.2, '--e': 0.85 }}>
+                    <AnneauModeles snapshot={snapshot} widgets={widgets} onAjouter={ajouterWidget} onAllerSaisie={allerSaisie} onCreer={focusIA} />
+                  </div>
+                )}
               </>
             )}
             </section>
@@ -1891,10 +1971,11 @@ function App() {
           au-dessus d'un scrim qui laisse le board visible. Widget retiré pendant
           qu'il est ouvert → se referme seul. */}
       {(() => {
-        // P4 — le sable ouvre soit une VRAIE tuile (édition), soit un BROUILLON de suggestion.
-        const w = sable ? (sable.brouillon || widgets.find((x) => x.id === sable.id)) : null
-        const suggestion = !!(sable && sable.mode === 'suggestion')
-        return w ? <CarreDeSable widget={w} mode={suggestion ? 'suggestion' : 'edition'} snapshot={snapshot} historique={store.historique} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={suggestion ? epinglerBrouillon : epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
+        // P4 — le sable ouvre soit une VRAIE tuile (édition), soit un BROUILLON (suggestion
+        // OU création) : dans les deux cas non-édition, l'épinglage POSE une nouvelle tuile.
+        // `sableW` (calculé plus haut, avec le verrou de défilement) = le contenu réel.
+        const brouillon = !!(sable && sable.brouillon)
+        return sableW ? <CarreDeSable widget={sableW} mode={(sable && sable.mode) || 'edition'} snapshot={snapshot} historique={store.historique} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={brouillon ? epinglerBrouillon : epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
       })()}
     </div>
   )

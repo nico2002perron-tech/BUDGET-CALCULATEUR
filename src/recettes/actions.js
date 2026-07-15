@@ -348,7 +348,10 @@ export const ACTIONS = {
     valider(a, etat) {
       const w = widgetPar(etat, a && a.cible)
       if (!w) return refus('Cette tuile n’est pas dans ta tour.')
-      if (!heroKPI(w)) return refus('Cette tuile ne s’ouvre pas dans le sable.')
+      const kb = heroKPI(w)
+      // Parité avec le tap direct (App.jsx kpiSable) : un KPI hors registre (vieux silo / import)
+      // n'ouvre PAS le sable — sinon CarreDeSable rend null et la page se fige (revue nuage P4 #2).
+      if (!kb || !kpiPourId(kb.KPI)) return refus('Cette tuile ne s’ouvre pas dans le sable.')
       return ok()
     },
     appliquer(a, etat, ctx) {

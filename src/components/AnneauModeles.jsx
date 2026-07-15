@@ -139,6 +139,16 @@ export default function AnneauModeles({ snapshot, widgets = [], onAjouter, onAll
           recette: dispo && forme ? { situation: `kpi_${k.id}`, titre: k.question, blocs: [{ KPI: k.id, forme, params: {} }] } : null,
         }
       })
+      // Une plaque ALLUMÉE doit RÉELLEMENT dire quelque chose. Un KPI dont la donnée de base
+      // est là mais qui ne résout à RIEN (ex. objectif sans cible — il faut un PROJET, pas une
+      // donnée) n'est pas offert : sinon plaque muette qui, faute de chiffre, bascule dans
+      // l'aperçu-chaîne et affiche le repli 10 000 $ (revue nuage P4 #2). L'ÉTEINTE reste (elle
+      // invite à remplir la donnée manquante). Un KPI en parts (valeur-objet) passe (≠ null).
+      .filter((p) => {
+        if (!p.dispo) return true
+        const r = p.resolu
+        return !!(r && (r.valeur != null || (r.texteFactuel && r.texteFactuel.trim())))
+      })
       .sort((a, b) => Number(b.dispo) - Number(a.dispo)) // dispo d'abord (liste plate)
   }, [snapshot, dejaPosees])
 

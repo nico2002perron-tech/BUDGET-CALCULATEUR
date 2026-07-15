@@ -56,9 +56,9 @@ function reduitMouvement() {
 }
 
 export default function CarreDeSable({ widget, mode = 'edition', snapshot, historique = [], origine = null, onFermer, onEpingler, appris = [], onAppris }) {
-  // P4 — mode « suggestion » : la tuile n'est encore qu'un BROUILLON (proposé par la tour),
-  // pas une tuile posée. Le sable est le même ; seul le pied change (elle n'existe pas encore).
-  const estSuggestion = mode === 'suggestion'
+  // P4 — modes « suggestion » / « création » : la tuile n'est encore qu'un BROUILLON (pas
+  // posée). Le sable est le même ; seul le pied change (elle n'existe pas encore sur la tour).
+  const estBrouillon = mode === 'suggestion' || mode === 'creation'
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const panneauRef = useRef(null)
@@ -89,8 +89,9 @@ export default function CarreDeSable({ widget, mode = 'edition', snapshot, histo
   const recette = widget && widget.recette
   const kb = recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null
   const def = kb ? kpiPourId(kb.KPI) : null
-  // Le sable est l'atelier d'UN KPI CONNU du registre. Sans lui, RIEN ne s'active
-  // (ni verrou de défilement, ni listener) — jamais une page figée sous un overlay vide.
+  // Le sable est l'atelier d'UN KPI CONNU du registre. Sans lui, RIEN ne s'active (aucun
+  // listener, aucun overlay). Le verrou de défilement vit dans App (verrouScroll), gardé sur
+  // la MÊME condition (App n'ouvre sableW que si le KPI est au registre) → jamais figé sous vide.
   const actif = !!(kb && def)
 
   // onFermer vit dans une ref → les listeners montés UNE fois voient toujours la
@@ -219,18 +220,10 @@ export default function CarreDeSable({ widget, mode = 'edition', snapshot, histo
     return () => window.removeEventListener('keydown', surTouche)
   }, [actif])
 
-  // La page dessous ne défile pas pendant que le sable est ouvert. Verrou posé
-  // en LAYOUT effect (avant le FLIP) + gouttière compensée : cacher la barre de
-  // défilement ne décale ni le board visible derrière le scrim, ni la géométrie.
-  useLayoutEffect(() => {
-    if (!actif) return
-    const gouttiere = window.innerWidth - document.documentElement.clientWidth
-    const avant = document.body.style.overflow
-    const avantPad = document.body.style.paddingRight
-    document.body.style.overflow = 'hidden'
-    if (gouttiere > 0) document.body.style.paddingRight = `${gouttiere}px`
-    return () => { document.body.style.overflow = avant; document.body.style.paddingRight = avantPad }
-  }, [actif])
+  // Le verrou de défilement de la page vit désormais dans App (`verrouScroll`, UNE seule
+  // source pour la surcouche ET le sable) : le poser ici aussi le faisait se chevaucher
+  // avec celui de l'atelier pendant la transition atelier→sable et figeait la page (revue
+  // nuage P4). App garde le fond bloqué tant que le sable (ou l'atelier) est présent.
 
   if (!actif) return null
 
@@ -752,9 +745,9 @@ export default function CarreDeSable({ widget, mode = 'edition', snapshot, histo
         {formeActive && (
           <div className="sable-pied">
             <button type="button" className="sable-epingler" onClick={epingler}>
-              {estSuggestion ? 'Épingler sur ma tour' : 'Épingler à ma tour'}
+              {estBrouillon ? 'Épingler sur ma tour' : 'Épingler à ma tour'}
             </button>
-            <p className="sable-note">{estSuggestion ? 'Cette suggestion n’est pas encore sur ta tour — l’épingler la pose. Tout reste retouchable ensuite.' : 'Tout reste retouchable — tape la tuile pour rouvrir son carré de sable.'}</p>
+            <p className="sable-note">{estBrouillon ? 'Cette tuile n’est pas encore sur ta tour — l’épingler la pose. Tout reste retouchable ensuite.' : 'Tout reste retouchable — tape la tuile pour rouvrir son carré de sable.'}</p>
           </div>
         )}
       </div>

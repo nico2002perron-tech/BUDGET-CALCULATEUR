@@ -235,6 +235,40 @@
    grand vide). Tout le contenu de l'atelier devient un bloc centré et cohérent. */
 .at-anneau { flex: 0 1 auto; width: 100%; min-height: 0; display: flex; z-index: 2; }
 
+/* P4 — ÉTAPE 1 « Ta question » : les 6 intentions (chips) + les cartes-KPI d'une intention. */
+.at-intentions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); max-width: 640px; z-index: 3; }
+.at-intention {
+  font-family: inherit; font-size: var(--fs-s); font-weight: 700; cursor: pointer;
+  color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-fort);
+  border-radius: 999px; padding: 11px 18px;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.at-intention:hover { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 8%, var(--surface-2)); }
+.at-intention:active { transform: translateY(1px); }
+.at-intention:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.at-intention--libre { color: var(--muted); border-style: dashed; }
+.at-kpis { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 700px; z-index: 3; }
+.at-retour { align-self: flex-start; font-family: inherit; font-size: var(--fs-xs); font-weight: 800; color: var(--acc); background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 8px; }
+.at-retour:hover { background: var(--surface); }
+.at-retour:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.at-kpi-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.at-kpi-carte {
+  display: flex; flex-direction: column; gap: 8px; text-align: left; cursor: pointer; font: inherit;
+  padding: 14px; border-radius: var(--r-s); color: var(--ink-fort);
+  background: color-mix(in srgb, var(--cyan) 6%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--cyan) 24%, var(--line-fort));
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+.at-kpi-carte:hover { border-color: var(--acc); transform: translateY(-2px); }
+.at-kpi-carte:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.at-kpi-q { font-size: var(--fs-m); font-weight: 800; }
+.at-kpi-apercu { border-radius: var(--r-s); overflow: hidden; pointer-events: none; }
+.at-kpi-apercu > * { pointer-events: none; }
+.at-kpi-apercu :is(.card-title, .card-sub, .stat-l, .legend, .stat-delta, .stat-repere) { display: none; }
+.at-kpi-vide { font-size: var(--fs-s); color: var(--muted); text-align: center; max-width: 440px; }
+.at-kpi-lien { font-family: inherit; font-size: var(--fs-s); font-weight: 800; color: var(--acc); background: none; border: none; cursor: pointer; text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .at-intention:active, .at-kpi-carte:hover { transform: none; } }
+
 /* MES VUES — les modèles sauvés par l'usager, re-posables ici (leur seule porte). */
 .at-mesvues { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 720px; margin-top: 6px; z-index: 3; }
 .at-mesvues-l { font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }

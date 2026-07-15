@@ -81,6 +81,12 @@ export const DONNEE_DISPO = {
 
 // L'objectif (cible/nom) vient du CONTEXTE (recette/entité), pas du snapshot.
 const objG = (s, ctx) => evaluerGraphe(s, { objectif: ctx && ctx.objectif ? ctx.objectif : undefined })
+// L'objectif RÉEL n'arrive QUE par ctx.objectif : evaluerGraphe ne lit jamais d'objectif du
+// snapshot, il retombe sur OBJECTIF_DEFAUT (10 000 $ — un repli d'AFFICHAGE de la chaîne). Donc
+// un KPI d'horizon ne doit PARLER que si une vraie cible est fournie ; sinon il exposerait ce
+// repli comme « ta cible » (montant inventé → revue nuage P4). Ses 4 frères (pct_atteint,
+// restant_a_combler…) lisent déjà ctx.objectif.cible en direct et se taisent d'eux-mêmes.
+const cibleReelle = (ctx) => !!(ctx && ctx.objectif && num(ctx.objectif.cible) > 0)
 
 export const REGISTRE_KPIS = [
   // ── 1. Objectif / projet ──────────────────────────────────────────────────
@@ -89,8 +95,9 @@ export const REGISTRE_KPIS = [
     requiert: ['capacite'], blocsCompatibles: ['chaine', 'chronologie', 'stat', 'comparaison'],
     explique: 'Le nombre de mois avant d’atteindre ta cible, à ton rythme d’épargne actuel.',
     depend: 'Ce qu’il te reste à réunir ÷ ce que tu mets de côté chaque mois.',
-    dates: (s, ctx) => { const g = objG(s, ctx); const o = g.objectif; if (!o) return []; const contrib = num(ctx && ctx.contributionMensuelle); const h = contrib > 0 ? (o.restant <= 0 ? 0 : Math.ceil(o.restant / contrib)) : o.horizonMois; const dd = dansMois(s, h, (mo, an) => `À ton rythme, ta cible en ${mo} ${an}`); return dd ? [dd] : [] },
+    dates: (s, ctx) => { if (!cibleReelle(ctx)) return []; const g = objG(s, ctx); const o = g.objectif; if (!o) return []; const contrib = num(ctx && ctx.contributionMensuelle); const h = contrib > 0 ? (o.restant <= 0 ? 0 : Math.ceil(o.restant / contrib)) : o.horizonMois; const dd = dansMois(s, h, (mo, an) => `À ton rythme, ta cible en ${mo} ${an}`); return dd ? [dd] : [] },
     resolve: (s, ctx) => {
+      if (!cibleReelle(ctx)) return { valeur: null, unite: 'mois', texteFactuel: '' } // sans vraie cible : muet (jamais le repli 10 000 $)
       const g = objG(s, ctx)
       const o = g.objectif
       if (!o) return { valeur: null, unite: 'mois', texteFactuel: '' }
@@ -156,8 +163,9 @@ export const REGISTRE_KPIS = [
     requiert: ['capacite', 'coussin'], blocsCompatibles: ['chronologie', 'fait', 'comparaison'],
     explique: 'Le moment où tu toucherais ta cible en gardant ton rythme d’épargne actuel.',
     depend: 'Ce qu’il te reste à réunir ÷ ta capacité d’épargne mensuelle.',
-    dates: (s, ctx) => { const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null; const dd = dansMois(s, h, (mo, an) => `À ton rythme, tu y serais en ${mo} ${an}`); return dd ? [dd] : [] },
+    dates: (s, ctx) => { if (!cibleReelle(ctx)) return []; const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null; const dd = dansMois(s, h, (mo, an) => `À ton rythme, tu y serais en ${mo} ${an}`); return dd ? [dd] : [] },
     resolve: (s, ctx) => {
+      if (!cibleReelle(ctx)) return { valeur: null, unite: 'mois', texteFactuel: '' } // sans vraie cible : muet (jamais le repli 10 000 $)
       const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null
       return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Ta cible est déjà atteinte.' : h == null ? 'À ton rythme actuel, ta cible n’avance pas.' : `À ton rythme, tu y serais dans ${h} mois.` }
     },
