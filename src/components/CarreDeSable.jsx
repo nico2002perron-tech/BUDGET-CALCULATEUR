@@ -15,6 +15,7 @@ import PersonaStrip from './PersonaStrip.jsx'
 import GlypheForme from './GlypheForme.jsx'
 import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible, expliqueKPI } from '../recettes/bibliotheque-kpis.js'
 import { etatFraicheur } from '../lib/fraicheur.js'
+import { deltaLong } from '../lib/historique.js'
 import { formatKPI } from '../lib/format.js'
 import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide, FORMES_SCALAIRES } from '../recettes/derivations.js'
 import { DECOUPES, decoupesPourKPI, decoupeValide } from '../recettes/decoupes.js'
@@ -54,7 +55,7 @@ function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function CarreDeSable({ widget, snapshot, origine = null, onFermer, onEpingler, appris = [], onAppris }) {
+export default function CarreDeSable({ widget, snapshot, historique = [], origine = null, onFermer, onEpingler, appris = [], onAppris }) {
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const panneauRef = useRef(null)
@@ -699,6 +700,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
           if (!pedago || (!pedago.explique && !pedago.depend)) return null
           const fr = etatFraicheur(snapshot, def.requiert)
           const chiffre = kpiResolu && typeof kpiResolu.valeur === 'number' && isFinite(kpiResolu.valeur) ? formatKPI(kpiResolu.valeur, kpiResolu.unite) : null
+          const evo = deltaLong(kb.KPI, historique, snapshot) // K7 — ta trajectoire
           return (
             <div className="sable-comprendre">
               <button
@@ -721,6 +723,14 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
                   )}
                   {pedago.repere && pedago.repere.texte && (
                     <div className="sable-comp-volet"><span className="sable-comp-l">Le repère</span><p>{pedago.repere.texte}{chiffre ? ` — toi : ${chiffre}` : ''}</p></div>
+                  )}
+                  {/* K7 — TON ÉVOLUTION : ta vraie trajectoire depuis tes photos mensuelles. */}
+                  {evo && (
+                    <div className="sable-comp-volet">
+                      <span className="sable-comp-l">Ton évolution</span>
+                      <p>{`${evo.delta > 0 ? '+' : '−'}${formatKPI(Math.abs(evo.delta), evo.unite)} depuis ${evo.mois} mois`}</p>
+                      <span className="sable-comp-age">Ton historique vit sur ton appareil.</span>
+                    </div>
                   )}
                 </div>
               )}

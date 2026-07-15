@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
 import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline, touchSilo, SILOS_HORODATES } from './lib/storage.js'
 import { etatFraicheur, fiabiliteTour } from './lib/fraicheur.js'
+import { ajouterPhoto } from './lib/historique.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
@@ -313,6 +314,14 @@ function App() {
     if (f.ok && f.texte) setAccueil({ texte: f.texte })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- au montage seulement
   useEffect(() => { if (!accueil) return undefined; const id = setTimeout(() => setAccueil(null), 8000); return () => clearTimeout(id) }, [accueil])
+
+  // K7 — LE FIL DU TEMPS : une photo mensuelle des valeurs de tes KPIs (la 1re fois
+  // qu'on ouvre l'app dans un nouveau mois avec des données). Local, léger, dans
+  // l'export/import. ajouterPhoto renvoie null si le mois est déjà pris → pas de reboucle.
+  useEffect(() => {
+    const nouv = ajouterPhoto(store.historique, snapshot)
+    if (nouv) setStore((s) => ({ ...s, historique: nouv }))
+  }, [snapshot]) // eslint-disable-line react-hooks/exhaustive-deps -- une photo par mois, idempotent
   // Les indicateurs créés (persistés dans le silo) que la tour affiche.
   const widgets = Array.isArray(store.tourWidgets) ? store.tourWidgets : []
   // Ref des tuiles la PLUS RÉCENTE → le copilote applique contre l'état FRAIS
@@ -1699,7 +1708,7 @@ function App() {
           qu'il est ouvert → se referme seul. */}
       {(() => {
         const w = sable ? widgets.find((x) => x.id === sable.id) : null
-        return w ? <CarreDeSable widget={w} snapshot={snapshot} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
+        return w ? <CarreDeSable widget={w} snapshot={snapshot} historique={store.historique} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
       })()}
     </div>
   )
