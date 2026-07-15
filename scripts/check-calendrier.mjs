@@ -4,7 +4,7 @@
    échéances datées triées dans l'horizon. 0 montant inventé.
    Lance : node scripts/check-calendrier.mjs
    ========================================================================== */
-import { depensesRecurrentes, evenementsDuMois, prochainesEcheances, revenuParPaie } from '../src/lib/calendrier.js'
+import { depensesRecurrentes, evenementsDuMois, prochainesEcheances, revenuParPaie, offsetVersMois } from '../src/lib/calendrier.js'
 import { totalDepensesVie, totalClasse, depensesParDefaut } from '../src/lib/depenses.js'
 import { snapshotFromStore } from '../src/lib/canonical.js'
 import { moisCouverts, zoneDe } from '../src/lib/coussin.js'
@@ -118,6 +118,17 @@ ok(etSi(100000, 0, 0.05, 10) === 100000, '+0 $/mois → socle inchangé')
 ok(etSi(100000, 200, 0.05, 10) > 100000, '+200 $/mois → socle + valeur future de l’annuité')
 ok(Math.abs(etSi(0, 100, 0, 10) - 12000) < 1, 'taux 0 → extra × nMois (100 × 120 = 12 000)')
 console.log(`      → net=${snapP.patrimoine.net}  à 90 ans=${snapP.projection.annees[56].patrimoineNet}  rendement implicite=${(socle.rate * 100).toFixed(1)}%`)
+
+console.log('\n— P0 · le saut de mois (offsetVersMois : ouvrir le calendrier sur la date d’une tuile) —')
+const baseCal = new Date(2026, 6, 15) // juillet 2026 (mois index 6)
+ok(offsetVersMois('2026-07', baseCal) === 0, 'même mois → 0 (mois courant)')
+ok(offsetVersMois('2026-08', baseCal) === 1, 'mois suivant → +1 (le saut)')
+ok(offsetVersMois('2026-06', baseCal) === -1, 'mois précédent → −1')
+ok(offsetVersMois('2027-01', baseCal) === 6, 'janvier prochain → +6')
+ok(offsetVersMois('2025-07', baseCal) === -12, 'l’an passé → −12')
+ok(offsetVersMois(null, baseCal) === 0, 'null → 0 (défaut sûr)')
+ok(offsetVersMois('pas-une-date', baseCal) === 0, 'format invalide → 0')
+ok(offsetVersMois('2026-13', baseCal) === 0, 'mois hors borne → 0')
 
 console.log('\n' + (fail === 0 ? '✅ Calendrier + dépenses + portrait + patrimoine conformes' : `❌ ${fail} échec(s)`))
 process.exit(fail === 0 ? 0 : 1)

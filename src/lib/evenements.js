@@ -49,7 +49,12 @@ function joursAvant(maintenant, dateISO) {
 
 /* ── FAMILLE 1 — Échéances (data-aware : s.dettes = [{ label, paiementMensuel, finLe }]).
    La fin d'un paiement LIBÈRE ce montant → on PROPAGE la conséquence via evaluerGraphe
-   (dépenses − paiement → flux +X → horizon de l'objectif raccourci). Pas juste un montant. */
+   (dépenses − paiement → flux +X → horizon de l'objectif raccourci). Pas juste un montant.
+   ⚠️ DORMANT en prod : canonical.js ne fabrique pas encore snapshot.dettes (seul
+   patrimoine.autresDettes agrégé existe). Cette famille s'ALLUME au P6 (parcours) —
+   le modèle « Sortir de mes dettes » introduit la saisie du détail des dettes, que
+   canonical mappera vers snapshot.dettes. Ici : rien à changer, la garde ci-dessous
+   (dettes = [] si absent) reste correcte. */
 function evEcheances(snapshot, maintenant) {
   const dettes = Array.isArray(snapshot && snapshot.dettes) ? snapshot.dettes : []
   const out = []

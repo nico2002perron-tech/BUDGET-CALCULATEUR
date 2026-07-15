@@ -12,6 +12,15 @@ function clampJour(d, nDays) {
   return Math.min(nDays, Math.max(1, (Number(d) || 1) | 0))
 }
 
+/** P0 — l'offset (en mois, signé) pour ouvrir le calendrier sur `moisCible` ('YYYY-MM'),
+ *  relativement à `base` (le mois réel affiché). null/format invalide → 0 (mois courant). PUR. */
+export function offsetVersMois(moisCible, base) {
+  if (typeof moisCible !== 'string') return 0
+  const [yy, mm] = moisCible.split('-').map(Number)
+  if (!yy || !mm || mm < 1 || mm > 12) return 0
+  return (yy * 12 + (mm - 1)) - (base.getFullYear() * 12 + base.getMonth())
+}
+
 /** Montant par paie placé sur le calendrier (mode régulier). */
 export function revenuParPaie(revenus) {
   const r = revenus || {}

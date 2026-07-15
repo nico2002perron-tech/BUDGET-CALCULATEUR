@@ -6,18 +6,26 @@
      params : { vue:'mois', souligner:'echeances_proches'|'aucun' }
      data   : { revenus:{…modèle de paie}, depenses:[{jour,label,montant,classe,type}] }  ← snapshot
    ========================================================================== */
-import { useState } from 'react'
-import { evenementsDuMois } from '../lib/calendrier.js'
+import { useEffect, useRef, useState } from 'react'
+import { evenementsDuMois, offsetVersMois } from '../lib/calendrier.js'
 import { formatCAD } from '../lib/format.js'
 
 const MOIS_LONG = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 const JOURS = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim']
 
 export default function Calendrier({ params = {}, data = {} }) {
-  const [offset, setOffset] = useState(0)
-  const [sel, setSel] = useState(null)
-
   const base = new Date()
+  const [offset, setOffset] = useState(() => offsetVersMois(params.moisInitial, base))
+  const [sel, setSel] = useState(null)
+  // Une nouvelle cible (autre clic sur une tuile datée sans démonter le bloc) saute au bon mois.
+  const cibleRef = useRef(params.moisInitial)
+  useEffect(() => {
+    if (params.moisInitial !== cibleRef.current) {
+      cibleRef.current = params.moisInitial
+      setOffset(offsetVersMois(params.moisInitial, new Date()))
+      setSel(null)
+    }
+  }, [params.moisInitial])
   const total = base.getMonth() + offset
   const y = base.getFullYear() + Math.floor(total / 12)
   const m = ((total % 12) + 12) % 12

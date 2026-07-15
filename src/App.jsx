@@ -241,13 +241,28 @@ function App() {
   // Défense en profondeur : une clé de section sans mission réelle blanchirait
   // l'atelier (MissionAllumage rend null) → repli sur « revenus ».
   const allerSaisie = (sousSec) => setMission(MISSIONS[sousSec] ? sousSec : 'revenus')
+  // P0 — une mission écrit un silo horodaté (placements → patrimoine). L'estamper ici,
+  // comme les 3 setters de saisie, ferme la couture « mission → fraîcheur » : la pilule
+  // d'âge et la fiabilité se rafraîchissent AUSSITÔT, la mission « compte ».
+  const MISSION_SILO = { revenus: 'revenus', depenses: 'depenses', placements: 'patrimoine' }
   const finirMission = (reponses) => {
     const avant = construireGalerie(snapshot).totaux.prets
-    const storeApres = appliquerMission(mission, reponses, store)
-    const apres = construireGalerie(snapshotFromStore(storeApres)).totaux.prets
+    let storeApres = appliquerMission(mission, reponses, store)
+    const silo = MISSION_SILO[mission]
+    if (silo) storeApres = touchSilo(storeApres, silo)
+    const snapApres = snapshotFromStore(storeApres)
+    const apres = construireGalerie(snapApres).totaux.prets
+    // La MOISSON du geste : combien d'indicateurs du board se sont recalculés — même si
+    // AUCUN nouvel outil ne s'allume (mettre à jour une valeur existante mérite un retour ;
+    // la moisson de section, elle, ne se déclenche qu'au passage donnees→tour).
+    const nRecalc = kpisDuBoard().filter(({ kb }) => kpiABouge(kb.KPI, snapshot, snapApres, kb.params || {})).length
     setStore(() => storeApres)
     setMission(null)
-    if (apres > avant) setAllumes(apres - avant) // célébrer le GESTE, en fait
+    if (apres > avant) setAllumes(apres - avant) // célébrer le GESTE : des outils s'allument
+    else if (nRecalc > 0) {
+      const f = filtrerFait(`${nRecalc} indicateur${nRecalc > 1 ? 's' : ''} recalculé${nRecalc > 1 ? 's' : ''} avec tes nouvelles données.`)
+      setAccueil({ texte: f.ok && f.texte ? f.texte : `${nRecalc} indicateurs recalculés.` })
+    }
   }
   useEffect(() => {
     if (allumes == null) return
@@ -301,10 +316,12 @@ function App() {
   }, [section]) // eslint-disable-line react-hooks/exhaustive-deps -- déclenché par le changement de section seulement
   const rituelFait = useRef(false)
   useEffect(() => {
-    if (rituelFait.current) return
+    // P0 — on ne « brûle » le drapeau QUE sur la tour : si l'app ouvre sur « Mes données »,
+    // le rituel ≥ 7 j n'est plus perdu pour la session — il se joue à la 1re arrivée sur la tour.
+    if (rituelFait.current || section !== 'tour') return
     rituelFait.current = true
     const bl = loadBaseline()
-    if (!bl || !bl.visitedAt || section !== 'tour') return
+    if (!bl || !bl.visitedAt) return
     if (Math.floor((Date.now() - new Date(bl.visitedAt).getTime()) / 86400000) < 7) return
     const deltas = kpisDuBoard().map(({ kb, titre }) => { const d = deltaKPI(kb.KPI, bl.snapshot, snapshotRef.current, kb.params || {}); return d ? { titre, d } : null })
       .filter(Boolean).sort((a, b) => Math.abs(b.d.delta) - Math.abs(a.d.delta)).slice(0, 2)
@@ -312,7 +329,7 @@ function App() {
     const parts = deltas.map((x) => `${x.titre} ${x.d.delta > 0 ? '+' : '−'}${formatKPI(Math.abs(x.d.delta), x.d.unite)}`)
     const f = filtrerFait(`Depuis ta dernière visite : ${parts.join(', ')}.`)
     if (f.ok && f.texte) setAccueil({ texte: f.texte })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- au montage seulement
+  }, [section]) // eslint-disable-line react-hooks/exhaustive-deps -- à la 1re arrivée sur la tour
   useEffect(() => { if (!accueil) return undefined; const id = setTimeout(() => setAccueil(null), 8000); return () => clearTimeout(id) }, [accueil])
 
   // K7 — LE FIL DU TEMPS : une photo mensuelle des valeurs de tes KPIs (la 1re fois
@@ -338,6 +355,9 @@ function App() {
   }).filter(Boolean), [store.tourWidgets])
   const fiab = useMemo(() => fiabiliteTour(snapshot, requiertBoard), [snapshot, requiertBoard])
   const [fiabOuverte, setFiabOuverte] = useState(false)
+  // P0 — le mois sur lequel OUVRIR le calendrier (posé par la date d'une tuile ; null =
+  // le mois courant). Le rail le remet à null pour ne pas rester coincé sur une vieille cible.
+  const [calCible, setCalCible] = useState(null)
   // K6 — LES MARQUEURS DU CALENDRIER : toutes les dates que les KPIs du board projettent
   // (paie, cible « à ton rythme », jour de libération…). Le bloc calendrier les pose sur
   // le mois → le calendrier devient la carte du temps de ta tour.
@@ -345,7 +365,16 @@ function App() {
     const kb = w && w.recette && Array.isArray(w.recette.blocs) ? w.recette.blocs.find((b) => b && b.KPI) : null
     return kb && kpiPourId(kb.KPI) ? datesKPI(kb.KPI, snapshot, kb.params) : []
   }), [store.tourWidgets, snapshot])
-  const recetteCalendrier = useMemo(() => ({ ...RECETTE_CALENDRIER, blocs: [{ type: 'calendrier', params: { marqueurs: marqueursCalendrier } }] }), [marqueursCalendrier])
+  // P0 — la recette porte de nouveau ses DEUX blocs : le calendrier (marqueurs KPI +
+  // mois d'ouverture) ET la liste « À venir » (echeancier), qui était déclarée mais
+  // écrasée ici → jamais rendue. L'echeancier lit snapshot.aVenir (buildAVenir, intact).
+  const recetteCalendrier = useMemo(() => ({
+    ...RECETTE_CALENDRIER,
+    blocs: [
+      { type: 'calendrier', params: { marqueurs: marqueursCalendrier, moisInitial: calCible } },
+      { type: 'echeancier', params: { horizon: 30 } },
+    ],
+  }), [marqueursCalendrier, calCible])
   // (Pas de « célébration » à la traversée de 100 % : elle se déclenchait aussi en
   //  RETIRANT une tuile périmée — récompense non méritée — et empilait un 3e mouvement
   //  au moment clé. La moisson + l'indice qui monte SUFFISENT comme récompense. Revue nuage.)
@@ -1085,7 +1114,7 @@ function App() {
           </button>
           <div className={`rail-sousmenu ${menuDonneesOuvert ? 'is-open' : ''}`}>{sousMenuListe}</div>
 
-          <button type="button" className={`rail-item ${section === 'calendrier' ? 'is-active' : ''}`} aria-current={section === 'calendrier' ? 'page' : undefined} onClick={() => allerSection('calendrier')}>
+          <button type="button" className={`rail-item ${section === 'calendrier' ? 'is-active' : ''}`} aria-current={section === 'calendrier' ? 'page' : undefined} onClick={() => { setCalCible(null); allerSection('calendrier') }}>
             <span className="rail-ico">{I_CAL}</span>
             <span className="rail-txt">Calendrier</span>
           </button>
@@ -1452,7 +1481,7 @@ function App() {
                         <button
                           type="button"
                           className="tour-widget-date"
-                          onClick={() => allerSection('calendrier')}
+                          onClick={() => { setCalCible(dateW.mois); allerSection('calendrier') }}
                           title="Voir dans le calendrier"
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v4M16 3v4" /></svg>
@@ -1467,7 +1496,7 @@ function App() {
                         <button
                           type="button"
                           className="tour-widget-age"
-                          onClick={() => { allerSection('donnees'); allerSaisie(fraicheurW.section) }}
+                          onClick={() => allerSousSection(fraicheurW.section)}
                           title={`Mettre à jour ${fraicheurW.nom}`}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
@@ -1526,7 +1555,7 @@ function App() {
                           <div className="tb-fiab-pop" role="dialog" aria-label="La fraîcheur de tes données">
                             <p className="tb-fiab-pop-t">La fraîcheur de tes données</p>
                             {fiab.silos.map((s) => (
-                              <button key={s.silo} type="button" className={`tb-fiab-silo${s.frais ? ' est-frais' : ''}`} onClick={() => { setFiabOuverte(false); allerSection('donnees'); allerSaisie(s.section) }}>
+                              <button key={s.silo} type="button" className={`tb-fiab-silo${s.frais ? ' est-frais' : ''}`} onClick={() => { setFiabOuverte(false); allerSousSection(s.section) }}>
                                 <span className="tb-fiab-silo-nom">{s.nom}</span>
                                 <span className="tb-fiab-silo-age">{s.frais ? 'à jour' : s.texte}</span>
                               </button>
