@@ -16,6 +16,7 @@ import MoteurRendu from './recettes/MoteurRendu.jsx'
 import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
 import EvenementsSaillants from './components/EvenementsSaillants.jsx'
 import { genererEvenements, evenementsSaillants, cibleEvenement } from './lib/evenements.js'
+import { suggestionsKPI, moisDeSnapshot } from './lib/signaux-kpi.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import MissionAllumage from './components/MissionAllumage.jsx'
@@ -146,6 +147,11 @@ function normaliser(store) {
     // « Mes vues » : des modèles de tuile réutilisables (structure seulement) —
     // gardé Array + entrées valides (un silo importé hostile repart propre).
     mesVues: Array.isArray(store.mesVues) ? store.mesVues.filter((v) => v && v.recette && Array.isArray(v.recette.blocs)) : [],
+    // P3 — L'APPRENTISSAGE des suggestions « À explorer » : écartées ({id:{mois,score}}) et
+    // gardées ({domaine:mois}). Objets plats préservés VERBATIM (survivent à export→import) ;
+    // un silo importé non-objet repart propre.
+    suggestionsEcartees: store.suggestionsEcartees && typeof store.suggestionsEcartees === 'object' && !Array.isArray(store.suggestionsEcartees) ? store.suggestionsEcartees : {},
+    suggestionsGardees: store.suggestionsGardees && typeof store.suggestionsGardees === 'object' && !Array.isArray(store.suggestionsGardees) ? store.suggestionsGardees : {},
   }
 }
 
@@ -215,6 +221,7 @@ function App() {
   const [vueSauvee, setVueSauvee] = useState(false) // toast transitoire « sauvée dans Mes vues »
   const [sable, setSable] = useState(null) // { id, rect } du widget ouvert dans le carré de sable (null = fermé)
   const [reorganise, setReorganise] = useState(false) // mode « Réorganiser » du board
+  const [suggIdx, setSuggIdx] = useState(0) // P3 — l'index de la suggestion « À explorer » (« Une autre idée » l'avance)
 
   const snapshot = useMemo(() => snapshotFromStore(store), [store])
   // « DEPUIS TA DERNIÈRE VISITE » (VISION §7a·1) : le repère n'est plus le montage, mais la
@@ -718,6 +725,38 @@ function App() {
   }
   const retirerWidget = (id) =>
     setStore((s) => ({ ...s, tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).filter((w) => w.id !== id) }))
+
+  // P3 — LES SUGGESTIONS « À explorer » : le moteur de signaux (pur, LOCAL) lit le snapshot
+  // et propose UNE tuile à la fois, avec son POURQUOI. Data-aware, hors board, hors écartées
+  // récentes ; l'apprentissage vit dans le store (écartées/gardées, persistées).
+  const suggestions = useMemo(() => suggestionsKPI(snapshot, {
+    historique: store.historique,
+    baseline: baselineRef.current,
+    dejaEpingles: kpisDuBoard().map(({ kb }) => kb.KPI),
+    ecartees: store.suggestionsEcartees,
+    gardees: store.suggestionsGardees,
+  }), [snapshot, store.tourWidgets, store.historique, store.suggestionsEcartees, store.suggestionsGardees]) // eslint-disable-line react-hooks/exhaustive-deps -- baseline lue une fois (ref) ; kpisDuBoard via tourWidgets
+  const suggestionActive = suggestions.length ? suggestions[suggIdx % suggestions.length] : null
+  // Épingler la suggestion (confirmation explicite = CE clic ; JAMAIS d'auto-épinglage) :
+  // on pose la tuile ET on retient son domaine (gardé → sa famille remontera ensuite).
+  const adopterSuggestion = (sg) => {
+    if (!sg) return
+    // la forme est RÉSOLUE (un KPI qui n'offre pas 'stat' retombe sur sa 1re forme compatible)
+    // → la tuile épinglée montre exactement l'aperçu qu'on vient de voir.
+    ajouterWidget({ situation: `kpi_${sg.kpiId}`, titre: sg.question, blocs: [{ KPI: sg.kpiId, forme: resoudreForme(sg.kpiId, 'stat', snapshot, {}), params: sg.params || {} }] })
+    if (sg.domaine) setStore((s) => ({ ...s, suggestionsGardees: { ...(s.suggestionsGardees || {}), [sg.domaine]: moisDeSnapshot(snapshot) } }))
+  }
+  const autreIdee = () => setSuggIdx((i) => i + 1) // « Une autre idée » : la suivante (cycle)
+  // « Pas maintenant » : l'écarter (tue 3 mois, revient si le signal se renforce). On stocke le
+  // score BRUT du signal (scoreSignal) → la comparaison de réapparition reste homogène (revue
+  // nuage). La liste se recompose sans elle → l'index n'a pas à avancer.
+  const ecarterSuggestion = (sg) => {
+    if (!sg) return
+    setStore((s) => ({ ...s, suggestionsEcartees: { ...(s.suggestionsEcartees || {}), [sg.id]: { mois: moisDeSnapshot(snapshot), score: sg.scoreSignal } } }))
+  }
+  // La recette d'APERÇU d'une suggestion (mini-tuile vivante, jamais posée tant que non épinglée) —
+  // MÊME forme résolue que la tuile épinglée, pour un vrai coup d'œil de ce qu'on prend.
+  const apercuSuggestion = (kpiId) => ({ situation: `apercu_${kpiId}`, titre: '', blocs: [{ KPI: kpiId, forme: resoudreForme(kpiId, 'stat', snapshot, {}), params: {} }] })
 
   // PRÉ-REMPLISSAGE (VISION §8 : « réarranger un dashboard VIDE est un piège — le
   // bon truc doit déjà être à la bonne place »). Au TOUT premier chargement où des
@@ -1644,17 +1683,26 @@ function App() {
               </div>
             )}
 
-            {/* « À EXPLORER » (P2) : UNE suggestion à la fois. Ici le placeholder = la
-                prochaine perche data-aware existante ; le vrai moteur de signaux arrive au
-                P3 (qui remplacera la perche par une suggestion scorée, avec son « pourquoi »).
-                Rendu seulement quand la tour est habitée (une tour vide a ses « départs »). */}
-            {widgets.length > 0 && perchesTour.length > 0 && (
+            {/* « À EXPLORER » (P3) : UNE suggestion à la fois, produite par le moteur de
+                signaux LOCAL (signaux-kpi.js). La tour dit POURQUOI elle la propose (raison
+                factuelle), montre un APERÇU VIVANT du KPI, et laisse trois gestes : l'épingler
+                (confirmation = ce clic), voir une autre idée, ou l'écarter. Rendu seulement
+                quand la tour est habitée (une tour vide a ses « départs »). */}
+            {widgets.length > 0 && suggestionActive && (
               <section className="tour-explorer" aria-label="À explorer">
                 <span className="tour-explorer-l">À explorer</span>
-                <button type="button" className="tour-explorer-carte" onClick={() => appliquerBoard(perchesTour[0].actions)}>
-                  <span className="tour-explorer-q">{perchesTour[0].label}</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                </button>
+                <div className="te-carte">
+                  <p className="te-pourquoi">{suggestionActive.raison}</p>
+                  <p className="te-question">{suggestionActive.question}</p>
+                  <div className="te-apercu" aria-hidden="true">
+                    <MoteurRendu recette={apercuSuggestion(suggestionActive.kpiId)} snapshot={snapshot} apercu />
+                  </div>
+                  <div className="te-actions">
+                    <button type="button" className="te-epingler" onClick={() => adopterSuggestion(suggestionActive)}>Épingler sur ma tour</button>
+                    <button type="button" className="te-autre" onClick={autreIdee}>Une autre idée</button>
+                    <button type="button" className="te-pas" onClick={() => ecarterSuggestion(suggestionActive)}>Pas maintenant</button>
+                  </div>
+                </div>
               </section>
             )}
 
