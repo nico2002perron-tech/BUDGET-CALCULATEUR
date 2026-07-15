@@ -32,6 +32,17 @@
   --menthe: #4fe3c1;
   --lav: #7a6fe6;
 
+  /* ── L'ÉCHELLE TYPO (LOT 6) — les 30+ tailles brutes du texte COURANT collapsées
+     en six crans. Les GRANDS chiffres (héros, displays 23px+) gardent leur taille
+     propre (ou le clamp de .chiffre) : ils ne sont PAS du texte, ils ne suivent pas
+     cette échelle. La graisse ne fait plus le travail (LOT 6 tranche 1) — la taille si. */
+  --fs-micro: 10px;   /* labels caps, méta */
+  --fs-xs: 11.5px;    /* petit texte, chips */
+  --fs-s: 13px;       /* le CORPS */
+  --fs-m: 15px;       /* texte fort, sous-titres */
+  --fs-l: 19px;       /* titres de carte */
+  --fs-xl: 28px;      /* titres de scène */
+
   /* ── LA GÉOMÉTRIE ──────────────────────────────────────────────────────── */
   --r: 20px;
   --r-tuile: 24px;
