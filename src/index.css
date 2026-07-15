@@ -2569,6 +2569,8 @@ svg { display: block; }
 
 .stat-delta { display: inline-flex; align-items: center; gap: var(--sp-1); margin-top: 5px; font-size: var(--fs-xs); font-weight: 700; color: color-mix(in srgb, var(--ink) 72%, transparent); }
 .stat-delta svg { width: 13px; height: 13px; flex: none; }
+/* K4 — LE REPÈRE : la balise usuelle, tout en bas, en chuchotant (un fait neutre). */
+.stat-repere { margin-top: 5px; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); opacity: 0.85; line-height: 1.3; }
 
 /* LOT 3 — EN-TÊTE UNIQUE : en tuile, seul le TITRE interne d'un bloc (« Où tu en es »)
    disparaît — il double l'en-tête de tuile. On GARDE le sous-titre (.card-sub =
@@ -2949,6 +2951,22 @@ svg { display: block; }
   color: var(--muted); margin-right: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* K4 — COMPRENDRE : le volet pédagogique du sable (c'est quoi · d'où ça vient · repère). */
+.sable-comprendre-t {
+  display: inline-flex; align-items: center; gap: 7px; font-family: inherit;
+  font-size: var(--fs-m); font-weight: 800; color: var(--ink-fort);
+  background: none; border: none; cursor: pointer; padding: 4px 2px;
+}
+.sable-comprendre-t > svg:first-child { width: 17px; height: 17px; flex: none; color: var(--acc); }
+.sable-comprendre-t:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: var(--r-s); }
+.sable-comprendre-chev { width: 14px; height: 14px; opacity: 0.7; transition: transform 0.25s; }
+.sable-comprendre-t.est-ouvert .sable-comprendre-chev { transform: rotate(180deg); }
+.sable-comprendre-corps { display: flex; flex-direction: column; gap: 12px; padding: 8px 2px 2px; }
+.sable-comp-l { font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.sable-comp-volet p { margin: 4px 0 0; font-size: var(--fs-s); font-weight: 500; color: var(--ink); line-height: 1.5; }
+.sable-comp-age { display: inline-block; margin-top: 4px; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .sable-comprendre-chev { transition: none; } }
 .sable-type {
   min-height: 44px; padding: 10px 16px; border-radius: 999px; cursor: pointer;
   font-family: inherit; font-size: var(--fs-s); font-weight: 700; color: var(--ink-fort);

@@ -13,7 +13,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import MoteurRendu from '../recettes/MoteurRendu.jsx'
 import PersonaStrip from './PersonaStrip.jsx'
 import GlypheForme from './GlypheForme.jsx'
-import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible } from '../recettes/bibliotheque-kpis.js'
+import { kpiPourId, formesPourKPI, nomForme, resolveKPI, FORMES_COMPARABLES, reglageCible, expliqueKPI } from '../recettes/bibliotheque-kpis.js'
+import { etatFraicheur } from '../lib/fraicheur.js'
+import { formatKPI } from '../lib/format.js'
 import { DERIVATIONS, derivationsPourKPI, deriver, derivationValide, FORMES_SCALAIRES } from '../recettes/derivations.js'
 import { DECOUPES, decoupesPourKPI, decoupeValide } from '../recettes/decoupes.js'
 import { resoudreComparaisons } from '../recettes/schema.js'
@@ -58,6 +60,7 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
   const panneauRef = useRef(null)
   const scrimRef = useRef(null)
   const fermetureRef = useRef(false)
+  const [comprendreOuvert, setComprendreOuvert] = useState(false) // K4 : le volet « Comprendre »
   const [formeChoisie, setFormeChoisie] = useState(null) // null = le défaut du sable
   const [comparaisons, setComparaisons] = useState(null) // null = celles de la recette ; [] et + = ton choix
   const [cible, setCible] = useState(null) // null = celle de la recette, sinon le défaut du KPI
@@ -687,6 +690,43 @@ export default function CarreDeSable({ widget, snapshot, origine = null, onFerme
         {formeActive && (
           <PersonaStrip persona={personaActive} onChange={(p) => { setFait(null); setPersona(p) }} kpi={kpiResolu} kpiId={kb.KPI} domaine={def.domaine} />
         )}
+
+        {/* K4 — COMPRENDRE : la réponse au « et alors ? », en trois volets repliés —
+            c'est quoi · d'où ça vient (+ la fraîcheur du silo) · le repère. Des FAITS,
+            jamais un conseil. La 1re ouverture apprend le geste (enseignement progressif). */}
+        {formeActive && def && (() => {
+          const pedago = expliqueKPI(kb.KPI)
+          if (!pedago || (!pedago.explique && !pedago.depend)) return null
+          const fr = etatFraicheur(snapshot, def.requiert)
+          const chiffre = kpiResolu && typeof kpiResolu.valeur === 'number' && isFinite(kpiResolu.valeur) ? formatKPI(kpiResolu.valeur, kpiResolu.unite) : null
+          return (
+            <div className="sable-comprendre">
+              <button
+                type="button"
+                className={`sable-comprendre-t${comprendreOuvert ? ' est-ouvert' : ''}`}
+                onClick={() => { sons.tap(); const o = !comprendreOuvert; setComprendreOuvert(o); if (o && onAppris && !appris.includes('comprendre')) onAppris('comprendre') }}
+                aria-expanded={comprendreOuvert}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3" /><circle cx="12" cy="16.5" r="0.6" fill="currentColor" /></svg>
+                Comprendre
+                <svg className="sable-comprendre-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {comprendreOuvert && (
+                <div className="sable-comprendre-corps">
+                  {pedago.explique && (
+                    <div className="sable-comp-volet"><span className="sable-comp-l">C’est quoi</span><p>{pedago.explique}</p></div>
+                  )}
+                  {pedago.depend && (
+                    <div className="sable-comp-volet"><span className="sable-comp-l">D’où ça vient</span><p>{pedago.depend}</p>{fr && <span className="sable-comp-age">{fr.texte}</span>}</div>
+                  )}
+                  {pedago.repere && pedago.repere.texte && (
+                    <div className="sable-comp-volet"><span className="sable-comp-l">Le repère</span><p>{pedago.repere.texte}{chiffre ? ` — toi : ${chiffre}` : ''}</p></div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         <div className={`sable-scene${enApercu ? ' est-apercu' : ''}`}>
           {enApercu && (

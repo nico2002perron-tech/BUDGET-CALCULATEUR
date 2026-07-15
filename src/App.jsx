@@ -21,7 +21,7 @@ import MissionAllumage from './components/MissionAllumage.jsx'
 import { appliquerMission, MISSIONS } from './lib/missions.js'
 import { construireGalerie, DOMAINES } from './lib/galerie.js'
 import { iconeKPI, iconeChoisie, ICONES_CHOIX, ICONE_SITUATION, I_VEDETTE, I_ECLAIR } from './components/iconesGalerie.jsx'
-import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, deltaKPI, candidatsKPI, resoudreForme } from './recettes/bibliotheque-kpis.js'
+import { kpiPourId, formeAdaptee, REGISTRE_KPIS, resolveKPI, statutCible, kpiABouge, deltaKPI, candidatsKPI, resoudreForme, expliqueKPI } from './recettes/bibliotheque-kpis.js'
 import { composerVueObjectif } from './recettes/vue-objectif.js'
 import { executerActions, resumeActions } from './recettes/actions.js'
 import { perchesBoard, gestesDe } from './recettes/perches.js'
@@ -1180,6 +1180,9 @@ function App() {
                   // LA FRAÎCHEUR (K2) : l'âge du silo le plus vieux dont cette tuile est faite.
                   // null tant que c'est frais (le calme d'abord) ; `datee` au-delà de 2× le seuil.
                   const fraicheurW = kb && kpiPourId(kb.KPI) ? etatFraicheur(snapshot, kpiPourId(kb.KPI).requiert) : null
+                  // LE REPÈRE (K4) : la balise usuelle qui répond au « et alors ? ». Servi à la
+                  // tuile Stat (sous la phrase). Pas sous une dérivée (la valeur change d'unité).
+                  const repereW = kbAff && !derActive ? (expliqueKPI(kbAff.KPI) || {}).repere : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
@@ -1358,7 +1361,7 @@ function App() {
                             : undefined
                         }
                       >
-                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} delta={deltaW} />
+                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} delta={deltaW} repere={repereW} />
                         {kpiSable && (
                           <span className={`tour-tap-hint${idx === premierSableIdx && !store.sableVu ? ' tour-tap-hint--apprend' : ''}`} aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>

@@ -109,7 +109,8 @@ console.log('\n— creer_widget / repondre_kpi : data-aware + anti-doublon —')
   ok(inc.faites.length === 0, 'KPI inconnu : refusé')
   // repondre_kpi : exige une VRAIE réponse (texteFactuel)
   const rep = un('repondre_kpi', { kpi: 'top_categorie' }, etatBoard)
-  ok(rep.faites.length === 1 && rep.faites[0].resume === resolveKPI('top_categorie', snapEx).texteFactuel, 'repondre_kpi : la réponse = le fait résolu du KPI')
+  // K4 — la réponse commence par le fait résolu, puis l'enrichit (c'est quoi + repère), local.
+  ok(rep.faites.length === 1 && rep.faites[0].resume.startsWith(resolveKPI('top_categorie', snapEx).texteFactuel), 'repondre_kpi : la réponse part du fait résolu du KPI (+ explication, K4)')
 }
 
 console.log('\n— retirer / redimensionner / ouvrir_sable / epingler —')

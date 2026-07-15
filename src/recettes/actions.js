@@ -30,7 +30,7 @@
    ========================================================================== */
 import {
   kpiPourId, resolveKPI, formesPourKPI, resoudreForme, reglageCible,
-  nomForme, REGISTRE_KPIS,
+  nomForme, REGISTRE_KPIS, expliqueKPI,
 } from './bibliotheque-kpis.js'
 import { resoudreComparaisons, CONTEXTES_COMPARAISON, TAILLES_WIDGET, filtrerFait } from './schema.js'
 import { DERIVATIONS, derivationsPourKPI } from './derivations.js'
@@ -393,8 +393,15 @@ export const ACTIONS = {
       return { ...etat, widgets: [...(etat.widgets || []), w] }
     },
     resume(a, etat, ctx) {
+      // K4 — la réponse LOCALE (zéro IA) : le chiffre factuel + ce que c'est + le
+      // repère. Le registre répond, le copilote ne fait que le relayer (conforme).
       const r = resolveKPI(a.kpi, ctx.snapshot)
-      return fait(r && r.texteFactuel, 'Voici ta réponse')
+      const ped = expliqueKPI(a.kpi)
+      const bouts = []
+      if (r && r.texteFactuel) bouts.push(r.texteFactuel)
+      if (ped && ped.explique) bouts.push(ped.explique)
+      if (ped && ped.repere && ped.repere.texte) bouts.push(ped.repere.texte)
+      return fait(bouts.join(' '), (r && r.texteFactuel) || 'Voici ta réponse')
     },
   },
 }

@@ -26,7 +26,7 @@ function reduceMotion() {
   )
 }
 
-export default function Stat({ params = {}, data = {}, kpi = null, delta = null }) {
+export default function Stat({ params = {}, data = {}, kpi = null, delta = null, repere = null }) {
   // Mode KPI : on AFFICHE la valeur résolue par la bibliothèque (jamais recalculée ici).
   const enKpi = !!kpi
   const dispoKpi = enKpi && typeof kpi.valeur === 'number' && isFinite(kpi.valeur)
@@ -76,6 +76,13 @@ export default function Stat({ params = {}, data = {}, kpi = null, delta = null 
               </svg>
               <span>{(delta.delta > 0 ? '+' : '−') + formatKPI(Math.abs(delta.delta), delta.unite)} depuis ta dernière visite</span>
             </div>
+          )}
+          {/* LE REPÈRE (K4) : la balise usuelle qui répond au « et alors ? » — un FAIT
+              neutre (« Repère usuel : 3 à 6 mois »), jamais une cible morale. Il chuchote
+              tout en bas ; il cède la place au delta sur une petite tuile (priorité :
+              chiffre > phrase > delta > repère). */}
+          {repere && repere.texte && enKpi && dispoKpi && !delta && (
+            <div className="stat-repere">{repere.texte}</div>
           )}
         </div>
       </div>

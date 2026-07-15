@@ -59,7 +59,7 @@ function prefersReduce() {
 // `projecteur` : true dans le CARRÉ DE SABLE seulement — le tap-qui-fige et les
 // cibles clavier du survol vivant y vivent ; sur une TUILE du board, le tap
 // reste UN seul geste (ouvrir le sable), jamais une double action.
-export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false, apercu = false, delta = null }) {
+export default function MoteurRendu({ recette, snapshot, anime = false, projecteur = false, apercu = false, delta = null, repere = null }) {
   const r = validerRecette(recette)
   // Un emplacement à CANDIDATS → on rend le bloc `choisi` (repli sûr si invalide ; un
   // `choisi` inconnu ne peut jamais atteindre le rendu). Puis : seuls les types CONNUS,
@@ -198,7 +198,7 @@ export default function MoteurRendu({ recette, snapshot, anime = false, projecte
     const Composant = composantPour(bloc.type)
     const el = (
       <div className={sequence ? 'bloc-reveal' : undefined} key={i}>
-        <Composant params={paramsBloc} data={data} kpi={kpi} projecteur={projecteur} delta={i === heroIdx ? delta : null} />
+        <Composant params={paramsBloc} data={data} kpi={kpi} projecteur={projecteur} delta={i === heroIdx ? delta : null} repere={i === heroIdx ? repere : null} />
       </div>
     )
     if (cfg && cfg.taille === 'compacte') sides.push(el)
