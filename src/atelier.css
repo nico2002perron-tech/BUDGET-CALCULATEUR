@@ -147,7 +147,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 34px 34px;
   overflow: hidden;
   border-radius: 40px 40px 0 0;
@@ -201,7 +201,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 
 .at-tete { position: relative; z-index: 3; text-align: center; max-width: 640px; flex: none; }
 .at-eyebrow {
-  display: inline-flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: var(--sp-2);
   font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--menthe);
   background: color-mix(in srgb, var(--menthe) 12%, transparent);
@@ -234,7 +234,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 /* MES VUES — les modèles sauvés par l'usager, re-posables ici (leur seule porte). */
 .at-mesvues { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 720px; margin-top: 6px; z-index: 3; }
 .at-mesvues-l { font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-.at-mesvues-liste { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.at-mesvues-liste { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
 .at-vue { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--line-fort); background: var(--surface); overflow: hidden; }
 .at-vue-poser { font-family: inherit; font-size: var(--fs-xs); font-weight: 700; color: var(--ink); background: none; border: none; padding: 6px 4px 6px 13px; cursor: pointer; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .at-vue-poser:hover { color: var(--acc); }
@@ -252,7 +252,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
     radial-gradient(ellipse 62% 120% at 72% 55%, color-mix(in srgb, var(--cyan) 50%, transparent), transparent 64%);
 }
 .ia-barre {
-  position: relative; display: flex; align-items: center; gap: 12px;
+  position: relative; display: flex; align-items: center; gap: var(--sp-3);
   padding: 6px 6px 6px 18px; border-radius: var(--r);
   background: var(--surface-2); border: 1px solid var(--line-fort);
   -webkit-backdrop-filter: blur(26px) saturate(170%); backdrop-filter: blur(26px) saturate(170%);
@@ -295,13 +295,13 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
    ══════════════════════════════════════════════════════════════════════════ */
 .carrousel {
   position: relative; z-index: 2; flex: 0 1 auto; width: 100%; min-height: 0; margin-top: 6px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
 }
 /* la vue = le rail, flanqué de ses deux flèches (rendues seulement s'il déborde).
    Préfixe « pres- » (présentoir) et NON « rail- » : « .rail » est déjà la barre de
    navigation gauche (.rail-brand/.rail-items…) — le réutiliser empilait les plaques
    en colonne (elle héritait de flex-direction:column ; width:300px). */
-.pres-vue { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; }
+.pres-vue { position: relative; display: flex; align-items: center; gap: var(--sp-2); width: 100%; }
 .pres-piste {
   display: flex; gap: 14px; flex: 1; min-width: 0;
   overflow-x: auto; overscroll-behavior-x: contain;
@@ -453,7 +453,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 
 /* LES ÉTEINTES — subordonnées, sous le rail : des chips « à allumer », claires sur
    leur état (pointillé, muet), jamais des cartes pleines qui volent la vedette. */
-.pres-eteintes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.pres-eteintes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-2); }
 .pres-eteintes-tag {
   font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase;
   color: var(--muted); /* pas d'opacity : à 9.5px, le muet plein reste au-dessus du seuil AA */
@@ -485,13 +485,13 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 /* LA LISTE PLATE — tous les indicateurs, scrollable. Pas un anneau : l'exhaustivité
    existe, elle ne tourne pas devant toi. */
 .anneau-liste { width: 100%; max-width: 760px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.al-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex: none; }
+.al-tete { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: 12px; flex: none; }
 .al-retour { font-family: inherit; font-size: var(--fs-xs); font-weight: 800; color: var(--acc); background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
 .al-retour:hover { background: var(--surface); }
 .al-titre { font-size: var(--fs-s); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.al-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow-y: auto; min-height: 0; align-content: start; padding: 2px 4px 6px 2px; }
+.al-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); overflow-y: auto; min-height: 0; align-content: start; padding: 2px 4px 6px 2px; }
 .al-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
   text-align: left; font-family: inherit; cursor: pointer; padding: 11px 14px; border-radius: var(--r-s);
   background: var(--surface); border: 1px solid var(--line);
   transition: border-color 0.15s, background 0.15s;
@@ -505,7 +505,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 /* L'indice « descends pour l'atelier » — vit au bas de la scène-tour. */
 .scene-indice {
   position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
   font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--muted); opacity: calc(0.6 - var(--p) * 0.6); pointer-events: none;
   transition: opacity 0.3s;

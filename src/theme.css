@@ -54,6 +54,16 @@
   --spring: cubic-bezier(0.16, 1, 0.3, 1);
   --doux: cubic-bezier(0.22, 0.61, 0.36, 1);
 
+  /* ── LE RYTHME D'ESPACEMENT (LOT 6) — une échelle de 6 pas pour les paddings/gaps
+     des conteneurs. On tokenise seulement les valeurs qui MATCHENT déjà un pas (remap
+     IDENTITÉ, zéro décalage) ; les micro-ajustements (6/10/14/18px) restent bruts. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
   /* ── LE PASSAGE (posé par usePassage) ──────────────────────────────────── */
   --p: 0;      /* 0 = la tour · 1 = l'atelier */
   --pic: 0;    /* le pic de la couture lumineuse, à mi-passage */
