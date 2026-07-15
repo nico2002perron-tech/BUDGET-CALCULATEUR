@@ -17,6 +17,7 @@ import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
 import EvenementsSaillants from './components/EvenementsSaillants.jsx'
 import { genererEvenements, evenementsSaillants, cibleEvenement } from './lib/evenements.js'
 import { suggestionsKPI, moisDeSnapshot } from './lib/signaux-kpi.js'
+import { promesseKPI } from './lib/promesse.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import MissionAllumage from './components/MissionAllumage.jsx'
@@ -1334,6 +1335,9 @@ function App() {
                   // Le sable ne s'offre que pour un KPI CONNU du registre (un id disparu —
                   // vieux silo, import — laisserait sinon une tuile « tappable » vers rien).
                   const kpiSable = kb && kpiPourId(kb.KPI) ? kb : null
+                  // P4 — LA TUILE-PROMESSE : le KPI héros n'a plus (ou pas) sa donnée → la tuile
+                  // INVITE à la donner au lieu d'afficher un « — ». Data-aware (promesseKPI, pur).
+                  const promesseW = kpiSable && !resolveKPI(kpiSable.KPI, snapshot).disponible ? promesseKPI(kpiSable.KPI, snapshot) : null
                   // La pastille de statut : factuelle, seulement si une cible SÛRE est atteignable
                   // (sinon null — jamais un jugement inventé). Voir statutCible (data-aware).
                   const statut = kb && kb.params ? statutCible(kb.KPI, snapshot, kb.params.cible) : null
@@ -1556,12 +1560,25 @@ function App() {
                             : undefined
                         }
                       >
-                        <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} delta={deltaW} repere={repereW} />
-                        {kpiSable && (
-                          <span className={`tour-tap-hint${idx === premierSableIdx && !store.sableVu ? ' tour-tap-hint--apprend' : ''}`} aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>
-                            tape&nbsp;: carré de sable
-                          </span>
+                        {promesseW ? (
+                          <section className="card tuile-promesse">
+                            <span className="tp-ic" aria-hidden="true">{iconeWidget(w)}</span>
+                            <p className="tp-phrase">{promesseW.phrase}</p>
+                            <button type="button" className="tp-remplir" onClick={(e) => { e.stopPropagation(); allerSousSection(promesseW.silo) }}>
+                              Ajouter {promesseW.quoi}
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                            </button>
+                          </section>
+                        ) : (
+                          <>
+                            <MoteurRendu recette={rAff} snapshot={snapshot} anime={anime} delta={deltaW} repere={repereW} />
+                            {kpiSable && (
+                              <span className={`tour-tap-hint${idx === premierSableIdx && !store.sableVu ? ' tour-tap-hint--apprend' : ''}`} aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" /></svg>
+                                tape&nbsp;: carré de sable
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -1582,7 +1599,7 @@ function App() {
                       {/* LA LIGNE D'ÂGE (K2) : la tuile dit calmement quand sa matière date, et
                           ouvre la saisie du silo concerné. Discrète, muette, JAMAIS d'ambre —
                           l'âge d'une donnée est un fait, pas une alarme. Rien tant que c'est frais. */}
-                      {fraicheurW && !dateW && !reorganise && (
+                      {fraicheurW && !dateW && !promesseW && !reorganise && (
                         <button
                           type="button"
                           className="tour-widget-age"
