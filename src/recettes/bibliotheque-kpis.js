@@ -27,6 +27,40 @@ function num(v) {
 }
 const mois1 = (m) => (m == null ? '—' : Number(m).toFixed(1).replace('.', ','))
 
+/* ── LE TEMPS (K1) — un KPI peut PROJETER des dates. On garde ça PUR : le
+   « maintenant » vient de snapshot.meta.generatedAt (l'instant où le snapshot a été
+   bâti — les dates de aVenir y sont déjà relatives), avec repli sur l'heure réelle.
+   Ainsi datesKPI est déterministe pour un snapshot donné (donc testable). ────────── */
+const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+function maintenantDe(s) {
+  const iso = s && s.meta && s.meta.generatedAt
+  const d = iso ? new Date(iso) : new Date()
+  return isNaN(d.getTime()) ? new Date() : d
+}
+function isoLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+/** Une date PROJETÉE = maintenant + h mois (posée au 1er du mois cible). null si h
+ *  invalide (aucune projection sur une donnée absente / un horizon non fini). */
+function dansMois(s, h, faireLabel) {
+  if (typeof h !== 'number' || !isFinite(h) || h <= 0 || h > 720) return null
+  const now = maintenantDe(s)
+  const d = new Date(now.getFullYear(), now.getMonth() + Math.round(h), 1)
+  return { date: isoLocal(d), type: 'projetee', label: faireLabel(MOIS_LONGS[d.getMonth()], d.getFullYear()) }
+}
+/** La prochaine PAIE réelle (1re entrée de aVenir) → { date, type:'reelle', label } ou null. */
+function prochainePaie(s) {
+  const av = s && Array.isArray(s.aVenir) ? s.aVenir : []
+  const p = av.find((e) => e && e.type === 'entree' && e.date)
+  return p ? { date: p.date, type: 'reelle', label: 'Ta prochaine paie' } : null
+}
+/** Le dernier jour du mois courant (fin de cycle du solde) → { date, type:'reelle', label }. */
+function finDuMois(s) {
+  const now = maintenantDe(s)
+  const d = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return { date: isoLocal(d), type: 'reelle', label: 'Fin du mois' }
+}
+
 // Disponibilité d'une donnée dans le snapshot (le « requiert » des KPIs). PUR.
 // Exporté : progression.js (la carte de la tour) dérive les étages allumés/éteints
 // de CES prédicats — une seule source de vérité, jamais de copie.
@@ -53,6 +87,9 @@ export const REGISTRE_KPIS = [
   {
     id: 'horizon_objectif', domaine: 'objectif', question: 'Dans combien de temps ?',
     requiert: ['capacite'], blocsCompatibles: ['chaine', 'chronologie', 'stat', 'comparaison'],
+    explique: 'Le nombre de mois avant d’atteindre ta cible, à ton rythme d’épargne actuel.',
+    depend: 'Ce qu’il te reste à réunir ÷ ce que tu mets de côté chaque mois.',
+    dates: (s, ctx) => { const g = objG(s, ctx); const o = g.objectif; if (!o) return []; const contrib = num(ctx && ctx.contributionMensuelle); const h = contrib > 0 ? (o.restant <= 0 ? 0 : Math.ceil(o.restant / contrib)) : o.horizonMois; const dd = dansMois(s, h, (mo, an) => `À ton rythme, ta cible en ${mo} ${an}`); return dd ? [dd] : [] },
     resolve: (s, ctx) => {
       const g = objG(s, ctx)
       const o = g.objectif
@@ -68,6 +105,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'pct_atteint', domaine: 'objectif', question: 'Je suis rendu où ?',
     requiert: ['coussin'], blocsCompatibles: ['barre_progression', 'jauge', 'stat'],
+    explique: 'La part de ta cible déjà atteinte.',
+    depend: 'Ce que tu as de côté ÷ ta cible.',
     resolve: (s, ctx) => {
       const cible = num(ctx && ctx.objectif && ctx.objectif.cible); const deja = num(s.coussin && s.coussin.montant)
       const pct = cible > 0 ? Math.min(100, Math.round((deja / cible) * 100)) : null
@@ -77,6 +116,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'restant_a_combler', domaine: 'objectif', question: 'Combien il me manque ?',
     requiert: ['coussin'], blocsCompatibles: ['stat', 'barre_progression'],
+    explique: 'Le montant qu’il te reste à réunir pour toucher ta cible.',
+    depend: 'Ta cible − ce que tu as déjà de côté.',
     resolve: (s, ctx) => {
       const cible = num(ctx && ctx.objectif && ctx.objectif.cible); const deja = num(s.coussin && s.coussin.montant)
       const restant = cible > 0 ? Math.max(0, cible - deja) : null
@@ -86,6 +127,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'contribution_requise', domaine: 'objectif', question: 'Combien par mois pour ma date ?',
     requiert: ['coussin'], blocsCompatibles: ['stat', 'fait'],
+    explique: 'Le montant à mettre de côté chaque mois pour atteindre ta cible à ta date.',
+    depend: 'Ce qu’il te reste à réunir ÷ le nombre de mois jusqu’à ta date.',
     resolve: (s, ctx) => {
       const cible = num(ctx && ctx.objectif && ctx.objectif.cible); const deja = num(s.coussin && s.coussin.montant)
       const moisCible = num(ctx && ctx.moisCible)
@@ -97,6 +140,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'ecart_capacite', domaine: 'objectif', question: 'Est-ce réaliste à mon rythme ?',
     requiert: ['capacite', 'coussin'], blocsCompatibles: ['fait', 'stat'],
+    explique: 'L’écart entre ce que ta date demande par mois et ce que ta capacité permet.',
+    depend: 'Le montant requis par mois − ta capacité d’épargne.',
     resolve: (s, ctx) => {
       const g = objG(s, ctx); const cap = num(g.noeuds && g.noeuds.capaciteEpargne && g.noeuds.capaciteEpargne.valeur)
       const cible = num(ctx && ctx.objectif && ctx.objectif.cible); const deja = num(s.coussin && s.coussin.montant)
@@ -109,6 +154,9 @@ export const REGISTRE_KPIS = [
   {
     id: 'date_atteinte_projetee', domaine: 'objectif', question: 'À mon rythme, j’y serais quand ?',
     requiert: ['capacite', 'coussin'], blocsCompatibles: ['chronologie', 'fait', 'comparaison'],
+    explique: 'Le moment où tu toucherais ta cible en gardant ton rythme d’épargne actuel.',
+    depend: 'Ce qu’il te reste à réunir ÷ ta capacité d’épargne mensuelle.',
+    dates: (s, ctx) => { const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null; const dd = dansMois(s, h, (mo, an) => `À ton rythme, tu y serais en ${mo} ${an}`); return dd ? [dd] : [] },
     resolve: (s, ctx) => {
       const g = objG(s, ctx); const h = g.objectif ? g.objectif.horizonMois : null
       return { valeur: h, unite: 'mois', texteFactuel: h === 0 ? 'Ta cible est déjà atteinte.' : h == null ? 'À ton rythme actuel, ta cible n’avance pas.' : `À ton rythme, tu y serais dans ${h} mois.` }
@@ -119,11 +167,17 @@ export const REGISTRE_KPIS = [
   {
     id: 'solde_mois', domaine: 'budget', question: 'Il me reste quoi ?',
     requiert: ['depenses'], blocsCompatibles: ['solde', 'stat'],
+    explique: 'Ce qui te reste chaque mois une fois toutes tes dépenses payées.',
+    depend: 'Ton revenu − tes dépenses.',
+    dates: (s) => { const out = []; const p = prochainePaie(s); if (p) out.push(p); out.push(finDuMois(s)); return out },
     resolve: (s) => { const v = num(s.depenses.reste); return { valeur: v, unite: '$', texteFactuel: v >= 0 ? `Il te reste ${formatCAD(v)} après tes dépenses.` : `Tes dépenses dépassent ton revenu de ${formatCAD(Math.abs(v))}.` } },
   },
   {
     id: 'taux_epargne', domaine: 'budget', question: 'Quelle part je mets de côté ?',
     requiert: ['depenses'], blocsCompatibles: ['jauge', 'stat', 'repartition'],
+    explique: 'La part de ton revenu que tu mets de côté chaque mois.',
+    depend: 'Ton épargne mensuelle ÷ ton revenu.',
+    repere: { texte: 'Repère souvent cité : autour de 10 %.', min: null, max: null },
     // réglable : TA cible d'épargne (ctx.cible, en %) — choisie par l'usager, jamais imposée.
     // sens 'haut' : la valeur et la cible partagent l'unité (%) et « plus haut = atteint »
     // → seule condition sûre pour une pastille de statut (jamais un jugement inventé).
@@ -139,26 +193,37 @@ export const REGISTRE_KPIS = [
   {
     id: 'equilibre_503020', domaine: 'budget', question: 'Mon budget est-il balancé ?',
     requiert: ['depenses'], blocsCompatibles: ['repartition', 'beignet', 'anneau3d'],
+    explique: 'Comment tes dépenses se répartissent entre besoins, désirs et épargne.',
+    depend: 'Tes dépenses classées en trois familles ÷ ton revenu.',
+    repere: { texte: 'Repère usuel : 50 % besoins, 30 % désirs, 20 % épargne.', min: null, max: null },
     resolve: (s) => { const p = s.depenses.pct; if (!p) return { valeur: null, unite: '%', texteFactuel: '' }; return { valeur: p, unite: '%', texteFactuel: `Tes parts : ${p.besoin} % besoins, ${p.envie} % désirs, ${p.epargne} % épargne.` } },
   },
   {
     id: 'engage_vs_libre', domaine: 'budget', question: 'Combien part tout seul chaque mois ?',
     requiert: ['depenses'], blocsCompatibles: ['barre_empilee', 'jauge'],
+    explique: 'La part de tes dépenses qui est fixe (déjà engagée) plutôt que variable.',
+    depend: 'Tes dépenses fixes ÷ le total de tes dépenses.',
     resolve: (s) => { const el = s.depenses.engageLibre || {}; const fixe = num(el.fixe); const variable = num(el.variable); const tot = fixe + variable; const pct = tot > 0 ? Math.round((fixe / tot) * 100) : null; return { valeur: pct, unite: '%', texteFactuel: pct == null ? '' : `${pct} % de tes dépenses sont fixes (déjà engagées).` } },
   },
   {
     id: 'cout_vie_mensuel', domaine: 'budget', question: 'Ça me coûte combien de vivre ?',
     requiert: ['depenses'], blocsCompatibles: ['stat', 'anatomie_dollar'],
+    explique: 'Ce que ça te coûte de vivre chaque mois, tout compris.',
+    depend: 'La somme de toutes tes dépenses mensuelles.',
     resolve: (s) => { const v = num(s.depenses.coutVie); return { valeur: v, unite: '$', texteFactuel: `Vivre te coûte ${formatCAD(v)} par mois.` } },
   },
   {
     id: 'top_categorie', domaine: 'budget', question: 'Qu’est-ce qui pèse le plus ?',
     requiert: ['categories'], blocsCompatibles: ['beignet', 'anneau3d', 'liste', 'fait'],
+    explique: 'La catégorie de dépense qui pèse le plus lourd dans ton budget.',
+    depend: 'Le plus gros poste parmi tes catégories de dépenses.',
     resolve: (s) => { const cats = [...s.depenses.parCategorie].sort((a, b) => num(b.montant) - num(a.montant)); const top = cats[0]; return { valeur: num(top.montant), unite: '$', texteFactuel: `Ta plus grosse catégorie : ${top.label || 'Dépense'}, à ${formatCAD(top.montant)}.` } },
   },
   {
     id: 'jours_de_repit', domaine: 'budget', question: 'Mon surplus couvre combien de jours ?',
     requiert: ['depenses'], blocsCompatibles: ['stat', 'fait'],
+    explique: 'Combien de jours de dépenses ton surplus du mois pourrait couvrir.',
+    depend: 'Ton surplus ÷ ton coût de vie par jour.',
     resolve: (s) => { const reste = num(s.depenses.reste); const cv = num(s.depenses.coutVie); if (reste <= 0) return { valeur: 0, unite: 'jours', texteFactuel: 'Pas de surplus à reporter ce mois-ci.' }; const j = cv > 0 ? Math.round(reste / (cv / 30)) : null; return { valeur: j, unite: 'jours', texteFactuel: j == null ? '' : `Ton surplus couvre ${j} jours de dépenses.` } },
   },
 
@@ -166,6 +231,9 @@ export const REGISTRE_KPIS = [
   {
     id: 'mois_couverts', domaine: 'coussin', question: 'Mon coussin tient combien de mois ?',
     requiert: ['coussin'], blocsCompatibles: ['jauge', 'coussin_urgence'],
+    explique: 'Le nombre de mois que ton coussin couvrirait si tes revenus s’arrêtaient.',
+    depend: 'Ton coussin ÷ tes dépenses essentielles par mois.',
+    repere: { texte: 'Repère usuel : 3 à 6 mois.', min: 3, max: 6 },
     // valeur et cible en 'mois', « plus haut = atteint » → pastille de statut sûre.
     reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1, sens: 'haut' },
     resolve: (s, ctx) => {
@@ -178,11 +246,16 @@ export const REGISTRE_KPIS = [
   {
     id: 'montant_coussin', domaine: 'coussin', question: 'J’ai combien de côté ?',
     requiert: ['coussin'], blocsCompatibles: ['stat'],
+    explique: 'Le montant total que tu as mis de côté pour les imprévus.',
+    depend: 'La somme de ton fonds d’urgence.',
     resolve: (s) => { const v = num(s.coussin.montant); return { valeur: v, unite: '$', texteFactuel: `Tu as ${formatCAD(v)} de côté.` } },
   },
   {
     id: 'ecart_3_6_mois', domaine: 'coussin', question: 'Combien pour atteindre ma cible ?',
     requiert: ['coussin'], blocsCompatibles: ['barre_progression', 'fait'],
+    explique: 'Le montant qu’il te manque pour atteindre ta cible de coussin.',
+    depend: 'Ta cible en mois × tes essentielles − ce que tu as déjà.',
+    repere: { texte: 'Repère usuel : 3 à 6 mois.', min: null, max: null },
     reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
     resolve: (s, ctx) => {
       // TA cible en mois (défaut 3) → convertie en dollars via tes essentielles.
@@ -197,6 +270,9 @@ export const REGISTRE_KPIS = [
   {
     id: 'temps_vers_coussin_cible', domaine: 'coussin', question: 'Ma cible de coussin, dans combien de temps ?',
     requiert: ['coussin', 'capacite'], blocsCompatibles: ['chronologie', 'chaine'],
+    explique: 'Le moment où ton coussin toucherait ta cible, à ton rythme d’épargne actuel.',
+    depend: 'Ce qu’il te manque ÷ ton épargne mensuelle.',
+    dates: (s, ctx) => { const ess = num(s.coussin && s.coussin.essentielles); const nb = Math.max(1, Math.round(num(ctx && ctx.cible)) || 3); const cibleM = ess > 0 ? ess * nb : num(s.coussin && s.coussin.cible3); const m = num(s.coussin && s.coussin.montant); const cap = num(s.depenses && s.depenses.reste); const manque = Math.max(0, cibleM - m); const h = cibleM <= 0 ? null : (manque === 0 ? 0 : (cap > 0 ? Math.ceil(manque / cap) : null)); const dd = dansMois(s, h, (mo, an) => `À ton rythme, ta cible de coussin en ${mo} ${an}`); return dd ? [dd] : [] },
     reglage: { label: 'Ta cible', unite: 'mois', defaut: 3, min: 1, max: 12, pas: 1 },
     resolve: (s, ctx) => {
       const ess = num(s.coussin.essentielles)
@@ -213,6 +289,8 @@ export const REGISTRE_KPIS = [
   {
     id: 'taux_constitution', domaine: 'coussin', question: 'Mon coussin grossit à quelle vitesse ?',
     requiert: ['coussin', 'depenses'], blocsCompatibles: ['stat', 'fait'],
+    explique: 'Ce que tu ajoutes à ton épargne chaque mois.',
+    depend: 'Le montant classé en épargne dans tes dépenses.',
     resolve: (s) => { const ep = num(s.depenses.parClasse && s.depenses.parClasse.epargne); return { valeur: ep, unite: '$/mois', texteFactuel: ep > 0 ? `Tu ajoutes ${formatCAD(ep)} par mois à ton épargne.` : 'Aucune épargne mensuelle saisie pour l’instant.' } },
   },
 
@@ -220,11 +298,15 @@ export const REGISTRE_KPIS = [
   {
     id: 'amplitude_revenus', domaine: 'saisonnier', question: 'Mes revenus varient de combien ?',
     requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage', 'stat'],
+    explique: 'L’écart entre ton mois de revenu le plus élevé et le plus faible.',
+    depend: 'Ton revenu du mois le plus fort − celui du plus faible.',
     resolve: (s) => { const r = s.saison.revenusMensuels; const mn = Math.min(...r); const mx = Math.max(...r); return { valeur: mx - mn, unite: '$', texteFactuel: `Tes revenus varient de ${formatCAD(mn)} à ${formatCAD(mx)} selon les mois.` } },
   },
   {
     id: 'mois_sous_seuil', domaine: 'saisonnier', question: 'Combien de mois dans le rouge ?',
     requiert: ['saison'], blocsCompatibles: ['flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage', 'fait'],
+    explique: 'Le nombre de mois où ton revenu passe sous ton plancher.',
+    depend: 'Les mois dont le revenu est inférieur à ton coût de vie (ou à ton plancher visé).',
     // ctx.cible (TON plancher, posé dans le sable) → le compte ET le texte suivent
     // la même lecture que le visuel (jamais deux chiffres contradictoires côte à côte).
     resolve: (s, ctx) => {
@@ -237,16 +319,22 @@ export const REGISTRE_KPIS = [
   {
     id: 'manque_saison_creuse', domaine: 'saisonnier', question: 'Combien mettre de côté pour l’hiver ?',
     requiert: ['saison'], blocsCompatibles: ['stat', 'jauge', 'fait'],
+    explique: 'Ce que tes mois creux te coûtent en tout sur l’année.',
+    depend: 'La somme des manques, mois par mois, sous ton coût de vie.',
     resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const somme = s.saison.revenusMensuels.reduce((a, x) => a + Math.max(0, dep - num(x)), 0); return { valeur: somme, unite: '$', texteFactuel: `Tes mois creux puisent ≈ ${formatCAD(somme)} sur l’année.` } },
   },
   {
     id: 'mois_le_plus_serre', domaine: 'saisonnier', question: 'Mon pire mois ?',
     requiert: ['saison'], blocsCompatibles: ['fait', 'stat'],
+    explique: 'Ce qu’il te reste dans ton mois de revenu le plus faible, après tes dépenses.',
+    depend: 'Ton plus petit revenu mensuel − tes dépenses.',
     resolve: (s) => { const dep = num(s.saison.depensesMensuelles); const nets = s.saison.revenusMensuels.map((x) => num(x) - dep); const minNet = Math.min(...nets); return { valeur: minNet, unite: '$', texteFactuel: `Ton mois le plus serré finit à ${formatCAD(minNet)} après tes dépenses.` } },
   },
   {
     id: 'revenu_lisse', domaine: 'saisonnier', question: 'Étalé sur l’année, ça fait combien par mois ?',
     requiert: ['saison'], blocsCompatibles: ['stat', 'flux_annuel', 'prisme3d', 'bandes', 'courbe', 'nuage'],
+    explique: 'Ton revenu annuel réparti également sur les 12 mois.',
+    depend: 'La somme de tes revenus ÷ 12.',
     resolve: (s) => { const r = s.saison.revenusMensuels; const moy = Math.round(r.reduce((a, x) => a + num(x), 0) / 12); return { valeur: moy, unite: '$/mois', texteFactuel: `Lissé sur l’année, ça ferait ${formatCAD(moy)} par mois.` } },
   },
 
@@ -254,26 +342,37 @@ export const REGISTRE_KPIS = [
   {
     id: 'taux_effectif', domaine: 'impot', question: 'Quel % d’impôt je paie vraiment ?',
     requiert: ['fiscalite'], blocsCompatibles: ['impot_palier', 'stat'],
+    explique: 'La part réelle de ton revenu brut qui part en impôts et cotisations.',
+    depend: 'Tes impôts et cotisations ÷ ton revenu brut.',
     resolve: (s) => { const v = num(s.fiscalite.tauxEffectif); return { valeur: v, unite: '%', texteFactuel: `Ton taux d’imposition effectif est de ${formatPct(v)}.` } },
   },
   {
     id: 'jour_liberation_fiscale', domaine: 'impot', question: 'À partir de quand je travaille pour moi ?',
     requiert: ['fiscalite'], blocsCompatibles: ['impot_palier', 'fait'],
+    explique: 'Le jour de l’année où tu finis de payer l’État et gardes le reste.',
+    depend: 'La part de ton revenu qui part en impôts, ramenée en jours d’année.',
+    dates: (s) => { const j = Math.round(num(s.fiscalite && s.fiscalite.jourLiberation)); if (!(j >= 1 && j <= 365)) return []; const now = maintenantDe(s); const d = new Date(now.getFullYear(), 0, j); return [{ date: isoLocal(d), type: 'projetee', label: 'Ton jour de libération fiscale' }] },
     resolve: (s) => { const j = num(s.fiscalite.jourLiberation); return { valeur: j, unite: 'jour', texteFactuel: `Tu cesses de payer l’impôt au jour ${j} de l’année.` } },
   },
   {
     id: 'revenu_net_mensuel', domaine: 'impot', question: 'Il me reste quoi net ?',
     requiert: ['fiscalite'], blocsCompatibles: ['stat', 'anatomie_dollar'],
+    explique: 'Ce qu’il te reste chaque mois après impôts et cotisations.',
+    depend: 'Ton revenu net annuel ÷ 12.',
     resolve: (s) => { const v = Math.round(num(s.fiscalite.net) / 12); return { valeur: v, unite: '$/mois', texteFactuel: `Net, il te reste ${formatCAD(v)} par mois.` } },
   },
   {
     id: 'anatomie_brut', domaine: 'impot', question: 'Où va chaque dollar gagné ?',
     requiert: ['fiscalite'], blocsCompatibles: ['anatomie_dollar', 'beignet'],
+    explique: 'Comment ton revenu brut se partage entre impôts, cotisations et net.',
+    depend: 'Ton brut décomposé en fédéral, Québec, cotisations et net.',
     resolve: (s) => { const b = num(s.fiscalite.brut); return { valeur: b, unite: '$', texteFactuel: `Sur ${formatCAD(b)} brut, voici où va chaque dollar.` } },
   },
   {
     id: 'poids_cotisations', domaine: 'impot', question: 'RRQ/AE/RQAP me prennent combien ?',
     requiert: ['fiscalite'], blocsCompatibles: ['stat', 'fait'],
+    explique: 'Le total de tes cotisations sociales sur l’année.',
+    depend: 'La somme de RRQ, AE et RQAP retenue sur ta paie.',
     resolve: (s) => { const v = num(s.fiscalite.cotisations); return { valeur: v, unite: '$', texteFactuel: `Tes cotisations (RRQ, AE, RQAP) totalisent ${formatCAD(v)} sur l’année.` } },
   },
 
@@ -281,21 +380,29 @@ export const REGISTRE_KPIS = [
   {
     id: 'valeur_nette', domaine: 'patrimoine', question: 'Je vaux combien, net ?',
     requiert: ['patrimoine'], blocsCompatibles: ['composition', 'stat'],
+    explique: 'La valeur de tes avoirs, une fois tes dettes soustraites.',
+    depend: 'Tes actifs − tes passifs.',
     resolve: (s) => { const v = num(s.patrimoine.net); return { valeur: v, unite: '$', texteFactuel: `Ta valeur nette est de ${formatCAD(v)}.` } },
   },
   {
     id: 'ratio_actifs_passifs', domaine: 'patrimoine', question: 'Mes dettes pèsent combien face à mes avoirs ?',
     requiert: ['patrimoine'], blocsCompatibles: ['composition', 'jauge'],
+    explique: 'Combien tu as d’actif pour chaque dollar de dette.',
+    depend: 'Tes actifs ÷ tes passifs.',
     resolve: (s) => { const a = num(s.patrimoine.actifs); const p = num(s.patrimoine.passifs); const ratio = p > 0 ? a / p : null; return { valeur: ratio, unite: 'x', texteFactuel: p > 0 ? `Tu as ${ratio.toFixed(1).replace('.', ',')} $ d’actif pour 1 $ de dette.` : 'Tu n’as aucune dette enregistrée.' } },
   },
   {
     id: 'trajectoire_patrimoine', domaine: 'patrimoine', question: 'Ça évolue comment ?',
     requiert: ['projection'], blocsCompatibles: ['patrimoine_vie', 'stat'],
+    explique: 'Où ton patrimoine se rend, année après année, selon tes hypothèses.',
+    depend: 'Ta valeur nette projetée avec ton taux de rendement.',
     resolve: (s) => { const a = s.projection.annees; const fin = a[a.length - 1]; return { valeur: num(fin.patrimoineNet), unite: '$', texteFactuel: `Projeté, ton patrimoine atteint ${formatCAD(fin.patrimoineNet)} à ${fin.age} ans.` } },
   },
   {
     id: 'patrimoine_retraite', domaine: 'patrimoine', question: 'J’aurai combien à la retraite ?',
     requiert: ['projection'], blocsCompatibles: ['patrimoine_vie', 'stat'],
+    explique: 'Ton patrimoine projeté à l’âge où tu comptes prendre ta retraite.',
+    depend: 'Ta trajectoire de patrimoine à ton âge de retraite visé.',
     resolve: (s) => { const age = num(s.projection.retraiteAge); const at = s.projection.annees.find((y) => y.age >= age) || s.projection.annees[s.projection.annees.length - 1]; return { valeur: num(at.patrimoineNet), unite: '$', texteFactuel: `À ${age} ans, ton patrimoine projeté est de ${formatCAD(at.patrimoineNet)}.` } },
   },
 
@@ -304,11 +411,15 @@ export const REGISTRE_KPIS = [
   {
     id: 'mois_jusqu_liberation', domaine: 'dette', question: 'Dans combien de temps c’est payé ?',
     requiert: ['dettesDetaillees'], blocsCompatibles: ['chronologie', 'chaine'],
+    explique: 'Le nombre de mois avant que tes dettes soient à zéro, à ton rythme.',
+    depend: 'Le solde de tes dettes ÷ ce que tu verses dessus chaque mois.',
     resolve: () => ({ valeur: null, unite: 'mois', texteFactuel: '' }),
   },
   {
     id: 'pct_rembourse', domaine: 'dette', question: 'J’ai remboursé combien ?',
     requiert: ['dettesDetaillees'], blocsCompatibles: ['barre_progression', 'jauge'],
+    explique: 'La part de tes dettes déjà réglée.',
+    depend: 'Ce que tu as déjà réglé ÷ le total emprunté.',
     resolve: () => ({ valeur: null, unite: '%', texteFactuel: '' }),
   },
 ]
@@ -316,6 +427,51 @@ export const REGISTRE_KPIS = [
 /** Le KPI d'un id, ou null. Sert au moteur à valider une recette {KPI, forme}. PUR. */
 export function kpiPourId(id) {
   return REGISTRE_KPIS.find((k) => k.id === id) || null
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   K1 — LE KPI QUI SE COMPREND. Deux lectures déclaratives par-dessus le registre :
+   son TRIPTYQUE pédagogique (c'est quoi · d'où ça vient · le repère) et les DATES
+   qu'il projette. Tout passe par filtrerFait (des FAITS, jamais un conseil).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Le triptyque d'un KPI : { explique, depend, repere } — textes filtrés (AMF), ou
+ *  null si l'id est inconnu. `repere` = { texte, min, max } (bornes pour poser la zone
+ *  sur une jauge) ou null. C'est la matière que la tuile/le sable serviront (K4). PUR. */
+export function expliqueKPI(kpiId) {
+  const def = kpiPourId(kpiId)
+  if (!def) return null
+  const net = (t) => { const f = filtrerFait(String(t || '')); return f.ok && f.texte ? f.texte : '' }
+  let repere = null
+  if (def.repere && def.repere.texte) {
+    const t = net(def.repere.texte)
+    if (t) repere = { texte: t, min: def.repere.min == null ? null : def.repere.min, max: def.repere.max == null ? null : def.repere.max }
+  }
+  return { explique: net(def.explique), depend: net(def.depend), repere }
+}
+
+/** Les dates que ce KPI projette (réelles : paie/fin de mois · projetées : « à ton
+ *  rythme »). Chaque entrée : { date:'AAAA-MM-JJ', type:'reelle'|'projetee', label,
+ *  kpiId }. Triées, validées (date réelle), plafonnées, labels filtrés (AMF). PUR : le
+ *  « maintenant » vient de snapshot.meta.generatedAt → déterministe pour un snapshot.
+ *  [] si le KPI ne projette rien ou si sa donnée manque (même rétraction que resolveKPI). */
+export function datesKPI(kpiId, snapshot, ctx = {}) {
+  const def = kpiPourId(kpiId)
+  if (!def || typeof def.dates !== 'function') return []
+  const s = snapshot || {}
+  if (!def.requiert.every((r) => DONNEE_DISPO[r] && DONNEE_DISPO[r](s))) return []
+  let liste
+  try { liste = def.dates(s, ctx) || [] } catch { liste = [] }
+  if (!Array.isArray(liste)) return []
+  const ISO = /^\d{4}-\d{2}-\d{2}$/
+  const net = (t) => { const f = filtrerFait(String(t || '')); return f.ok && f.texte ? f.texte : '' }
+  const vus = new Set()
+  return liste
+    .filter((e) => e && typeof e.date === 'string' && ISO.test(e.date) && !isNaN(new Date(e.date + 'T00:00:00').getTime()))
+    .map((e) => ({ date: e.date, type: e.type === 'reelle' ? 'reelle' : 'projetee', label: net(e.label), kpiId }))
+    .filter((e) => e.label && !vus.has(e.date + e.label) && vus.add(e.date + e.label))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .slice(0, 8)
 }
 
 /* ── ChoixAngle : la colonne « comment voir ». Les ANGLES d'un KPI = ses blocsCompatibles

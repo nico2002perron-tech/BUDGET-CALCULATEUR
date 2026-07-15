@@ -8,7 +8,7 @@
      - resolveKPI sur un id inconnu → null.
    Lance : node scripts/check-bibliotheque-kpis.mjs
    ========================================================================== */
-import { REGISTRE_KPIS, candidatsKPI, resolveKPI } from '../src/recettes/bibliotheque-kpis.js'
+import { REGISTRE_KPIS, candidatsKPI, resolveKPI, expliqueKPI, datesKPI } from '../src/recettes/bibliotheque-kpis.js'
 import { estConnu, filtrerFait } from '../src/recettes/schema.js'
 
 let fail = 0
@@ -19,6 +19,9 @@ const ok = (cond, label) => {
 
 const ctx = { objectif: { nom: 'Maison', cible: 20000 }, moisCible: 24 }
 const richSnap = {
+  // meta + aVenir : le « maintenant » figé rend datesKPI DÉTERMINISTE (K1).
+  meta: { generatedAt: '2026-07-14T12:00:00.000Z' },
+  aVenir: [{ date: '2026-07-16', jour: 16, type: 'entree', label: 'Paie', montant: 1630 }],
   depenses: { revenu: 4000, coutVie: 2755, total: 2955, reste: 1045, parClasse: { besoin: 2190, envie: 565, epargne: 200 }, engageLibre: { fixe: 1000, variable: 1755 }, parCategorie: [{ id: 'a', label: 'Logement', classe: 'besoin', montant: 1100 }, { id: 'b', label: 'Épicerie', classe: 'besoin', montant: 600 }], pct: { besoin: 55, envie: 14, epargne: 5 } },
   coussin: { montant: 5000, essentielles: 2000, moisCouverts: 2.5, zone: 'orange', cible3: 6000, cible6: 12000 },
   saison: { revenusMensuels: [1000, 1000, 1000, 8000, 8000, 8000, 8000, 8000, 1000, 1000, 1000, 1000], depensesMensuelles: 3000, coussin: 5000 },
@@ -65,6 +68,28 @@ ok(REGISTRE_KPIS.every((k) => k.blocsCompatibles.every((t) => estConnu(t))), 'ch
 ok(REGISTRE_KPIS.every((k) => { const r = resolveKPI(k.id, richSnap, ctx); return !r || filtrerFait(r.texteFactuel).ok }), 'chaque texteFactuel passe filtrerFait (faits seulement)')
 ok(filtrerFait('Tu devrais réduire tes dépenses.').ok === false, 'preuve : un texte jugeant SERAIT rejeté')
 ok(resolveKPI('kpi_inexistant', richSnap, ctx) === null, 'resolveKPI(id inconnu) → null propre')
+
+console.log('\n— K1 : le triptyque pédagogique (explique · depend · repere) —')
+ok(REGISTRE_KPIS.every((k) => { const x = expliqueKPI(k.id); return x && x.explique.length > 0 && x.depend.length > 0 }), 'chaque KPI a explique + depend non vides')
+ok(REGISTRE_KPIS.every((k) => { const x = expliqueKPI(k.id); return filtrerFait(x.explique).ok && filtrerFait(x.depend).ok }), 'explique + depend passent filtrerFait (faits, jamais conseil)')
+ok(REGISTRE_KPIS.every((k) => { const x = expliqueKPI(k.id); return x.repere === null || (typeof x.repere.texte === 'string' && x.repere.texte.length > 0) }), 'repere : { texte, min, max } bien formé ou null (jamais inventé)')
+ok(expliqueKPI('kpi_inexistant') === null, 'expliqueKPI(id inconnu) → null propre')
+console.log(`      (${REGISTRE_KPIS.filter((k) => expliqueKPI(k.id).repere).length} KPIs portent un repère honnête)`)
+
+console.log('\n— K1 : les dates projetées (datesKPI) —')
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+const bienFormee = (dl) => Array.isArray(dl) && dl.every((e) => ISO.test(e.date) && (e.type === 'reelle' || e.type === 'projetee') && e.label.length > 0 && e.kpiId)
+ok(REGISTRE_KPIS.every((k) => bienFormee(datesKPI(k.id, richSnap, ctx))), 'datesKPI bien formée pour TOUS les KPIs')
+ok(REGISTRE_KPIS.every((k) => { const dl = datesKPI(k.id, {}, ctx); return Array.isArray(dl) && dl.length === 0 }), 'datesKPI sur snapshot vide → [] partout (rétraction propre)')
+ok(REGISTRE_KPIS.every((k) => datesKPI(k.id, richSnap, ctx).every((e) => filtrerFait(e.label).ok)), 'chaque label de date passe filtrerFait')
+const memeDeuxFois = JSON.stringify(datesKPI('horizon_objectif', richSnap, ctx)) === JSON.stringify(datesKPI('horizon_objectif', richSnap, ctx))
+ok(memeDeuxFois, 'datesKPI est DÉTERMINISTE pour un snapshot donné (meta.generatedAt figé)')
+for (const id of ['solde_mois', 'jour_liberation_fiscale', 'horizon_objectif', 'temps_vers_coussin_cible', 'date_atteinte_projetee']) {
+  const dl = datesKPI(id, richSnap, ctx)
+  ok(dl.length >= 1 && bienFormee(dl), `${id} projette ≥1 date valide`)
+  dl.forEach((e) => console.log(`      ${id.padEnd(24)} ${e.type.padEnd(9)} ${e.date}  "${e.label}"`))
+}
+ok(datesKPI('valeur_nette', richSnap, ctx).length === 0, 'un KPI sans dates() → [] (pas de date fabriquée)')
 
 console.log('\n— Échantillon de KPIs résolus (riche) —')
 for (const id of ['horizon_objectif', 'solde_mois', 'mois_couverts', 'amplitude_revenus', 'taux_effectif', 'valeur_nette']) {
