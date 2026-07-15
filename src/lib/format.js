@@ -40,5 +40,31 @@ export function formatKPI(valeur, unite) {
   }
 }
 
+/** Comme formatKPI, mais DÉCOUPÉE en pièces pour l'affichage « joaillerie » (V1) :
+ *  { nombre, unite, suffixe }. L'unité forte ($, %, ×) devient un exposant coloré ;
+ *  les mots (mois, jours, /mois) deviennent un suffixe discret. valeur absente →
+ *  nombre « — » (jamais un faux chiffre). PURE — aucun DOM, aucun thème. */
+export function formatKPIparts(valeur, unite) {
+  if (valeur == null || typeof valeur === 'object' || (typeof valeur === 'number' && !isFinite(valeur))) {
+    return { nombre: '—', unite: '', suffixe: '' }
+  }
+  const v = Number(valeur)
+  // Une entrée non numérique ne fabrique JAMAIS un « NaN % » (revue nuage V1) :
+  // une chaîne-libellé passe telle quelle (l'esprit du défaut de formatKPI), le reste → « — ».
+  if (!isFinite(v)) {
+    return { nombre: typeof valeur === 'string' && valeur.trim() !== '' ? valeur : '—', unite: '', suffixe: '' }
+  }
+  switch (unite) {
+    case '$': return { nombre: formatNombre(v), unite: '$', suffixe: '' }
+    case '$/mois': return { nombre: formatNombre(v), unite: '$', suffixe: '/mois' }
+    case '%': return { nombre: String(Math.round(v)), unite: '%', suffixe: '' }
+    case 'mois': return { nombre: v.toFixed(Number.isInteger(v) ? 0 : 1).replace('.', ','), unite: '', suffixe: 'mois' }
+    case 'jour': return { nombre: String(Math.round(v)), unite: '', suffixe: '' }
+    case 'jours': return { nombre: String(Math.round(v)), unite: '', suffixe: 'jours' }
+    case 'x': return { nombre: v.toFixed(1).replace('.', ','), unite: '×', suffixe: '' }
+    default: return { nombre: formatNombre(v), unite: '', suffixe: '' }
+  }
+}
+
 /** Nom du mois court (index 0-11), même table que la maquette. */
 export const MOIS_COURTS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']

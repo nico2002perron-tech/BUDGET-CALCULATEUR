@@ -7,7 +7,7 @@
      data   : { valeur:number, label:string }  ← du snapshot
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { formatCAD, formatKPI } from '../lib/format.js'
+import { formatKPI, formatKPIparts } from '../lib/format.js'
 
 // Teinte de puce → classe CSS (présentation seulement ; défaut cyan).
 const TON_CLASSE = {
@@ -62,7 +62,19 @@ export default function Stat({ params = {}, data = {}, kpi = null, delta = null,
           </svg>
         </span>
         <div>
-          <div className="stat-v">{enKpi ? (dispoKpi ? formatKPI(n, kpi.unite) : '—') : formatCAD(n)}</div>
+          {/* V1 — LE CHIFFRE JOAILLERIE : le nombre est le héros ; l'unité forte ($, %, ×)
+              se replie en petit exposant coloré, les mots (mois, jours) en suffixe discret.
+              Le nombre ne « perd » plus une pleine chasse à son symbole. '—' reste entier. */}
+          {(() => {
+            const p = enKpi ? (dispoKpi ? formatKPIparts(n, kpi.unite) : { nombre: '—', unite: '', suffixe: '' }) : formatKPIparts(n, '$')
+            return (
+              <div className="stat-v">
+                {p.nombre}
+                {p.unite && <sup className="stat-u">{p.unite}</sup>}
+                {p.suffixe && <small className="stat-suf">{p.suffixe}</small>}
+              </div>
+            )
+          })()}
           <div className="stat-l">{enKpi ? kpi.texteFactuel || (dispoKpi ? '' : 'Pas encore de donnée pour ça.') : data.label || ''}</div>
           {/* LA TENDANCE FACTUELLE (LOT 3) : l'écart depuis la dernière visite — un FAIT,
               jamais un jugement. On NE pose PAS de classe par sens (--hausse/--baisse) :

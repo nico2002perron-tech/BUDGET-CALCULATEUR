@@ -2488,6 +2488,8 @@ svg { display: block; }
 /* La couleur choisie remplace les accents de data-viz DANS ce widget seulement. */
 .tour-board .tour-widget.a-couleur { --accent: var(--wacc); --cyan: var(--wacc); }
 .jauge-arc { stroke: var(--cyan); }
+/* V1 — la piste de la jauge (portion non remplie) : tokenisée, skin-aware, discrète. */
+.jauge-piste { stroke: var(--line-fort); }
 
 /* L'en-tête : pastille-icône + titre costaud (fini le tag clinique). */
 /* En-tête COMPACT d'une tuile de grille : UNE ligne (l'en-tête haut de 2 lignes
@@ -2516,8 +2518,26 @@ svg { display: block; }
 /* La tuile RÉUTILISE .verre (theme.css) : fond, backdrop-filter, rim, arête
    réfractée. Ici on ne garde que l'ACCENT --wacc de la tuile sur sa bordure
    (:not(.p3d) → même spécificité que .verre pour gagner, index.css après theme.css). */
+/* V1 — LE VERRE TREMPÉ : la carte n'est plus un verre gris neutre, elle est FAITE
+   de son accent — un BAIN de teinte (color-mix faible), MÊME angle 150° et MÊME
+   arrêt 58 % que la recette .verre (la profondeur zénithale est conservée). Chaque
+   tuile se reconnaît de loin à sa couleur. Ne « gagne » que sur la peau CLASSIQUE :
+   verre/mat/relief posent ensuite leur propre fond, plus bas et plus spécifique. */
 .tour-board .tour-widget .card:not(.p3d) {
   border-color: color-mix(in srgb, var(--wacc) 32%, var(--line-fort));
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--wacc) 15%, var(--surface-2)),
+    color-mix(in srgb, var(--wacc) 7%, var(--surface)) 58%);
+}
+/* En peau CLAIRE le bain se délave (les surfaces sont déjà claires) : on baisse la
+   teinte (8 % → 4 %) mais on RE-MUSCLE la définition — bordure plus présente et
+   rebord bas teinté de l'accent (via --rim-bas, que la box-shadow de .verre relit). */
+[data-theme='clair'] .tour-board .tour-widget .card:not(.p3d) {
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--wacc) 8%, var(--surface-2)),
+    color-mix(in srgb, var(--wacc) 4%, var(--surface)) 58%);
+  border-color: color-mix(in srgb, var(--wacc) 45%, var(--line-fort));
+  --rim-bas: color-mix(in srgb, var(--wacc) 20%, rgba(3, 4, 94, 0.04));
 }
 .tour-board .tour-widget .card-title svg { color: var(--wacc); }
 /* Sur la tuile : le CHIFFRE HÉROS domine (calibre .chiffre : la taille fait le
@@ -2526,24 +2546,53 @@ svg { display: block; }
 /* LOT 3 — LE CHIFFRE HÉROS domine. La puce du bloc Stat rétrécit (34px, sans ombre
    colorée) pour ne plus voler la vedette, et le chiffre grossit.
    TAILLE PAR LARGEUR DE TUILE (la grille : span 1 = 1 colonne ~280px ; span 2 =
-   taille-l/xl = 2 colonnes). Sur 1 colonne on plafonne à 32px : un grand montant
-   (« 1 234 567 $ » d'une valeur nette) doit tenir sur UNE ligne même à la largeur
-   minimale — 38px le cassait en deux (revue nuage, confirmé). La grandeur héroïque
-   (jusqu'à 46px) est réservée aux tuiles 2 colonnes, qui ont la largeur pour elle.
+   taille-l/xl = 2 colonnes). Sur 1 colonne on plafonne à 36px : le grand montant
+   (« 1 234 567 $ ») doit tenir sur UNE ligne même à la largeur minimale. C'est
+   possible depuis V1 parce que l'unité ($, %, ×) n'est plus une pleine chasse mais
+   un petit exposant (.stat-u) — le nombre seul est bien plus court qu'avant, où 38px
+   cassait « 1 234 567 $ » en deux (revue nuage). La grandeur héroïque (jusqu'à 46px)
+   reste réservée aux tuiles 2 colonnes, qui ont la largeur pour elle.
    (Pas de container-query : `container-type:inline-size` écrasait à 0 la hauteur des
    blocs qui remplissent la carte — jauge, courbes.) */
 .tour-board .stat-ic { width: 34px; height: 34px; box-shadow: none; }
 .tour-board .stat-ic svg { width: 17px; height: 17px; }
 .tour-board .tour-widget .stat-v {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
+/* V1 — L'UNITÉ JOAILLERIE : le symbole fort ($, %, ×) se replie en petit exposant
+   coloré de l'accent ; les mots (mois, jours, /mois) en suffixe discret. Tailles en
+   `em` → suivent le chiffre partout (board, sable). ⚠️ CONTRASTE (revue nuage V1) :
+   à 0,45em×36px ≈ 16px l'exposant est du PETIT texte (seuil 4,5:1, pas 3:1) — la
+   recette 74 % du chiffre héros y échoue (indigo 3,2:1). Mix 45 % vers l'encre forte :
+   encore teinté, et ≥ 5:1 sur les 6 accents dans les 2 peaux. Repli var(--cyan) :
+   --wacc n'existe pas hors .tour-widget (sinon la déclaration serait ignorée). */
+.stat-v .stat-u {
+  font-size: 0.45em; font-weight: 800; letter-spacing: 0;
+  vertical-align: baseline; position: relative; top: -0.62em; margin-left: 3px;
+  color: color-mix(in srgb, var(--wacc, var(--cyan)) 45%, var(--ink-fort));
+}
+.stat-v .stat-suf {
+  font-size: 0.38em; font-weight: 700; letter-spacing: 0.01em;
+  margin-left: 5px; color: var(--muted);
+}
 .tour-board .tour-widget.taille-l .stat-v,
 .tour-board .tour-widget.taille-xl .stat-v { font-size: clamp(38px, 3vw, 46px); }
 .tour-board .tour-widget .stat-l { opacity: 0.82; }
+/* V1 — sur le BAIN teinté (le verre trempé), le gris secondaire (--muted) perd du
+   contraste : on le remonte vers l'encre (mix 55/45). Deux gains d'un coup — l'AA
+   regagné, et la fin du « tout au même gris » (le micro-texte se hiérarchise).
+   .stat-suf (le mot d'unité, 13px) est du même gris et Y COMPRIS (revue nuage V1 :
+   l'oublier le laissait à 3,6-4,4:1 en sombre). */
+.tour-board .tour-widget .stat-l,
+.tour-board .tour-widget .stat-repere,
+.tour-board .tour-widget .card-sub,
+.tour-board .tour-widget .stat-v .stat-suf {
+  color: color-mix(in srgb, var(--muted) 55%, var(--ink));
+}
 /* LA TENDANCE (LOT 3) : l'écart depuis la dernière visite. Un delta est un FAIT,
    jamais un verdict — la FLÈCHE porte la direction (posée en JSX), la couleur reste
    NEUTRE dans les deux sens. Colorer la hausse en accent impliquerait « monter =
@@ -2597,6 +2646,48 @@ svg { display: block; }
    LISIBLE — l'accent mixé vers l'encre forte → AA garanti dans les DEUX peaux (jamais
    l'accent brut, illisible sur sombre). 'auto' = le défaut (ink-fort), aucune règle. */
 .tour-board .tour-widget.encre-accent .stat-v { color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort)); }
+/* V1 — L'ENCRE PRISMATIQUE : un 3e cran. Le chiffre devient un dégradé de ta couleur,
+   découpé au texte (background-clip). Les arrêts sont CALCULÉS pour l'AA (l'accent brut
+   échoue), et DIFFÉRENTS par peau (le sombre veut des tons clairs, le clair des tons
+   sombres — --lueur ne suffit pas ici). Réservé aux grands corps (le stat-v du board
+   fait ≥ 36px = seuil AA grand-texte). On GARDE `color` = l'encre-accent pleine (jamais
+   `transparent`) : si le fill échoue, le chiffre reste lisible au lieu de disparaître ;
+   seul `-webkit-text-fill-color: transparent` (sous @supports) laisse voir le dégradé.
+   On utilise `background-image` (longhand) : il ne réinitialise pas background-clip. Et
+   surtout : le dégradé référence deux CUSTOM PROPERTIES (--prisme-a/-b) plutôt qu'un
+   color-mix() écrit DANS le linear-gradient — ce dernier était silencieusement laissé
+   tomber par le moteur CSS de build (LightningCSS). Poser le color-mix comme valeur de
+   propriété autonome (comme les peaux) puis n'injecter que des var() dans le dégradé est
+   la forme robuste. La peau claire ne redéfinit QUE les deux arrêts. */
+.tour-board .tour-widget.encre-prisme .stat-v,
+.tour-board .tour-widget.encre-prisme .gauge-num {
+  color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort));
+  --prisme-a: color-mix(in srgb, var(--wacc) 62%, var(--cyan-soft));
+  --prisme-b: color-mix(in srgb, var(--wacc) 35%, var(--ink-fort));
+}
+[data-theme='clair'] .tour-board .tour-widget.encre-prisme .stat-v,
+[data-theme='clair'] .tour-board .tour-widget.encre-prisme .gauge-num {
+  --prisme-a: color-mix(in srgb, var(--wacc) 55%, var(--ink-fort));
+  --prisme-b: color-mix(in srgb, var(--wacc) 30%, var(--ink-fort));
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .tour-board .tour-widget.encre-prisme .stat-v,
+  .tour-board .tour-widget.encre-prisme .gauge-num {
+    background-image: linear-gradient(120deg, var(--prisme-a), var(--prisme-b));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* l'exposant et le suffixe vivent DANS le stat-v transparent → ils hériteraient du
+     text-fill transparent (invisibles). On leur rend une couleur PLEINE, explicite —
+     les MÊMES mixes AA que hors prisme (45 % petit exposant, gris remonté). */
+  .tour-board .tour-widget.encre-prisme .stat-v .stat-u {
+    -webkit-text-fill-color: color-mix(in srgb, var(--wacc) 45%, var(--ink-fort));
+  }
+  .tour-board .tour-widget.encre-prisme .stat-v .stat-suf {
+    -webkit-text-fill-color: color-mix(in srgb, var(--muted) 55%, var(--ink));
+  }
+}
 .retouche-encre { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .retouche-encre-b {
   display: inline-flex; align-items: center; gap: 7px; font-family: inherit;
@@ -2611,6 +2702,25 @@ svg { display: block; }
 .retouche-encre-ap { font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .retouche-encre-ap[data-encre="accent"] { color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort)); }
 .retouche-encre-ap[data-encre="auto"] { color: var(--ink-fort); }
+/* V1 — l'aperçu « 123 » du prisme : le même dégradé, découpé au texte (mêmes arrêts
+   posés en custom properties, cf. l'encre prismatique du chiffre). */
+.retouche-encre-ap[data-encre="prisme"] {
+  color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort));
+  --prisme-a: color-mix(in srgb, var(--wacc) 62%, var(--cyan-soft));
+  --prisme-b: color-mix(in srgb, var(--wacc) 35%, var(--ink-fort));
+}
+[data-theme='clair'] .retouche-encre-ap[data-encre="prisme"] {
+  --prisme-a: color-mix(in srgb, var(--wacc) 55%, var(--ink-fort));
+  --prisme-b: color-mix(in srgb, var(--wacc) 30%, var(--ink-fort));
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .retouche-encre-ap[data-encre="prisme"] {
+    background-image: linear-gradient(120deg, var(--prisme-a), var(--prisme-b));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
 
 /* LOT 3 — EN-TÊTE UNIQUE : en tuile, seul le TITRE interne d'un bloc (« Où tu en es »)
    disparaît — il double l'en-tête de tuile. On GARDE le sous-titre (.card-sub =

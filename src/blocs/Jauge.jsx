@@ -74,7 +74,9 @@ export default function Jauge({ params = {}, data = {}, kpi = null }) {
         {enKpi ? 'Où tu en es' : 'Ton coussin d’hiver'}
       </div>
       <svg viewBox="0 0 220 130" style={{ width: '100%', maxWidth: 240, height: 'auto', display: 'block', margin: '0 auto 6px' }}>
-        <path d={`M${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#e7edf6" strokeWidth="15" strokeLinecap="round" />
+        {/* V1 — la piste (portion non remplie) était codée en dur #e7edf6 : clair sur
+            fond sombre (bug), invisible en peau claire. Tokenisée → skin-aware, discrète. */}
+        <path className="jauge-piste" d={`M${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" strokeWidth="15" strokeLinecap="round" />
         {/* la classe jauge-arc branche l'arc sur var(--cyan) → il adopte la couleur du widget */}
         <path ref={arcRef} className="jauge-arc" d={`M${cx - r} ${cy} A ${r} ${r} 0 0 1 ${vx.toFixed(1)} ${vy.toFixed(1)}`} fill="none" stroke="#00b4d8" strokeWidth="15" strokeLinecap="round" />
       </svg>

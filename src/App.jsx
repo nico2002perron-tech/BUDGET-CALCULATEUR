@@ -856,15 +856,16 @@ function App() {
         return { ...w, peau: peauId }
       }),
     }))
-  // L'ENCRE DU CHIFFRE (K5) : 'auto' (encre forte, défaut) ou 'accent' (ta couleur, en
-  // version lisible AA). Rangé sous w.style.encre ; 'auto' retire la clé (défaut = pas de style).
+  // L'ENCRE DU CHIFFRE (K5, +V1) : 'auto' (encre forte, défaut), 'accent' (ta couleur, en
+  // version lisible AA) ou 'prisme' (dégradé de ta couleur, découpé au texte). Rangé sous
+  // w.style.encre ; 'auto' retire la clé (défaut = pas de style).
   const changerEncre = (widgetId, encre) =>
     setStore((s) => ({
       ...s,
       tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => {
         if (w.id !== widgetId) return w
         const style = { ...(w.style || {}) }
-        if (encre === 'accent') style.encre = 'accent'; else delete style.encre
+        if (encre === 'accent' || encre === 'prisme') style.encre = encre; else delete style.encre
         return { ...w, style }
       }),
     }))
@@ -1244,7 +1245,7 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(dateW || fraicheurW) && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${w.style && w.style.encre === 'accent' ? ' encre-accent' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(dateW || fraicheurW) && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${w.style && w.style.encre === 'accent' ? ' encre-accent' : ''}${w.style && w.style.encre === 'prisme' ? ' encre-prisme' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={{ ...(w.accent ? { '--wacc': w.accent } : null), '--casc': Math.min(idx, 8) }}
@@ -1308,12 +1309,12 @@ function App() {
                               ))}
                             </div>
                           </div>
-                          {/* K5 — L'ENCRE DU CHIFFRE : « couleur de l'écriture ». Deux choix
-                              seulement, chacun garanti lisible (AA) dans les deux peaux. */}
+                          {/* K5 +V1 — L'ENCRE DU CHIFFRE : « couleur de l'écriture ». Trois choix,
+                              chacun garanti lisible (AA) dans les deux peaux. */}
                           <div className="retouche-bloc">
                             <span className="gal-essai-l">Son chiffre</span>
                             <div className="retouche-encre">
-                              {[{ id: 'auto', l: 'Automatique' }, { id: 'accent', l: 'Ta couleur' }].map((e) => (
+                              {[{ id: 'auto', l: 'Automatique' }, { id: 'accent', l: 'Ta couleur' }, { id: 'prisme', l: 'Prisme' }].map((e) => (
                                 <button
                                   key={e.id}
                                   type="button"
@@ -1674,7 +1675,7 @@ function App() {
                 </div>
               </div>
               <aside className="donnees-panel">
-                <PanneauVivant store={store} />
+                <PanneauVivant store={store} onExplorer={() => allerSection('tour')} />
               </aside>
             </div>
           </div>
