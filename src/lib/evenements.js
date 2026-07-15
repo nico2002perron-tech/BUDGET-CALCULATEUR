@@ -189,3 +189,22 @@ export function evenementsSaillants(events, n = 3) {
   if (!Array.isArray(events)) return []
   return trier(events).slice(0, Math.max(0, num(n)))
 }
+
+/** La CIBLE de navigation d'un événement (P2 — « Explorer cet impact ») : où mène le tap.
+ *  Déterministe, sur le seul source/quand de l'événement. null = pas de destination franche
+ *  → l'événement reste informatif (non cliquable), jamais un lien mort. PUR.
+ *   - échéance datée → le calendrier, sur son mois ;
+ *   - seuil KPI franchi (source 'kpi:<id>') → le carré de sable, sur ce KPI ;
+ *   - un changement 'diff' général n'a pas de vue dédiée → null. */
+export function cibleEvenement(ev) {
+  if (!ev || typeof ev !== 'object') return null
+  const src = String(ev.source || '')
+  if (src.startsWith('echeance') && typeof ev.quand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ev.quand)) {
+    return { type: 'calendrier', mois: ev.quand.slice(0, 7) }
+  }
+  if (src.startsWith('kpi:')) {
+    const kpiId = src.slice(4)
+    return kpiId ? { type: 'kpi', kpiId } : null
+  }
+  return null
+}

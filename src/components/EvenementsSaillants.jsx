@@ -10,6 +10,11 @@
    déjà filtré par filtrerFait (côté evenements.js).
    ========================================================================== */
 import { formatCAD } from '../lib/format.js'
+import { cibleEvenement } from '../lib/evenements.js'
+
+const I_FLECHE = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+)
 
 const I_CLOCHE = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -42,7 +47,7 @@ function puces(c) {
   return out
 }
 
-export default function EvenementsSaillants({ events, depuis }) {
+export default function EvenementsSaillants({ events, depuis, onOuvrir, peutOuvrir }) {
   const liste = Array.isArray(events) ? events : []
   if (liste.length === 0) return null // data-aware : rien à dire → rien à l'écran
 
@@ -63,8 +68,14 @@ export default function EvenementsSaillants({ events, depuis }) {
       <ul className="evts-liste">
         {liste.map((e) => {
           const ch = puces(e.consequence)
-          return (
-            <li key={e.id} className={`evt evt--${e.severite || 'info'}`}>
+          // P2 — un événement qui a une CIBLE ATTEIGNABLE (échéance → calendrier ; seuil KPI
+          // → sable D'UNE TUILE EXISTANTE) devient tappable (« Explorer cet impact ») ; sinon
+          // il reste informatif. Jamais un lien mort : App tranche l'atteignabilité réelle via
+          // `peutOuvrir` (il connaît les tuiles) ; repli sur la cible pure si non fourni.
+          const cliquable = typeof onOuvrir === 'function' &&
+            (typeof peutOuvrir === 'function' ? peutOuvrir(e) : !!cibleEvenement(e))
+          const corps = (
+            <>
               <span className="evt-dot" aria-hidden="true" />
               <div className="evt-corps">
                 <p className="evt-titre">{e.titre}</p>
@@ -75,6 +86,18 @@ export default function EvenementsSaillants({ events, depuis }) {
                   </div>
                 )}
               </div>
+              {cliquable && <span className="evt-fleche">{I_FLECHE}</span>}
+            </>
+          )
+          return (
+            <li key={e.id}>
+              {cliquable ? (
+                <button type="button" className={`evt evt--${e.severite || 'info'} evt-lien`} onClick={() => onOuvrir(e)} title="Explorer cet impact">
+                  {corps}
+                </button>
+              ) : (
+                <div className={`evt evt--${e.severite || 'info'}`}>{corps}</div>
+              )}
             </li>
           )
         })}

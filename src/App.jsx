@@ -15,7 +15,7 @@ import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
 import EvenementsSaillants from './components/EvenementsSaillants.jsx'
-import { genererEvenements, evenementsSaillants } from './lib/evenements.js'
+import { genererEvenements, evenementsSaillants, cibleEvenement } from './lib/evenements.js'
 import VerdictDuJour from './components/VerdictDuJour.jsx'
 import { construireVerdict } from './lib/verdict.js'
 import MissionAllumage from './components/MissionAllumage.jsx'
@@ -857,6 +857,26 @@ function App() {
 
   // Le héros KPI d'une recette (s'il y en a un) → ce qui peut « se voir autrement ».
   const heroKPI = (recette) => (recette && Array.isArray(recette.blocs) ? recette.blocs.find((b) => b && b.KPI) : null)
+  // P2 — « Explorer cet impact » : un événement mène quelque part. Échéance → le
+  // calendrier sur son mois ; seuil KPI franchi → le carré de sable de la tuile qui
+  // porte ce KPI (si elle existe). Cible nulle → rien (l'événement reste informatif).
+  const tuileDuKPI = (kpiId) => (Array.isArray(store.tourWidgets) ? store.tourWidgets : []).find((x) => { const kb = heroKPI(x.recette); return kb && kb.KPI === kpiId })
+  // « Jamais un lien mort » : un événement n'est ATTEIGNABLE (donc cliquable) que si sa
+  // cible existe VRAIMENT — le calendrier existe toujours ; une cible KPI n'existe que si
+  // une tuile porte ce KPI (revue nuage : sinon la flèche promet une destination absente).
+  const evenementAtteignable = (ev) => {
+    const c = cibleEvenement(ev)
+    if (!c) return false
+    if (c.type === 'calendrier') return true
+    if (c.type === 'kpi') return !!tuileDuKPI(c.kpiId)
+    return false
+  }
+  const ouvrirEvenement = (ev) => {
+    const c = cibleEvenement(ev)
+    if (!c) return
+    if (c.type === 'calendrier') { setCalCible(c.mois); allerSection('calendrier'); return }
+    if (c.type === 'kpi') { const w = tuileDuKPI(c.kpiId); if (w) setSable({ id: w.id, rect: null }) }
+  }
   // L'icône d'un widget : la PERSONNALITÉ épinglée d'abord (photo d'entité,
   // initiale, initiales du mentor), puis TON choix, puis celle de son KPI
   // héros, puis celle de sa situation, sinon l'étincelle.
@@ -1184,7 +1204,7 @@ function App() {
                 à droite (margin-left:auto). Tout ce qui repose sur la couleur cyan est en
                 BLANC EN DUR (le bandeau est cyan dans LES DEUX peaux). */}
             <div className="tour-entete">
-              <div className="tour-hero">
+              <div className="tour-hero" role="region" aria-label="Maintenant">
                 <h1 className="tour-bonjour">
                   {snapshot.identity.prenom ? `Bonjour, ${snapshot.identity.prenom}` : 'Bon retour'}
                 </h1>
@@ -1259,7 +1279,7 @@ function App() {
                 salle de contrôle (voyant + « en service ») + tuile fantôme « à bâtir »
                 en fin de tableau — on SENT que la tour se construit, pièce par pièce. */}
             {widgets.length > 0 && (
-              <div className="tour-tableau">
+              <div className="tour-tableau" role="region" aria-label="Mes instruments">
                 {/* LA GRILLE LIBRE : chaque tuile porte sa taille (s/m/l/xl — persistée
                     ou dérivée de sa recette) ; `dense` remplit les trous. */}
                 <div className={`tour-board${reorganise ? ' est-reorg' : ''}${cascade ? ' est-arrivee' : ''}${widgets.length <= 2 ? ' est-naissant' : ''}`} onPointerMove={surBoardMove} onPointerLeave={resetTilt}>
@@ -1624,9 +1644,23 @@ function App() {
               </div>
             )}
 
+            {/* « À EXPLORER » (P2) : UNE suggestion à la fois. Ici le placeholder = la
+                prochaine perche data-aware existante ; le vrai moteur de signaux arrive au
+                P3 (qui remplacera la perche par une suggestion scorée, avec son « pourquoi »).
+                Rendu seulement quand la tour est habitée (une tour vide a ses « départs »). */}
+            {widgets.length > 0 && perchesTour.length > 0 && (
+              <section className="tour-explorer" aria-label="À explorer">
+                <span className="tour-explorer-l">À explorer</span>
+                <button type="button" className="tour-explorer-carte" onClick={() => appliquerBoard(perchesTour[0].actions)}>
+                  <span className="tour-explorer-q">{perchesTour[0].label}</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
+              </section>
+            )}
+
             {/* Ce qui BOUGE maintenant + le verdict du jour : SOUS le board (le haut de
                 la tour appartient aux instruments, qui chevauchent le bandeau). */}
-            <EvenementsSaillants events={evenementsListe} depuis={visiteRef.current} />
+            <EvenementsSaillants events={evenementsListe} depuis={visiteRef.current} onOuvrir={ouvrirEvenement} peutOuvrir={evenementAtteignable} />
             <VerdictDuJour verdict={verdict} />
           </div>
           </div>
@@ -1706,9 +1740,17 @@ function App() {
 
         {section === 'donnees' && (
           <div className="donnees-wrap">
-            <div className="section-tete">
-              <h1 className="section-titre">Mes données <span className="section-fil">› {SS[sousSection].label}</span></h1>
-              <p className="section-sous">Tes montants restent sur ton appareil. Choisis une section dans le menu de gauche — ton tableau de bord se met à jour à droite.</p>
+            <div className="section-tete section-tete--donnees">
+              <div>
+                <h1 className="section-titre">Mes données <span className="section-fil">› {SS[sousSection].label}</span></h1>
+                <p className="section-sous">Tes montants restent sur ton appareil. Choisis une section dans le menu de gauche — ton tableau de bord se met à jour à droite.</p>
+              </div>
+              {/* P2 — Mes données ne sert qu'à saisir les faits ; « Voir ma tour » est sa
+                  sortie unique et claire (aucun créateur de KPI ici). */}
+              <button type="button" className="donnees-voir-tour" onClick={() => allerSection('tour')}>
+                Voir ma tour
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </button>
             </div>
 
             <div className="donnees-layout">
@@ -1737,7 +1779,7 @@ function App() {
                 </div>
               </div>
               <aside className="donnees-panel">
-                <PanneauVivant store={store} onExplorer={() => allerSection('tour')} />
+                <PanneauVivant store={store} />
               </aside>
             </div>
           </div>

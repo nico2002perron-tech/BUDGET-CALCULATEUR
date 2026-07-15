@@ -2185,6 +2185,54 @@ svg { display: block; }
 .evt--exception { border-left-color: #e0a23c; background: rgba(224, 162, 60, 0.07); }
 .evt--exception .evt-dot { background: #e0a23c; }
 .evt--exception .evt-chip { color: #b8740a; background: rgba(224, 162, 60, 0.14); }
+/* P2 — un événement CLIQUABLE (« Explorer cet impact ») : le .evt vit dans un <button>
+   pleine largeur ; la flèche pousse à droite et s'anime au survol (cyan = actionnable). */
+.evt-lien { width: 100%; font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+.evt-lien:hover { background: var(--surface); }
+.evt-lien:active { transform: translateY(1px); }
+.evt-lien:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.evt-fleche { flex: none; margin-left: auto; align-self: center; display: inline-flex; color: var(--muted); transition: color 0.15s, transform 0.15s; }
+.evt-fleche svg { width: 18px; height: 18px; }
+.evt-lien:hover .evt-fleche { color: var(--acc); transform: translateX(2px); }
+
+/* P2 — « À EXPLORER » : la carte de suggestion (une à la fois). Cyan doux = actionnable. */
+.tour-explorer { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.tour-explorer-l { font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.tour-explorer-carte {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; cursor: pointer; font: inherit;
+  padding: 14px 16px; border-radius: var(--r-s); color: var(--ink-fort);
+  background: color-mix(in srgb, var(--cyan) 8%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--cyan) 28%, var(--line-fort));
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.tour-explorer-carte:hover { border-color: var(--acc); background: color-mix(in srgb, var(--cyan) 13%, var(--surface-2)); }
+.tour-explorer-carte:active { transform: translateY(1px); }
+.tour-explorer-carte:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.tour-explorer-q { flex: 1 1 auto; min-width: 0; font-size: var(--fs-m); font-weight: 700; }
+.tour-explorer-carte svg { flex: none; width: 18px; height: 18px; color: var(--acc); }
+
+/* P2 — Mes données : l'en-tête gagne sa sortie unique « Voir ma tour » (CTA cyan). */
+.section-tete--donnees { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.donnees-voir-tour {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit;
+  font-size: var(--fs-s); font-weight: 800; color: #fff; border: none; border-radius: var(--r-s); padding: 10px 16px;
+  /* dégradé de DEUX bleus foncés (accent → navy) : blanc AA garanti sur toute la surface
+     dans les 2 peaux — un dégradé accent→cyan laissait « tour » sur du cyan clair < 4,5:1
+     (revue nuage). Le liseré cyan lumineux garde l'énergie du CTA sans salir l'AA. */
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 68%, var(--navy)));
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 70%), transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--cyan) 45%, transparent);
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+.donnees-voir-tour:hover { transform: translateY(-1px); }
+.donnees-voir-tour:active { transform: translateY(1px); }
+.donnees-voir-tour:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.donnees-voir-tour svg { width: 18px; height: 18px; }
+/* reduced-motion : la pression ne bouge pas (discipline maison, comme tous les pairs). */
+@media (prefers-reduced-motion: reduce) {
+  .evt-lien:active, .tour-explorer-carte:active,
+  .donnees-voir-tour:hover, .donnees-voir-tour:active { transform: none; }
+}
 
 /* ---- Bloc liste (éléments itemisés) ---- */
 .liste-ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; }

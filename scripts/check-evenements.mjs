@@ -11,7 +11,7 @@
      - snapshot vide / état précédent absent → [] propre, jamais d'erreur.
    Lance : node scripts/check-evenements.mjs
    ========================================================================== */
-import { genererEvenements, evenementsSaillants } from '../src/lib/evenements.js'
+import { genererEvenements, evenementsSaillants, cibleEvenement } from '../src/lib/evenements.js'
 import { filtrerFait } from '../src/recettes/schema.js'
 
 let fail = 0
@@ -83,6 +83,14 @@ console.log('\n— Robustesse : vide / absent → [] propre, jamais d’erreur �
 ok(genererEvenements({}, null, MTN).length === 0, 'snapshot vide → []')
 ok(genererEvenements(null).length === 0, 'snapshot null → []')
 ok(genererEvenements(base).length === 0, 'sans état précédent + sans dettes → [] (rien à raconter)')
+
+console.log('\n— P2 · cibleEvenement (« Explorer cet impact » mène quelque part, ou nulle part) —')
+ok(JSON.stringify(cibleEvenement({ source: 'echeance:dette', quand: '2026-08-15' })) === JSON.stringify({ type: 'calendrier', mois: '2026-08' }), 'échéance datée → calendrier sur son mois')
+ok(JSON.stringify(cibleEvenement({ source: 'kpi:mois_couverts' })) === JSON.stringify({ type: 'kpi', kpiId: 'mois_couverts' }), 'seuil KPI → sable sur ce KPI')
+ok(cibleEvenement({ source: 'diff' }) === null, 'changement diff général → null (pas de vue dédiée)')
+ok(cibleEvenement({ source: 'echeance:dette', quand: 'detecte' }) === null, 'échéance sans date ISO → null (jamais un lien mort)')
+ok(cibleEvenement({ source: 'kpi:' }) === null, 'source kpi vide → null')
+ok(cibleEvenement(null) === null && cibleEvenement({}) === null, 'null / sans source → null')
 
 console.log('\n' + (fail === 0 ? '✅ Le primitif événement tient — 0 échec (le moteur raconte l’impact, pas le mouvement)' : `❌ ${fail} échec(s)`))
 process.exit(fail === 0 ? 0 : 1)
