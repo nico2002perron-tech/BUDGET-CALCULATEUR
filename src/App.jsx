@@ -42,7 +42,7 @@ import CarreDeSable from './components/CarreDeSable.jsx'
 import { VOIX_MENTOR } from './lib/personas.js'
 import { PEAUX, peauValide, classePeau } from './lib/peaux.js'
 import { sons, reglerSons } from './lib/sons.js'
-import { useTheme, usePassage } from './lib/vivant.js'
+import { useTheme } from './lib/vivant.js'
 import AnneauModeles from './components/AnneauModeles.jsx'
 
 const RECETTE_CALENDRIER = {
@@ -182,25 +182,28 @@ function App() {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const fileRef = useRef(null)
 
-  // L'ATELIER (passage tour→atelier + anneau). Le passage n'est ACTIF que sur la
-  // tour ; ailleurs il reste à plat. La barre IA a son propre champ/état.
-  const refAtelier = useRef(null)
+  // L'ATELIER (P1 — LA SURCOUCHE). Fini le passage au scroll : l'atelier n'est plus
+  // une destination permanente sous le board, c'est une SURCOUCHE qu'on ouvre à la
+  // demande (porte « + Ajouter un instrument »). La barre IA a son propre champ/état.
   const iaRef = useRef(null)
   const [iaTexte, setIaTexte] = useState('')
-  usePassage(refAtelier, section === 'tour')
-  // Focalise la barre IA de l'atelier (le focus fait défiler la scène jusqu'à elle).
-  // Si une mission/le studio occupe l'atelier (iaRef absent), on y DESCEND quand même
-  // plutôt que de ne rien faire (bouton muet).
-  const focusIA = () => {
-    if (iaRef.current) { iaRef.current.focus(); return }
-    if (refAtelier.current) refAtelier.current.scrollIntoView({ behavior: reduitMouvement() ? 'auto' : 'smooth' })
+  const [atelierOuvert, setAtelierOuvert] = useState(false)
+  const ouvreurRef = useRef(null) // l'élément à re-focaliser à la fermeture (a11y)
+  // Ouvrir la surcouche : on ne retient l'ouvreur QUE lors d'une vraie ouverture (fermé →
+  // ouvert) — jamais depuis un élément déjà INTERNE à la modale (revue nuage : sinon le
+  // focus reviendrait sur un nœud démonté). Le focus de la barre IA est posé par un effet.
+  const ouvrirAtelier = () => {
+    if (!atelierOuvert && typeof document !== 'undefined') ouvreurRef.current = document.activeElement
+    setAtelierOuvert(true)
   }
-  // PIÈGE A : le scroll-snap ne vit QUE sur l'écran tour (sinon la SAISIE DE DONNÉES
-  // se calerait bizarrement). On (dé)pose la classe sur <html> selon la section.
-  useEffect(() => {
-    document.documentElement.classList.toggle('scene-active', section === 'tour')
-    return () => document.documentElement.classList.remove('scene-active')
-  }, [section])
+  // Focaliser la barre IA (le présentoir « Crée le tien », déjà DANS la surcouche, ne
+  // ré-ouvre pas — il pointe le curseur sur la barre, comme l'ancien focusIA).
+  const focusIA = () => {
+    const el = iaRef.current
+    if (!el) return
+    el.focus()
+    el.scrollIntoView({ block: 'center', behavior: reduitMouvement() ? 'auto' : 'smooth' })
+  }
 
   // Fabrication (section « Ma tour ») — LA GALERIE (cartes vivantes + barre « décris-le »).
   const [nouveauWidget, setNouveauWidget] = useState(null) // id du widget à animer (à sa CRÉATION seulement)
@@ -241,6 +244,34 @@ function App() {
   // Défense en profondeur : une clé de section sans mission réelle blanchirait
   // l'atelier (MissionAllumage rend null) → repli sur « revenus ».
   const allerSaisie = (sousSec) => setMission(MISSIONS[sousSec] ? sousSec : 'revenus')
+  // P1 — fermer la surcouche : la referme ET annule toute mission/studio en cours.
+  const fermerAtelier = () => { setAtelierOuvert(false); setMission(null); setStudio(null) }
+  // La surcouche est PRÉSENTE quand on l'a ouverte OU qu'une mission/le studio l'occupe
+  // (ils ne se lancent que depuis elle → cohérent).
+  const atelierPresent = atelierOuvert || !!mission || !!studio
+  // Focus de la barre IA quand la surcouche s'ouvre sur le formulaire (ni mission ni studio).
+  useEffect(() => {
+    if (!(atelierOuvert && !mission && !studio)) return undefined
+    const id = setTimeout(() => { if (iaRef.current) iaRef.current.focus() }, 60)
+    return () => clearTimeout(id)
+  }, [atelierOuvert, mission, studio])
+  // Modale (a11y) : Échap ferme · le fond ne défile pas · le focus revient à l'ouvreur.
+  // Le fond (rail + scène-tour) est rendu `inert` (cf. rendu) → pas de piège de focus à
+  // gérer ici, et un changement de section passe par allerSection → fermerAtelier, donc
+  // l'effet se rejoue et restaure body.overflow (jamais coincé « verrouillé + invisible »).
+  useEffect(() => {
+    if (!atelierPresent) {
+      const el = ouvreurRef.current
+      ouvreurRef.current = null
+      if (el && typeof el.focus === 'function' && document.contains(el)) el.focus()
+      return undefined
+    }
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => { if (e.key === 'Escape') fermerAtelier() }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow }
+  }, [atelierPresent]) // eslint-disable-line react-hooks/exhaustive-deps -- fermerAtelier stable (setters)
   // P0 — une mission écrit un silo horodaté (placements → patrimoine). L'estamper ici,
   // comme les 3 setters de saisie, ferme la couture « mission → fraîcheur » : la pilule
   // d'âge et la fiabilité se rafraîchissent AUSSITÔT, la mission « compte ».
@@ -1045,12 +1076,12 @@ function App() {
   // Navigation rail : « Mes données » est un parent déroulant ; Ma tour / Calendrier
   // restent simples. Sur mobile, l'accordéon devient une feuille du bas (dd-sheet).
   const estMobile = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
-  const allerSection = (key) => { setSection(key); if (key !== 'donnees') setMenuDonneesOuvert(false) }
+  const allerSection = (key) => { fermerAtelier(); setSection(key); if (key !== 'donnees') setMenuDonneesOuvert(false) }
   const ouvrirMesDonnees = () => {
     if (section !== 'donnees') { setSection('donnees'); setMenuDonneesOuvert(true) }
     else setMenuDonneesOuvert((o) => !o)
   }
-  const allerSousSection = (id) => { setSection('donnees'); setSousSection(id); if (estMobile()) setMenuDonneesOuvert(false) }
+  const allerSousSection = (id) => { fermerAtelier(); setSection('donnees'); setSousSection(id); if (estMobile()) setMenuDonneesOuvert(false) }
 
   // La liste des sous-sections, groupée par famille — réutilisée dans le rail
   // (accordéon desktop) ET dans la feuille du bas (mobile).
@@ -1093,7 +1124,7 @@ function App() {
       </header>
 
       {/* Nav persistante : rail (desktop) / onglets bas (mobile) */}
-      <nav className="rail" aria-label="Navigation">
+      <nav className="rail" aria-label="Navigation" inert={atelierPresent || undefined}>
         <div className="rail-brand">
           <span className="brand-dot" aria-hidden="true" />
           <span className="rail-brand-bloc">
@@ -1143,7 +1174,7 @@ function App() {
 
         {section === 'tour' && (
           <>
-          <section className="scene-tour">
+          <section className="scene-tour" inert={atelierPresent || undefined}>
           {/* LE BANDEAU : le bloc de couleur derrière le haut de la tour. Les tuiles du
               board (juste dessous) le CHEVAUCHENT → leur verre a de la couleur à réfracter. */}
           <div className="bandeau" aria-hidden="true"><i className="bandeau-lueur" /></div>
@@ -1524,12 +1555,12 @@ function App() {
                     Tape → la barre IA de l'atelier se focalise (le focus fait défiler la
                     scène jusqu'à elle). Retirée en Réorganiser (elle n'est pas déplaçable). */}
                 {!reorganise && (
-                  <button type="button" className="tour-batir" style={{ '--casc': Math.min(widgets.length, 9) }} onClick={() => { sons.tap(); focusIA() }}>
+                  <button type="button" className="tour-batir" style={{ '--casc': Math.min(widgets.length, 9) }} onClick={() => { sons.tap(); ouvrirAtelier() }}>
                     <span className="batir-plus" aria-hidden="true">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                     </span>
-                    <span className="batir-t">À bâtir</span>
-                    <span className="batir-s">Décris ton prochain indicateur</span>
+                    <span className="batir-t">+ Ajouter un instrument</span>
+                    <span className="batir-s">Une suggestion de ta tour, ou décris le tien</span>
                   </button>
                 )}
                 </div>
@@ -1599,23 +1630,23 @@ function App() {
             <VerdictDuJour verdict={verdict} />
           </div>
           </div>
-          <div className="scene-indice" aria-hidden="true">
-            <span>L&rsquo;atelier</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-          </div>
           </section>
 
-          {/* SCÈNE 2 — L'ATELIER. Atteinte en DESCENDANT : la tour recule, cette feuille
-              de verre glisse par-dessus et la floute (usePassage → --p). Deux portes :
-              décrire à l'IA, ou prendre un modèle sur l'anneau. La mission/le studio
-              guidés prennent le relais ici quand ils sont actifs. */}
-          <section className="scene-atelier" ref={refAtelier}>
-            <div className="couture" aria-hidden="true" />
-            <div className="couture-lueur" aria-hidden="true" />
+          {/* LA SURCOUCHE — L'ATELIER (P1). Fini la scène atteinte au scroll : une feuille
+              de verre s'ouvre PAR-DESSUS la tour, à la demande (« + Ajouter un instrument »
+              ou une plaque « Créer le tien »). La mission/le studio guidés y prennent le
+              relais quand ils sont actifs. Ferme au scrim, au ×, ou à Échap. */}
+          {atelierPresent && (
+          <div className="atelier-surcouche" role="dialog" aria-modal="true" aria-label="Ajouter un instrument à ta tour">
+            <button type="button" className="atelier-scrim" aria-label="Fermer l’atelier" onClick={fermerAtelier} />
+            <section className="scene-atelier">
+              <button type="button" className="atelier-fermer" aria-label="Fermer l’atelier" onClick={fermerAtelier}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             {mission ? (
-              <MissionAllumage famille={mission} onFini={finirMission} onAnnuler={() => setMission(null)} />
+              <MissionAllumage famille={mission} onFini={(r) => { finirMission(r); setAtelierOuvert(false) }} onAnnuler={() => setMission(null)} />
             ) : studio ? (
-              <StudioConversation snapshot={snapshot} onFini={materialiserEntite} onAnnuler={() => setStudio(null)} />
+              <StudioConversation snapshot={snapshot} onFini={(c) => { materialiserEntite(c); setAtelierOuvert(false) }} onAnnuler={() => setStudio(null)} />
             ) : (
               <>
                 <div className="at-tete at-bloc" style={{ '--s': 0, '--e': 0.55 }}>
@@ -1667,7 +1698,9 @@ function App() {
                 </div>
               </>
             )}
-          </section>
+            </section>
+          </div>
+          )}
           </>
         )}
 

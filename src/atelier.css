@@ -10,26 +10,15 @@
    fondu peint : c'est de l'optique.
    ========================================================================== */
 
-/* Le passage n'a de sens que sur l'écran « tour ». On l'active via une classe
-   sur <html> (posée/retirée par App selon la section) — jamais globalement,
-   sinon la SAISIE DE DONNÉES se calerait bizarrement. */
-html.scene-active {
-  scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
-  /* un swipe horizontal au-dessus de l'anneau ne doit JAMAIS déclencher la
-     navigation « retour » du navigateur (trackpad). */
-  overscroll-behavior-x: contain;
-}
-/* Sur l'écran tour DESKTOP (>1050px : deux scènes collantes de 100vh), on retire le
-   rembourrage bas de main : sinon le pied de page + ces 80px laissaient DÉPASSER le
-   défilement au-delà de l'atelier collant → son haut se faisait rogner. On le SCOPE au
-   desktop : à ≤1050px la tour repasse en flux simple (aucun dépassement), et à ≤767px
-   ces 92px réservent la place de la barre de nav FIXE du bas — les retirer cacherait
-   l'avertissement de conformité derrière elle. */
+/* (P1 — le passage au scroll et sa classe html.scene-active sont retirés : l'atelier
+   est désormais une SURCOUCHE à la demande, plus une 2e scène sous la tour.)
+   Desktop : la tour reste une scène de 100vh — on annule le rembourrage bas de main
+   (sinon 80px de vide sous le board avant le pied de page). Keyé sur la présence de
+   .scene-tour (ex-html.scene-active). Le rembourrage bas mobile (92px, barre de nav
+   fixe) est préservé : cette règle est scopée au desktop. */
 @media (min-width: 1051px) {
-  html.scene-active .main { padding-bottom: 0; }
+  .main:has(> .scene-tour:first-child) { padding-bottom: 0; }
 }
-html.scene-active .site-footer { padding: 16px 0 20px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    SCÈNE 1 — LA TOUR. ÉPINGLÉE : elle recule (--p) et l'atelier glisse PAR-DESSUS
@@ -128,69 +117,84 @@ html.scene-active .site-footer { padding: 16px 0 20px; }
 @media (prefers-reduced-motion: reduce) {
   .bandeau-lueur { animation: none; }
 }
-/* Atelier déployé (--p≈1) : l'aurore est masquée derrière son verre dépoli → on la
-   met en pause (posé par usePassage) pour ne pas ré-évaluer le flou plein écran. */
-html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SCÈNE 2 — L'ATELIER. Plein écran. Une feuille de verre qui glisse par-dessus.
+   LA SURCOUCHE — L'ATELIER (P1). Plus une scène atteinte au scroll : une feuille
+   de verre s'ouvre PAR-DESSUS la tour, à la demande. Scrim (ferme au clic),
+   entrée douce, × en coin, Échap. --p:1 → les blocs se révèlent pleinement (fini
+   le pilotage au défilement).
    ══════════════════════════════════════════════════════════════════════════ */
+.atelier-surcouche {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  --p: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0px, 4vh, 48px) 0;
+}
+.atelier-scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--fond) 62%, transparent);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: surcouche-scrim 0.28s ease both;
+}
+@keyframes surcouche-scrim { from { opacity: 0; } to { opacity: 1; } }
+.atelier-fermer {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-s);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line-fort);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.atelier-fermer:hover { color: var(--ink-fort); border-color: var(--acc); background: var(--surface-2); }
+.atelier-fermer:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.atelier-fermer svg { width: 20px; height: 20px; }
+
 .scene-atelier {
   position: relative;
-  z-index: 2;
-  min-height: 100vh;
-  scroll-snap-align: start;
-  /* On CALE l'arrêt de défilement ici : la scène ne peut plus être dépassée à
-     moitié (le haut se faisait rogner quand le pied de page tirait le scroll). */
-  scroll-snap-stop: always;
+  z-index: 1;
+  width: 100%;
+  max-width: 920px;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe center` : centré tant que le contenu tient, mais aligné en haut et ENTIÈREMENT
+     défilable dès qu'il déborde (sinon le centrage pousse le haut hors de portée du
+     scroll sur écran court — revue nuage). */
+  justify-content: safe center;
   gap: var(--sp-1);
-  padding: 34px 34px;
-  overflow: hidden;
-  border-radius: 40px 40px 0 0;
+  padding: 48px 34px 34px;
+  overflow-y: auto;
+  border-radius: 28px;
   background: linear-gradient(180deg, var(--feuille) 0%, var(--fond-2) 22%, var(--fond-2) 100%);
-  -webkit-backdrop-filter: blur(calc(var(--p) * 30px)) saturate(130%);
-  backdrop-filter: blur(calc(var(--p) * 30px)) saturate(130%);
-  box-shadow: 0 -40px 90px -30px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(30px) saturate(130%);
+  backdrop-filter: blur(30px) saturate(130%);
+  box-shadow: 0 40px 100px -34px rgba(0, 0, 0, 0.7), inset 0 1px 0 var(--rim);
+  animation: surcouche-monte 0.42s var(--spring) both;
 }
+@keyframes surcouche-monte { from { transform: translateY(46px); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* LA COUTURE — un trait de lumière s'ouvre du centre vers les bords au moment
-   du passage. Sa largeur suit --p ; son intensité suit sin²(p·π) : elle naît à
-   zéro, elle explose PILE à mi-passage, elle meurt à zéro. */
-.couture {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 1px;
-  width: calc(var(--p) * 100%);
-  opacity: var(--pic);
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--menthe) 18%,
-    var(--cyan-soft) 50%, var(--menthe) 82%, transparent);
-  box-shadow:
-    0 0 22px color-mix(in srgb, var(--menthe) 70%, transparent),
-    0 0 60px color-mix(in srgb, var(--cyan) 45%, transparent);
-}
-.couture-lueur {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 70%;
-  height: 190px;
-  pointer-events: none;
-  opacity: calc(var(--pic) * 0.8);
-  filter: blur(46px);
-  background: radial-gradient(ellipse 60% 100% at 50% 0%,
-    color-mix(in srgb, var(--menthe) 55%, transparent), transparent 70%);
-}
+/* (P1 — la couture lumineuse du passage est retirée avec le scroll tour→atelier.) */
 
-/* Les blocs de l'atelier montent à des VITESSES DIFFÉRENTES (parallaxe douce).
-   Chacun a sa fenêtre : --s (début) → --e (fin), en % du passage. */
+/* Les blocs de l'atelier se révèlent (--p:1 sur la surcouche → pleinement affichés).
+   Chacun garde sa fenêtre --s/--e : au repos ils sont tous montrés ; c'est l'entrée
+   de la feuille (surcouche-monte) qui porte désormais le mouvement d'arrivée. */
 .at-bloc {
   --q: clamp(0, calc((var(--p) - var(--s, 0)) / (var(--e, 1) - var(--s, 0))), 1);
   opacity: var(--q);
@@ -502,26 +506,15 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 .al-item.eteinte .al-q { color: var(--muted); }
 .al-val { flex: none; font-size: var(--fs-m); font-weight: 800; color: var(--ink-fort); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .al-manque { flex: none; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-align: right; max-width: 48%; line-height: 1.3; }
-/* L'indice « descends pour l'atelier » — vit au bas de la scène-tour. */
-.scene-indice {
-  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
-  font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--muted); opacity: calc(0.6 - var(--p) * 0.6); pointer-events: none;
-  transition: opacity 0.3s;
-}
-.scene-indice svg { width: 18px; height: 18px; animation: indiceFlotte 2.4s ease-in-out 3; } /* 3 flottements puis immobile (LOT couvre-feu) */
-@keyframes indiceFlotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
-
 @media (max-width: 1050px) {
-  /* Mobile : flux simple (pas de scroll imbriqué, plus sûr au toucher). La tour
-     défile dans le document ; l'atelier arrive dessous. */
-  /* La marge latérale de base (−38px) reste valable de 768 à 1050px : .main garde son
-     padding 38px jusqu'à ≤767px (voir plus bas). On ne touche donc PAS la marge ici,
-     seulement la mécanique du passage (flux simple au toucher). */
+  /* Mobile : la tour passe en flux simple (pas de scroll imbriqué, plus sûr au toucher).
+     La surcouche atelier (position: fixed) est indépendante — elle s'ouvre par-dessus. */
   .scene-tour { position: relative; height: auto; min-height: 100vh; overflow: visible; }
   .tour-corps { overflow-y: visible; }
   .at-t { font-size: 23px; }
+  /* la feuille prend tout l'écran sur petit format (le scrim reste tappable en haut/bas). */
+  .atelier-surcouche { padding: 0; }
+  .scene-atelier { max-width: 100%; min-height: 100%; border-radius: 0; }
 }
 /* ≤767px : .main passe à padding 14px (index.css) → la marge de plein-bleed suit,
    sinon une gouttière sombre apparaîtrait entre le bord et le bandeau. */
@@ -530,17 +523,16 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   .main > .scene-tour:first-child { margin-top: -14px; }
 }
 
-/* Mouvement réduit : le passage disparaît, le rail défile sans lissage. Le rail
-   étant déjà plat et statique (LOT 4), il n'y a plus de fork à gérer — le layout
-   est identique, on retire seulement le mouvement. */
+/* Mouvement réduit : la feuille apparaît sans glisser, le rail défile sans lissage.
+   Le rail étant déjà plat et statique (LOT 4), le layout est identique — on retire
+   seulement le mouvement. */
 @media (prefers-reduced-motion: reduce) {
-  html.scene-active { scroll-snap-type: none; scroll-behavior: auto; }
   .tour-corps { transform: none !important; opacity: 1 !important; }
   .at-bloc { opacity: 1 !important; transform: none !important; filter: none !important; }
-  .scene-atelier { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .scene-atelier { backdrop-filter: none; -webkit-backdrop-filter: none; animation: none; }
+  .atelier-scrim { animation: none; }
   .pres-piste { scroll-behavior: auto; scroll-snap-type: none; }
   .plaque { transition: none; }
-  .scene-indice svg { animation: none; }
 }
 
 /* Au TOUCHER (pas de survol) : le CTA « + Ajouter » reste visible — sinon on ne
