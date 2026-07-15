@@ -118,7 +118,21 @@ export function loadStore() {
   }
 }
 
-/** Écrit le silo (estampille updatedAt). */
+// Les silos-store dont on suit l'ÂGE (K2) : les seules données saisies par l'usager.
+export const SILOS_HORODATES = ['revenus', 'depenses', 'patrimoine']
+
+/** Estampille UN silo « maintenant » (K2) — à appeler dans le setter qui l'écrit.
+ *  L'âge vit donc dans l'ÉTAT (store.meta.majSilos), pas déduit à la sauvegarde :
+ *  une mise à jour rafraîchit la tuile TOUT DE SUITE, et un import conserve les
+ *  âges du fichier (saveStore ne recalcule rien). PUR. */
+export function touchSilo(store, silo) {
+  const meta = { ...(store && store.meta ? store.meta : {}) }
+  meta.majSilos = { ...(meta.majSilos || {}), [silo]: new Date().toISOString() }
+  return { ...store, meta }
+}
+
+/** Écrit le silo VERBATIM (estampille updatedAt global ; meta.majSilos vient de
+ *  l'état, jamais recalculé ici → import et édition intra-session restent honnêtes). */
 export function saveStore(store) {
   if (!hasLocal()) return false
   try {

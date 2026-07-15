@@ -8,7 +8,8 @@
    ========================================================================== */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { snapshotFromStore } from './lib/canonical.js'
-import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline } from './lib/storage.js'
+import { loadStore, saveStore, emptyStore, exempleStore, loadBaseline, saveBaseline, touchSilo, SILOS_HORODATES } from './lib/storage.js'
+import { etatFraicheur } from './lib/fraicheur.js'
 import { revenuMensuel } from './lib/revenus.js'
 import MoteurRendu from './recettes/MoteurRendu.jsx'
 import { formesPourKPI, nomForme } from './recettes/bibliotheque-kpis.js'
@@ -127,12 +128,20 @@ function aDesDonnees(store) {
 function normaliser(store) {
   const base = emptyStore()
   if (!store || typeof store !== 'object') return base
+  // K2 — MIGRATION DOUCE de la fraîcheur : on PRÉSERVE meta.majSilos (import inclus) et
+  // on sème l'estampille manquante d'un silo avec updatedAt global (sa dernière
+  // sauvegarde connue) → un store pré-K2 montre l'âge RÉEL de ses données, sans
+  // jamais fabriquer « très vieux ». L'estampille vit ensuite dans l'état (touchSilo).
+  const majSilos = { ...((store.meta && store.meta.majSilos) || {}) }
+  const ancre = store.updatedAt || new Date().toISOString()
+  for (const silo of SILOS_HORODATES) if (!majSilos[silo]) majSilos[silo] = ancre
   return {
     ...base,
     ...store,
     revenus: { ...base.revenus, ...(store.revenus || {}) },
     patrimoine: { ...base.patrimoine, ...(store.patrimoine || {}) },
     depenses: Array.isArray(store.depenses) ? store.depenses : base.depenses,
+    meta: { ...(store.meta || {}), majSilos },
     // « Mes vues » : des modèles de tuile réutilisables (structure seulement) —
     // gardé Array + entrées valides (un silo importé hostile repart propre).
     mesVues: Array.isArray(store.mesVues) ? store.mesVues.filter((v) => v && v.recette && Array.isArray(v.recette.blocs)) : [],
@@ -471,19 +480,20 @@ function App() {
   }, [nouveauWidget])
 
   // setRevenus retire un éventuel `saison` résiduel (seed démo) → la saisie prime.
+  // touchSilo (K2) horodate le silo écrit → la tuile reconnaît la mise à jour AUSSITÔT.
   const setRevenus = (revenus) =>
     setStore((s) => {
       const { saison, ...reste } = s
       void saison
-      return { ...reste, revenus }
+      return touchSilo({ ...reste, revenus }, 'revenus')
     })
   const setDepenses = (depenses) =>
     setStore((s) => {
       const { saison, ...reste } = s
       void saison
-      return { ...reste, depenses }
+      return touchSilo({ ...reste, depenses }, 'depenses')
     })
-  const setPatrimoine = (patrimoine) => setStore((s) => ({ ...s, patrimoine }))
+  const setPatrimoine = (patrimoine) => setStore((s) => touchSilo({ ...s, patrimoine }, 'patrimoine'))
   const chargerExemple = () => setStore(exempleStore())
   const repartirAZero = () => {
     if (aDesDonnees(store) && !window.confirm('Repartir à zéro effacera tes montants saisis. Continuer ?')) return
@@ -1107,12 +1117,15 @@ function App() {
                   // « +275 $ » sous un « 46 % » serait un fait incohérent (revue nuage, majeur).
                   const derActive = !!(kbAff && kbAff.params && kbAff.params.derivation && kbAff.params.derivation !== 'brut')
                   const deltaW = !anime && kbAff && !derActive ? deltaKPI(kbAff.KPI, baselineRef.current, snapshot, kbAff.params || {}) : null
+                  // LA FRAÎCHEUR (K2) : l'âge du silo le plus vieux dont cette tuile est faite.
+                  // null tant que c'est frais (le calme d'abord) ; `datee` au-delà de 2× le seuil.
+                  const fraicheurW = kb && kpiPourId(kb.KPI) ? etatFraicheur(snapshot, kpiPourId(kb.KPI).requiert) : null
                   const formes = kb ? formesPourKPI(kb.KPI, snapshot, kb.params) : []
                   const peutMorpher = formes.length > 1
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${fraicheurW && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={{ ...(w.accent ? { '--wacc': w.accent } : null), '--casc': Math.min(idx, 8) }}
@@ -1293,6 +1306,21 @@ function App() {
                           </span>
                         )}
                       </div>
+
+                      {/* LA LIGNE D'ÂGE (K2) : la tuile dit calmement quand sa matière date, et
+                          ouvre la saisie du silo concerné. Discrète, muette, JAMAIS d'ambre —
+                          l'âge d'une donnée est un fait, pas une alarme. Rien tant que c'est frais. */}
+                      {fraicheurW && !reorganise && (
+                        <button
+                          type="button"
+                          className="tour-widget-age"
+                          onClick={() => { allerSection('donnees'); allerSaisie(fraicheurW.section) }}
+                          title={`Mettre à jour ${fraicheurW.nom}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                          <span>{fraicheurW.texte}</span>
+                        </button>
+                      )}
 
                       {/* LA POIGNÉE DE TAILLE (mode réorganiser) : S → M → L (→ XL). */}
                       {reorganise && (

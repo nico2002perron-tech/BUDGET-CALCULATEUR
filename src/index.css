@@ -2496,6 +2496,30 @@ svg { display: block; }
    NEUTRE dans les deux sens. Colorer la hausse en accent impliquerait « monter =
    bien », or ça dépend du KPI (coût qui monte = mauvais, épargne qui monte = bon).
    Neutre + discret : le delta chuchote sous le chiffre héros. Jamais d'ambre. */
+/* K2 — LA LIGNE D'ÂGE : une pilule discrète en bas de tuile (la tuile a une hauteur
+   fixe → absolue). La tuile dit calmement que sa matière date et ouvre la saisie du
+   silo. Muette (var(--muted)), JAMAIS d'ambre : l'âge est un fait, pas une alarme. */
+.tour-board .tour-widget-age {
+  position: absolute; left: 12px; bottom: 8px; z-index: 6;
+  display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 24px);
+  padding: 3px 8px; font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
+  line-height: 1.2; text-align: left;
+  color: var(--muted); background: var(--surface-plein); border: 1px solid var(--line);
+  border-radius: 999px; cursor: pointer; box-shadow: var(--sh-sm);
+  transition: color 0.15s, border-color 0.15s;
+}
+.tour-board .tour-widget-age svg { width: 12px; height: 12px; flex: none; opacity: 0.75; }
+.tour-board .tour-widget-age span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tour-board .tour-widget-age:hover { color: var(--acc); border-color: color-mix(in srgb, var(--acc) 40%, var(--line)); }
+.tour-board .tour-widget-age:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+/* Le vieillissement calme (est-datee = 2× le seuil) : l'accent de la tuile se
+   désature — « ce chiffre a de l'âge ». Aucune opacité sur le CHIFFRE (il reste net). */
+.tour-board .tour-widget.est-datee .tour-widget-ic,
+.tour-board .tour-widget.est-datee .stat-ic { filter: saturate(0.35); }
+/* la tuile qui porte une ligne d'âge réserve une gouttière basse pour que la pilule
+   ne recouvre pas un chiffre d'axe / une légende (K2). */
+.tour-board .tour-widget.a-age .tour-rendu { padding-bottom: 26px; }
+
 .stat-delta { display: inline-flex; align-items: center; gap: var(--sp-1); margin-top: 5px; font-size: var(--fs-xs); font-weight: 700; color: color-mix(in srgb, var(--ink) 72%, transparent); }
 .stat-delta svg { width: 13px; height: 13px; flex: none; }
 

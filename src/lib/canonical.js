@@ -328,7 +328,12 @@ export function snapshotFromStore(store) {
   return {
     meta: {
       generatedAt: new Date().toISOString(),
-      freshness: { budget: (store && store.updatedAt) || null },
+      // FRAÎCHEUR PAR SILO (K2) : l'âge de chaque donnée saisie, pour que la tuile
+      // sache de quoi elle est faite. Repli sur updatedAt global (migration douce).
+      freshness: {
+        ...(store && store.meta && store.meta.majSilos ? store.meta.majSilos : {}),
+        budget: (store && store.updatedAt) || null,
+      },
       completeness: { budget: !!budget, saison: !!saison },
     },
     identity: identity,
