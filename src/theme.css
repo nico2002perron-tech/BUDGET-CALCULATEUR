@@ -43,7 +43,12 @@
   --fs-l: 19px;       /* titres de carte */
   --fs-xl: 28px;      /* titres de scène */
 
-  /* ── LA GÉOMÉTRIE ──────────────────────────────────────────────────────── */
+  /* ── LA GÉOMÉTRIE ──────────────────────────────────────────────────────────
+     Trois rayons (+ la pilule 999). --r-s : contrôles, chips, petits boutons.
+     --r : cartes internes, panneaux. --r-tuile : tuiles du board, plaques. Les
+     rayons 1-9px (barres de sparkline) et 40/60px (feuille d'atelier) restent
+     des exceptions géométriques, hors échelle. */
+  --r-s: 12px;
   --r: 20px;
   --r-tuile: 24px;
   --spring: cubic-bezier(0.16, 1, 0.3, 1);

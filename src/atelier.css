@@ -224,7 +224,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   font-size: var(--fs-s); font-weight: 700; color: var(--amber);
   background: color-mix(in srgb, var(--amber) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
-  border-radius: 12px; padding: 9px 14px;
+  border-radius: var(--r-s); padding: 9px 14px;
 }
 /* La zone de l'anneau prend sa hauteur NATURELLE et se centre avec le reste (plutôt
    que de s'étirer sur toute la place, ce qui faisait flotter l'anneau au milieu d'un
@@ -253,7 +253,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 }
 .ia-barre {
   position: relative; display: flex; align-items: center; gap: 12px;
-  padding: 6px 6px 6px 18px; border-radius: 18px;
+  padding: 6px 6px 6px 18px; border-radius: var(--r);
   background: var(--surface-2); border: 1px solid var(--line-fort);
   -webkit-backdrop-filter: blur(26px) saturate(170%); backdrop-filter: blur(26px) saturate(170%);
   box-shadow: inset 0 1px 0 var(--rim), var(--sh);
@@ -274,7 +274,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 }
 .ia-input::placeholder { color: var(--muted); }
 .ia-go {
-  flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  flex: none; width: 40px; height: 40px; border-radius: var(--r-s); display: grid; place-items: center;
   cursor: pointer; border: none; color: #03212a;
   background: linear-gradient(135deg, var(--menthe), var(--cyan));
   box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 70%), transparent);
@@ -318,7 +318,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
   position: relative; flex: 0 0 264px; width: 264px; height: 206px;
   scroll-snap-align: center;
   display: flex; flex-direction: column;
-  border-radius: 22px; cursor: pointer; font-family: inherit; text-align: left;
+  border-radius: var(--r); cursor: pointer; font-family: inherit; text-align: left;
   padding: 15px 16px 14px;
   background: linear-gradient(150deg, var(--surface-2), var(--surface) 62%);
   -webkit-backdrop-filter: blur(20px) saturate(175%); backdrop-filter: blur(20px) saturate(175%);
@@ -394,7 +394,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 .pl-ajout {
   margin-top: 14px; z-index: 6;
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  height: 33px; border-radius: 11px; font-size: var(--fs-xs); font-weight: 800;
+  height: 33px; border-radius: var(--r-s); font-size: var(--fs-xs); font-weight: 800;
   color: #03212a; background: linear-gradient(135deg, var(--menthe), var(--cyan));
   opacity: 0; transform: translateY(6px);
   transition: opacity 0.25s, transform 0.25s var(--spring);
@@ -419,7 +419,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 .pl-vide { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; }
 .pl-vide-plus {
-  width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center;
+  width: 48px; height: 48px; border-radius: var(--r-s); display: grid; place-items: center;
   color: #03212a; font-size: 25px; font-weight: 300;
   background: linear-gradient(140deg, var(--menthe), var(--cyan));
   box-shadow: 0 14px 30px -10px color-mix(in srgb, var(--cyan) calc(var(--lueur) * 75%), transparent);
@@ -431,7 +431,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 /* LES FLÈCHES — elles DÉFILENT le rail (scrollBy), elles ne tournent rien. Rendues
    seulement si le rail déborde. Elles flanquent le rail (frères flex de .rail). */
 .car-fl {
-  flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  flex: none; width: 38px; height: 38px; border-radius: var(--r-s); display: grid; place-items: center;
   cursor: pointer; font-family: inherit; font-size: 18px;
   border: 1px solid var(--line-fort); background: var(--surface); color: var(--ink);
   transition: border-color 0.2s, background 0.2s, transform 0.12s;
@@ -492,7 +492,7 @@ html.scene-fondue .bandeau-lueur { animation-play-state: paused; }
 .al-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow-y: auto; min-height: 0; align-content: start; padding: 2px 4px 6px 2px; }
 .al-item {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  text-align: left; font-family: inherit; cursor: pointer; padding: 11px 14px; border-radius: 12px;
+  text-align: left; font-family: inherit; cursor: pointer; padding: 11px 14px; border-radius: var(--r-s);
   background: var(--surface); border: 1px solid var(--line);
   transition: border-color 0.15s, background 0.15s;
 }
