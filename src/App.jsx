@@ -815,6 +815,18 @@ function App() {
         return { ...w, peau: peauId }
       }),
     }))
+  // L'ENCRE DU CHIFFRE (K5) : 'auto' (encre forte, défaut) ou 'accent' (ta couleur, en
+  // version lisible AA). Rangé sous w.style.encre ; 'auto' retire la clé (défaut = pas de style).
+  const changerEncre = (widgetId, encre) =>
+    setStore((s) => ({
+      ...s,
+      tourWidgets: (Array.isArray(s.tourWidgets) ? s.tourWidgets : []).map((w) => {
+        if (w.id !== widgetId) return w
+        const style = { ...(w.style || {}) }
+        if (encre === 'accent') style.encre = 'accent'; else delete style.encre
+        return { ...w, style }
+      }),
+    }))
 
   // ── LA BARRE-COPILOTE DU BOARD : ta phrase → des ACTIONS de tableau (créer,
   //    répondre, retirer, redimensionner, ouvrir). Payload = FORME seulement
@@ -1188,7 +1200,7 @@ function App() {
                   const retoucheOuverte = angleWidget === w.id
                   return (
                     <section
-                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${fraicheurW && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
+                      className={`tour-widget tour-vues taille-${tailleWidget(w)}${anime ? ' is-anime' : ''}${aBouge ? ' a-bouge' : ''}${w.accent ? ' a-couleur' : ''}${tireeId === w.id ? ' est-tiree' : ''}${fraicheurW && !reorganise ? ' a-age' : ''}${fraicheurW && fraicheurW.datee ? ' est-datee' : ''}${w.style && w.style.encre === 'accent' ? ' encre-accent' : ''}${(() => { const p = peauSurvol && peauSurvol.id === w.id && angleWidget === w.id ? peauSurvol.peau : w.peau; const c = classePeau(p); return c ? ` ${c}` : '' })()}`}
                       key={w.id}
                       ref={poseTuile(w.id)}
                       style={{ ...(w.accent ? { '--wacc': w.accent } : null), '--casc': Math.min(idx, 8) }}
@@ -1249,6 +1261,25 @@ function App() {
                                   onClick={() => changerCouleur(w.id, a.hex)}
                                   aria-label={`Couleur ${a.id}`}
                                 />
+                              ))}
+                            </div>
+                          </div>
+                          {/* K5 — L'ENCRE DU CHIFFRE : « couleur de l'écriture ». Deux choix
+                              seulement, chacun garanti lisible (AA) dans les deux peaux. */}
+                          <div className="retouche-bloc">
+                            <span className="gal-essai-l">Son chiffre</span>
+                            <div className="retouche-encre">
+                              {[{ id: 'auto', l: 'Automatique' }, { id: 'accent', l: 'Ta couleur' }].map((e) => (
+                                <button
+                                  key={e.id}
+                                  type="button"
+                                  className={`retouche-encre-b${(((w.style && w.style.encre) || 'auto') === e.id) ? ' est-actif' : ''}`}
+                                  onClick={() => changerEncre(w.id, e.id)}
+                                  aria-pressed={((w.style && w.style.encre) || 'auto') === e.id}
+                                >
+                                  <span className="retouche-encre-ap" data-encre={e.id} aria-hidden="true">123</span>
+                                  {e.l}
+                                </button>
                               ))}
                             </div>
                           </div>

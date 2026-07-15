@@ -2572,6 +2572,25 @@ svg { display: block; }
 /* K4 — LE REPÈRE : la balise usuelle, tout en bas, en chuchotant (un fait neutre). */
 .stat-repere { margin-top: 5px; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); opacity: 0.85; line-height: 1.3; }
 
+/* K5 — L'ENCRE DU CHIFFRE (« couleur de l'écriture ») : « ta couleur » en version
+   LISIBLE — l'accent mixé vers l'encre forte → AA garanti dans les DEUX peaux (jamais
+   l'accent brut, illisible sur sombre). 'auto' = le défaut (ink-fort), aucune règle. */
+.tour-board .tour-widget.encre-accent .stat-v { color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort)); }
+.retouche-encre { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.retouche-encre-b {
+  display: inline-flex; align-items: center; gap: 7px; font-family: inherit;
+  font-size: var(--fs-s); font-weight: 700; color: var(--ink-fort);
+  border: 1.5px solid var(--line-fort); background: var(--surface-2);
+  border-radius: var(--r-s); padding: 7px 12px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.retouche-encre-b:active { transform: translateY(1px); }
+.retouche-encre-b.est-actif { border-color: var(--wacc); background: color-mix(in srgb, var(--wacc) 12%, var(--surface-2)); }
+.retouche-encre-b:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.retouche-encre-ap { font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.retouche-encre-ap[data-encre="accent"] { color: color-mix(in srgb, var(--wacc) 74%, var(--ink-fort)); }
+.retouche-encre-ap[data-encre="auto"] { color: var(--ink-fort); }
+
 /* LOT 3 — EN-TÊTE UNIQUE : en tuile, seul le TITRE interne d'un bloc (« Où tu en es »)
    disparaît — il double l'en-tête de tuile. On GARDE le sous-titre (.card-sub =
    texteFactuel) : sur une tuile-graphique (Courbe, Bandes, Beignet…) c'est le SEUL

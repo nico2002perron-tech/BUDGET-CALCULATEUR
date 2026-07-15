@@ -106,16 +106,16 @@ export default function Bandes({ params = {}, data = {}, kpi = null, projecteur 
           const colle = (seuil > 0 && Math.abs(y - yDe(seuil)) < 13) || (cible > 0 && Math.abs(y - yDe(cible)) < 13)
           return (
             <g key={i}>
-              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#e7edf6" strokeWidth="1" />
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line-fort)" strokeWidth="1" />
               {!colle && (
-                <text x={padL + 2} y={y - 4} textAnchor="start" fontSize="9" fontWeight="600" fill="#9aa8c0" fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+                <text x={padL + 2} y={y - 4} textAnchor="start" fontSize="9" fontWeight="600" fill="var(--muted)" fontFamily="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
                   {abregerMontant(v)}
                 </text>
               )}
             </g>
           )
         })}
-        <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cdd6e5" strokeWidth="1.5" />
+        <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="var(--line-fort)" strokeWidth="1.5" />
 
         {/* la ligne-guide de la valeur regardée (sous les barres) */}
         {sel.actif != null && sel.actif < serie.length && (
@@ -135,8 +135,8 @@ export default function Bandes({ params = {}, data = {}, kpi = null, projecteur 
 
         {seuil > 0 && (
           <>
-            <line x1={padL} y1={yDe(seuil)} x2={W - padR} y2={yDe(seuil)} stroke="#0077b6" strokeWidth="2" strokeDasharray="5 5" />
-            <text x={padL + 2} y={yDe(seuil) - 6} textAnchor="start" fontSize="11" fontWeight="700" fill="#0077b6" fontFamily="Montserrat">
+            <line x1={padL} y1={yDe(seuil)} x2={W - padR} y2={yDe(seuil)} stroke="var(--acc)" strokeWidth="2" strokeDasharray="5 5" />
+            <text x={padL + 2} y={yDe(seuil) - 6} textAnchor="start" fontSize="11" fontWeight="700" fill="var(--acc)" fontFamily="Montserrat">
               {S.seuilTexte}
             </text>
           </>
@@ -144,7 +144,7 @@ export default function Bandes({ params = {}, data = {}, kpi = null, projecteur 
         {cible > 0 && (
           <>
             <line x1={padL} y1={yDe(cible)} x2={W - padR} y2={yDe(cible)} stroke={AMBER} strokeWidth="2" strokeDasharray="6 4" />
-            <text x={W - padR - 2} y={yDe(cible) - 6} textAnchor="end" fontSize="11" fontWeight="700" fill="#b8740a" fontFamily="Montserrat">
+            <text x={W - padR - 2} y={yDe(cible) - 6} textAnchor="end" fontSize="11" fontWeight="700" fill="var(--amber-fort)" fontFamily="Montserrat">
               objectif {formatCAD(cible)}/mois
             </text>
           </>
