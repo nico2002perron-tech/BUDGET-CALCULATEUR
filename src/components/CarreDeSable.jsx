@@ -55,7 +55,10 @@ function reduitMouvement() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export default function CarreDeSable({ widget, snapshot, historique = [], origine = null, onFermer, onEpingler, appris = [], onAppris }) {
+export default function CarreDeSable({ widget, mode = 'edition', snapshot, historique = [], origine = null, onFermer, onEpingler, appris = [], onAppris }) {
+  // P4 — mode « suggestion » : la tuile n'est encore qu'un BROUILLON (proposé par la tour),
+  // pas une tuile posée. Le sable est le même ; seul le pied change (elle n'existe pas encore).
+  const estSuggestion = mode === 'suggestion'
   const racineRef = useRef(null)
   const retourRef = useRef(null)
   const panneauRef = useRef(null)
@@ -749,9 +752,9 @@ export default function CarreDeSable({ widget, snapshot, historique = [], origin
         {formeActive && (
           <div className="sable-pied">
             <button type="button" className="sable-epingler" onClick={epingler}>
-              Épingler à ma tour
+              {estSuggestion ? 'Épingler sur ma tour' : 'Épingler à ma tour'}
             </button>
-            <p className="sable-note">Tout reste retouchable — tape la tuile pour rouvrir son carré de sable.</p>
+            <p className="sable-note">{estSuggestion ? 'Cette suggestion n’est pas encore sur ta tour — l’épingler la pose. Tout reste retouchable ensuite.' : 'Tout reste retouchable — tape la tuile pour rouvrir son carré de sable.'}</p>
           </div>
         )}
       </div>

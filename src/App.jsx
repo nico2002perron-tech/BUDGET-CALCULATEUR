@@ -738,14 +738,28 @@ function App() {
     gardees: store.suggestionsGardees,
   }), [snapshot, store.tourWidgets, store.historique, store.suggestionsEcartees, store.suggestionsGardees]) // eslint-disable-line react-hooks/exhaustive-deps -- baseline lue une fois (ref) ; kpisDuBoard via tourWidgets
   const suggestionActive = suggestions.length ? suggestions[suggIdx % suggestions.length] : null
-  // Épingler la suggestion (confirmation explicite = CE clic ; JAMAIS d'auto-épinglage) :
-  // on pose la tuile ET on retient son domaine (gardé → sa famille remontera ensuite).
-  const adopterSuggestion = (sg) => {
+  // P4 — EXPLORER une suggestion : on l'ouvre dans le CARRÉ DE SABLE (mode « suggestion »),
+  // sur un BROUILLON de tuile (jamais posé tant que non épinglé) → l'usager la comprend,
+  // l'ajuste, puis l'épingle DE LÀ. Jamais d'auto-épinglage.
+  const explorerSuggestion = (sg) => {
     if (!sg) return
-    // la forme est RÉSOLUE (un KPI qui n'offre pas 'stat' retombe sur sa 1re forme compatible)
-    // → la tuile épinglée montre exactement l'aperçu qu'on vient de voir.
-    ajouterWidget({ situation: `kpi_${sg.kpiId}`, titre: sg.question, blocs: [{ KPI: sg.kpiId, forme: resoudreForme(sg.kpiId, 'stat', snapshot, {}), params: sg.params || {} }] })
-    if (sg.domaine) setStore((s) => ({ ...s, suggestionsGardees: { ...(s.suggestionsGardees || {}), [sg.domaine]: moisDeSnapshot(snapshot) } }))
+    const brouillon = { id: 'sugg_' + sg.kpiId, recette: { situation: `kpi_${sg.kpiId}`, titre: sg.question, blocs: [{ KPI: sg.kpiId, forme: resoudreForme(sg.kpiId, 'stat', snapshot, {}), params: sg.params || {} }] } }
+    setSable({ id: brouillon.id, rect: null, mode: 'suggestion', brouillon })
+  }
+  // Épingler le BROUILLON (depuis le sable, mode suggestion) : on POSE une VRAIE tuile avec
+  // les ajustements du sable (forme/titre/couleur), et on retient le domaine (gardé).
+  const epinglerBrouillon = (maj) => {
+    if (!sable || !sable.brouillon) return
+    const w = sable.brouillon
+    const kb = heroKPI(w.recette)
+    const params = { ...(maj.params || {}) }
+    Object.keys(params).forEach((k) => { if (params[k] === undefined) delete params[k] })
+    const blocs = w.recette.blocs.map((b) => (b && b.KPI ? { ...b, forme: maj.forme || b.forme, params } : b))
+    const titre = typeof maj.titre === 'string' && maj.titre.trim() ? maj.titre : w.recette.titre
+    ajouterWidget({ ...w.recette, titre, blocs }, maj.couleur || null)
+    const def = kb ? kpiPourId(kb.KPI) : null
+    if (def && def.domaine) setStore((s) => ({ ...s, suggestionsGardees: { ...(s.suggestionsGardees || {}), [def.domaine]: moisDeSnapshot(snapshot) } }))
+    setSable(null)
   }
   const autreIdee = () => setSuggIdx((i) => i + 1) // « Une autre idée » : la suivante (cycle)
   // « Pas maintenant » : l'écarter (tue 3 mois, revient si le signal se renforce). On stocke le
@@ -1715,7 +1729,7 @@ function App() {
                     <MoteurRendu recette={apercuSuggestion(suggestionActive.kpiId)} snapshot={snapshot} apercu />
                   </div>
                   <div className="te-actions">
-                    <button type="button" className="te-epingler" onClick={() => adopterSuggestion(suggestionActive)}>Épingler sur ma tour</button>
+                    <button type="button" className="te-epingler" onClick={() => explorerSuggestion(suggestionActive)}>Explorer</button>
                     <button type="button" className="te-autre" onClick={autreIdee}>Une autre idée</button>
                     <button type="button" className="te-pas" onClick={() => ecarterSuggestion(suggestionActive)}>Pas maintenant</button>
                   </div>
@@ -1877,8 +1891,10 @@ function App() {
           au-dessus d'un scrim qui laisse le board visible. Widget retiré pendant
           qu'il est ouvert → se referme seul. */}
       {(() => {
-        const w = sable ? widgets.find((x) => x.id === sable.id) : null
-        return w ? <CarreDeSable widget={w} snapshot={snapshot} historique={store.historique} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
+        // P4 — le sable ouvre soit une VRAIE tuile (édition), soit un BROUILLON de suggestion.
+        const w = sable ? (sable.brouillon || widgets.find((x) => x.id === sable.id)) : null
+        const suggestion = !!(sable && sable.mode === 'suggestion')
+        return w ? <CarreDeSable widget={w} mode={suggestion ? 'suggestion' : 'edition'} snapshot={snapshot} historique={store.historique} origine={sable.rect} onFermer={() => setSable(null)} onEpingler={suggestion ? epinglerBrouillon : epinglerSable} appris={appris} onAppris={marquerAppris} /> : null
       })()}
     </div>
   )
